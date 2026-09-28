@@ -117,13 +117,13 @@ const fmt = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 100)
  */
 export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const sess = useStore(session);
-  const [state, setState] = useState(null);      
+  const [state, setState] = useState(null);
   const [value, setValue] = useState(null);
-  const [band, setBand] = useState(null);        
+  const [band, setBand] = useState(null);
   const [op, setOp] = useState("above");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [fallback, setFallback] = useState(false);   
+  const [fallback, setFallback] = useState(false);
 
   const load = () => watchList(source).then((j) => {
     setState(j);
@@ -180,6 +180,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
       <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:bell", "text-2xl")}</div>
       <div class="flex-1 min-w-0">
         <div class="font-semibold leading-tight truncate">${sys("watchRow", loc)}</div>
+        ${""}
         <div class="text-xs text-muted truncate">${state.free
           ? html`<span data-watch-role=${state.role}>${state.role} · ${sys("watchFree", loc)}</span>`
           : html`${sys("watchCost", loc)} · ${sys("watchBalance", loc)} ${state.balance}`}</div>

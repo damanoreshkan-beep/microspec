@@ -1,4 +1,3 @@
-
 const C = { g: "\x1b[32m", r: "\x1b[31m", y: "\x1b[33m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
 const ROOT = Deno.cwd();
 const PREFLIGHT = await Deno.stat(`${Deno.cwd()}/.microspec/preflight.mjs`).then(() => `${Deno.cwd()}/.microspec/preflight.mjs`)
@@ -52,7 +51,7 @@ const MUTATIONS = [
 
   { id: "drop-runtime-key", cat: "i18n", tier: "preflight",
     applies: () => true,
-    async mutate(d) { let hit = false; for (const k of ["close", "refresh", "title"]) { try { await editJson(`${d}/i18n/uk.json`, (o) => { if (k in o) { delete o[k]; hit = k; } }); if (hit) break; } catch {  } } return hit ? `removed runtime key "${hit}"` : false; } },
+    async mutate(d) { let hit = false; for (const k of ["close", "refresh", "title"]) { try { await editJson(`${d}/i18n/uk.json`, (o) => { if (k in o) { delete o[k]; hit = k; } }); if (hit) break; } catch { } } return hit ? `removed runtime key "${hit}"` : false; } },
 
   { id: "invalid-spec-missing-id", cat: "schema", tier: "preflight",
     applies: () => true,
@@ -94,7 +93,6 @@ const MUTATIONS = [
     applies: ({ spec }) => JSON.stringify(spec).includes('"badges"'),
     async mutate(d) { await editJson(`${d}/spec.json`, (o) => { for (const t of o.tabs || []) if (t.card?.badges) delete t.card.badges; }); return "removed all card badges"; } },
 
-
   { id: "a11y-empty-tab-names", cat: "a11y", tier: "verify",
     applies: ({ spec }) => (spec.tabs || []).some((t) => t.label),
     async mutate(d, { spec }) { const keys = (spec.tabs || []).map((t) => t.label).filter(Boolean); for (const l of ["uk", "en"]) { const p = `${d}/i18n/${l}.json`; if (await exists(p)) await editJson(p, (o) => { for (const k of keys) if (k in o) o[k] = ""; }); } return "emptied tab labels"; } },
@@ -132,7 +130,7 @@ async function run() {
       let detail = false, caught = null;
       try {
         detail = await m.mutate(dst, ctx);
-        if (detail === false) continue;              
+        if (detail === false) continue;
         caught = await gateRed(gate, dst);
       } finally { await Deno.remove(dir, { recursive: true }).catch(() => {}); }
       trials.push({ app, mut: m.id, cat: m.cat, caught });

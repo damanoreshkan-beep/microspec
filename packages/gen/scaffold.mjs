@@ -88,7 +88,7 @@ const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 
 if (!(await has(`${dir}/spec.json`))) { console.error(`✗ ${dir}/spec.json missing — author it first`); Deno.exit(1); }
 const spec = await readJson(`${dir}/spec.json`);
-const i18n = await readLocales(dir);           
+const i18n = await readLocales(dir);
 const locales = localeList(i18n);
 if (!locales.length) { console.error(`✗ ${dir}/i18n/ has no locale files — author i18n/uk.json + i18n/en.json`); Deno.exit(1); }
 const brand = (await has(`${dir}/brand.json`)) ? await readJson(`${dir}/brand.json`) : { bg: "#1f2430", fg: "#a78bfa" };

@@ -1,10 +1,8 @@
-
 import { assertEquals } from "jsr:@std/assert@1";
 import { resumeAt, RESUME_MIN, recoverPlan, NET_RETRIES, MEDIA_RETRIES, fmtClock, scrubSpan, scrubTo, skipTo, fmtDelta } from "../playback.js";
 
-
 Deno.test("resumeAt — the band, not the saved number", () => {
-  const D = 5400;                                        
+  const D = 5400;
   assertEquals(resumeAt(1800, D), 1800, "mid-film → resume exactly there");
   assertEquals(resumeAt(12, D), 0, "12s in you have not started — resuming there is just noise");
   assertEquals(resumeAt(RESUME_MIN, D), RESUME_MIN, "the threshold itself resumes");
@@ -48,7 +46,6 @@ Deno.test("fmtClock — the hours field appears only when there is one, and live
   }
 });
 
-
 Deno.test("scrubSpan — a quarter of the clip, floored at 30s and capped at 180s", () => {
   assertEquals(scrubSpan(30), 30, "a short clip stays scrubbable end to end");
   assertEquals(scrubSpan(120), 30, "the floor still binds here");
@@ -58,7 +55,6 @@ Deno.test("scrubSpan — a quarter of the clip, floored at 30s and capped at 180
 });
 
 Deno.test("scrubTo — travel is a fraction of the width, and never leaves the clip", () => {
-  
   assertEquals(Math.round(scrubTo(200, 192, 384, 400)), 250, "half the width forward is half the span");
   assertEquals(Math.round(scrubTo(200, -192, 384, 400)), 150, "and back the same");
   assertEquals(scrubTo(10, -1000, 384, 400), 0, "dragging past the start stops at the start");

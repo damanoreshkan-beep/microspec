@@ -1,5 +1,3 @@
-
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { field, declination, decimalYear, inRange, trueFrom } from "../geomag.js";
 
@@ -12,7 +10,7 @@ Deno.test("geomag: all 100 official NOAA test points", async () => {
   for (const [year, alt, lat, lon, D, I, H, X, Y, Z, F] of pts) {
     const r = field(lat, lon, alt, year);
     const where = `(${lat}, ${lon}) alt=${alt}km ${year}`;
-    let dD = Math.abs(r.declination - D); if (dD > 180) dD = 360 - dD;   
+    let dD = Math.abs(r.declination - D); if (dD > 180) dD = 360 - dD;
     assert(dD < 0.01, `${where}: declination ${r.declination.toFixed(3)} vs ${D}`);
     assert(Math.abs(r.inclination - I) < 0.01, `${where}: inclination ${r.inclination.toFixed(3)} vs ${I}`);
     for (const [name, got, want] of [["X", r.X, X], ["Y", r.Y, Y], ["Z", r.Z, Z], ["H", r.H, H], ["F", r.F, F]]) {
@@ -37,9 +35,9 @@ Deno.test("geomag: decimalYear + validity window", () => {
 });
 
 Deno.test("trueFrom — east declination adds, and wraps the circle", () => {
-  assertEquals(Math.round(trueFrom(0, 7.5) * 10) / 10, 7.5);      
-  assertEquals(Math.round(trueFrom(355, 10) * 10) / 10, 5);        
-  assertEquals(Math.round(trueFrom(5, -10) * 10) / 10, 355);       
+  assertEquals(Math.round(trueFrom(0, 7.5) * 10) / 10, 7.5);
+  assertEquals(Math.round(trueFrom(355, 10) * 10) / 10, 5);
+  assertEquals(Math.round(trueFrom(5, -10) * 10) / 10, 355);
   assertEquals(trueFrom(123, null), 123, "no position → no model → the heading stays magnetic, uncorrected");
   const kyiv = declination(50.4501, 30.5234, 0, 2026.0);
   assert(kyiv > 5 && kyiv < 12, `Kyiv declination should be ~5-12° east, got ${kyiv}`);

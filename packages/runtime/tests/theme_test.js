@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { pkgRoot } from "../pkgroot.js";
 const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
@@ -90,7 +89,7 @@ Deno.test("motion: no `transition-all` — a transition names the properties it 
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch {  } }
+  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -117,7 +116,7 @@ Deno.test("icons: the farm draws from ONE set (lucide) — a second library is a
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch {  } }
+  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -138,7 +137,7 @@ Deno.test("a11y: MUTED text (an alpha over a surface) clears 4.5:1 — the pair 
   const lin = (v) => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   const relLum = (p) => 0.2126 * lin(p[0]) + 0.7152 * lin(p[1]) + 0.0722 * lin(p[2]);
   const ratio = (a, b) => { const [x, y] = [relLum(a), relLum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
-  const over = (fg, a, bg) => fg.map((v, i) => a * v + (1 - a) * bg[i]);   
+  const over = (fg, a, bg) => fg.map((v, i) => a * v + (1 - a) * bg[i]);
 
   for (const theme of ["signal", "signal-light"]) {
     const t = tokens(theme);
@@ -193,7 +192,7 @@ Deno.test("a11y: muted text is the TOKEN, never an alpha — .text-base-content/
     }
   };
   await walk(new URL("packages/", root));
-  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch {  } }
+  for (const d of ["apps/", "rt/"]) { try { await walk(new URL(`file://${Deno.cwd()}/${d}`)); } catch { } }
   assertEquals(
     offenders,
     [],
@@ -492,7 +491,7 @@ Deno.test("the material: the pair of light is text-safe in BOTH themes — the C
 });
 
 Deno.test("PWA chrome colours track the theme bases — the surface no screenshot can see", async () => {
-  const root = `file://${Deno.cwd()}/`; 
+  const root = `file://${Deno.cwd()}/`;
   const expand = async (text) => {
     let head = "";
     for (const m of text.matchAll(/@import\s+"\.\/([\w.-]+\.css)";/g)) {
@@ -524,7 +523,7 @@ Deno.test("PWA chrome colours track the theme bases — the surface no screensho
       const html = await Deno.readTextFile(new URL(`apps/${e.name}/index.html`, root));
       const meta = /<meta name="theme-color" content="(#[0-9A-Fa-f]{6})"/.exec(html)?.[1];
       if (meta && !allowed.has(meta.toUpperCase())) bad.push(`${e.name}/index.html meta theme-color=${meta}`);
-    } catch {  }
+    } catch { }
   }
   assertEquals(bad, [], `PWA chrome is off-theme (allowed: ${[...allowed].join(", ")}). An installed app would show a splash and status bar from the previous design: ${bad.join(", ")}`);
 });

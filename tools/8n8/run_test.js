@@ -16,7 +16,7 @@ Deno.test("every node id is unique", () => {
 });
 
 Deno.test("the DAG is acyclic and every `needs` resolves", () => {
-  const order = topo();                       
+  const order = topo();
   assertEquals(order.length, NODES.length);
   const seen = new Set();
   for (const n of order) {

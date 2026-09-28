@@ -86,11 +86,11 @@ function registerWorker(app) {
     let asked = false;
     app.applyUpdate = () => {
       asked = true;
-      if (reg.waiting) reg.waiting.postMessage("ms-skip-waiting");   
+      if (reg.waiting) reg.waiting.postMessage("ms-skip-waiting");
       else location.reload();
     };
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (!asked) return;   
+      if (!asked) return;
       asked = false;
       location.reload();
     });
@@ -112,9 +112,9 @@ export function start(spec, arg2) {
   app.canRefresh = typeof opts.load === "function";
   setApp(app, opts.views || {});
   const { S, load } = app;
-  installTelemetry(spec.id);   
-  installUsage(S);             
-  initTelegram();              
+  installTelemetry(spec.id);
+  installUsage(S);
+  initTelegram();
   if (inTelegram()) import("./auth.js").then((a) => a.restore().then((s) => (s ? null : a.loginTelegram())).catch(() => {})).catch(() => {});
 
   const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
@@ -123,15 +123,14 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
-  try { if (new URLSearchParams(location.search).get("update") === "1") S.update.set(true); } catch {  }
+  try { if (new URLSearchParams(location.search).get("update") === "1") S.update.set(true); } catch { }
   loadMaterials().then((list) => {
     S.materials.set(list);
     if (list.length) applyMaterial(S.material.get() || list[0].id, list);
   });
   S.material.listen((id) => applyMaterial(id, S.materials.get()));
 
-
-  const applyLang = (l) => { try { document.documentElement.lang = l; } catch {  } };
+  const applyLang = (l) => { try { document.documentElement.lang = l; } catch { } };
   applyLang(S.locale.get());
   S.locale.listen(applyLang);
 
@@ -141,23 +140,23 @@ export function start(spec, arg2) {
   }, { capture: true, passive: true });
 
   render(html`<${App} />`, document.getElementById("app"));
-  try { clearTimeout(globalThis.__msBootT); } catch {  }
+  try { clearTimeout(globalThis.__msBootT); } catch { }
   const boot = document.getElementById("boot");
-  if (boot && !/[?&]__boot\b/.test(location.search)) { requestAnimationFrame(() => { boot.classList.add("gone"); setTimeout(() => boot.remove(), 450); }); } 
-  S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); }); 
-  S.detail.listen((v) => { if (v == null && S.screen.get()) S.screen.set(null); });               
+  if (boot && !/[?&]__boot\b/.test(location.search)) { requestAnimationFrame(() => { boot.classList.add("gone"); setTimeout(() => boot.remove(), 450); }); }
+  S.tab.listen(() => { window.scrollTo({ top: 0 }); if (S.screen.get()) S.screen.set(null); });
+  S.detail.listen((v) => { if (v == null && S.screen.get()) S.screen.set(null); });
 
   const overlays = [
     [S.clean, () => S.clean.set(false), (v) => v === true],
-    [S.stack, () => S.stack.set(S.stack.get().slice(0, -1)), (v) => v],   
+    [S.stack, () => S.stack.set(S.stack.get().slice(0, -1)), (v) => v],
     [S.sheet, () => S.sheet.set(false), (v) => v === true],
     [S.installOpen, () => S.installOpen.set(false), (v) => v === true],
     [S.qrOpen, () => S.qrOpen.set(false), (v) => v === true],
-    [S.searchOpen, () => S.searchOpen.set(false), (v) => v === true],   
+    [S.searchOpen, () => S.searchOpen.set(false), (v) => v === true],
     [S.detail, () => S.detail.set(null), (v) => v != null],
     [S.screen, () => S.screen.set(null), (v) => v != null],
     [S.player, () => S.player.set(null), (v) => v != null],
-    [S.confirm, () => S.confirm.set(null), (v) => v != null],   
+    [S.confirm, () => S.confirm.set(null), (v) => v != null],
   ];
   const depthOf = ([a, , isOpen]) => overlayDepth(isOpen(a.get()));
   const openCount = () => overlays.reduce((n, o) => n + depthOf(o), 0);
@@ -165,20 +164,20 @@ export function start(spec, arg2) {
   let depth = 0, fromPop = false, selfBack = 0, exitArmed = false, exitTimer;
   for (const [a] of overlays) a.listen(() => {
     const n = openCount();
-    if (fromPop) { depth = n; return; }                       
-    if (n > depth) { const d = n - depth; depth = n; for (let i = 0; i < d; i++) history.pushState({ msOverlay: 1 }, ""); }  
-    else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack++; history.go(-d); } } 
+    if (fromPop) { depth = n; return; }
+    if (n > depth) { const d = n - depth; depth = n; for (let i = 0; i < d; i++) history.pushState({ msOverlay: 1 }, ""); }
+    else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack++; history.go(-d); } }
   });
   try {
     const q = new URLSearchParams(location.search);
     const want = q.get("screen");
     if (want) S.screen.set(want);
     if (q.get("install") && !matchMedia("(display-mode: standalone)").matches) S.installOpen.set(true);
-  } catch {  }
+  } catch { }
 
   history.pushState({ msRoot: 1 }, "");
   addEventListener("popstate", () => {
-    if (selfBack) { selfBack--; return; }                                       
+    if (selfBack) { selfBack--; return; }
     if (anyOpen()) {
       for (let i = overlays.length - 1; i >= 0; i--) {
         const [, close] = overlays[i];
@@ -189,9 +188,9 @@ export function start(spec, arg2) {
       }
       return;
     }
-    if (exitArmed) { clearTimeout(exitTimer); exitArmed = false; history.back(); return; } 
+    if (exitArmed) { clearTimeout(exitTimer); exitArmed = false; history.back(); return; }
     exitArmed = true;
-    history.pushState({ msRoot: 1 }, "");                                              
+    history.pushState({ msRoot: 1 }, "");
     app.toast("__exit__");
     exitTimer = setTimeout(() => { exitArmed = false; }, 2000);
   });

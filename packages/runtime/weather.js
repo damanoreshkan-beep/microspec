@@ -122,15 +122,15 @@ export const isStormCode = (c) => c >= 95;
  * @returns {{alt: number, az: number}} altitude in degrees above the horizon, azimuth 0=N clockwise
  */
 export function solarPosition(lat, lng, ms) {
-  const n = ms / 86400000 - 10957.5;                       
-  const L = (280.460 + 0.9856474 * n) % 360;               
-  const g = ((357.528 + 0.9856003 * n) % 360) * D2R;       
-  const lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * D2R;   
-  const eps = (23.439 - 0.0000004 * n) * D2R;              
+  const n = ms / 86400000 - 10957.5;
+  const L = (280.460 + 0.9856474 * n) % 360;
+  const g = ((357.528 + 0.9856003 * n) % 360) * D2R;
+  const lam = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * D2R;
+  const eps = (23.439 - 0.0000004 * n) * D2R;
   const ra = Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam));
   const dec = Math.asin(Math.sin(eps) * Math.sin(lam));
-  const gmst = (18.697374558 + 24.06570982441908 * n) % 24;               
-  const h = ((gmst * 15 + lng) * D2R) - ra;                
+  const gmst = (18.697374558 + 24.06570982441908 * n) % 24;
+  const h = ((gmst * 15 + lng) * D2R) - ra;
   const sinAlt = Math.sin(lat * D2R) * Math.sin(dec) + Math.cos(lat * D2R) * Math.cos(dec) * Math.cos(h);
   const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt))) * R2D;
   const az = (Math.atan2(-Math.sin(h) * Math.cos(dec),
@@ -143,11 +143,10 @@ export function solarPosition(lat, lng, ms) {
  * day, which is a crescent one pixel off and nobody's evening ruined.
  */
 export function moonPhase(ms) {
-  const NEW_MOON = 947182440000;                            
+  const NEW_MOON = 947182440000;
   const SYNODIC = 29.530588853 * 86400000;
   return ((ms - NEW_MOON) % SYNODIC + SYNODIC) % SYNODIC / SYNODIC;
 }
-
 
 /**
  * vary = [sun altitude, cloud, wet, wind].

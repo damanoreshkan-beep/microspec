@@ -78,7 +78,7 @@ Deno.test("rememberEnglish: a seeded pair answers without the wire; suggestPromp
   m = mock({ gtxOut: "never", aiOut: '{"en":"a red umbrella on wet stone","ua":"червона парасолька на мокрому камені' + R + '"}' });
   try { assertEquals((await suggestPrompt("dream", "x", "uk")).local, "червона парасолька на мокрому камені" + R); }
   finally { m.restore(); }
-  m = mock({ gtxOut: "маяк у бурю, кінематографічно", aiOut: '{"en":"a lighthouse in a storm, cinematic' + R + '","uk":"маяк, що гisinює у бурі, chyjarosсuro"}' });   
+  m = mock({ gtxOut: "маяк у бурю, кінематографічно", aiOut: '{"en":"a lighthouse in a storm, cinematic' + R + '","uk":"маяк, що гisinює у бурі, chyjarosсuro"}' });
   try {
     const p = await suggestPrompt("dream", "x", "uk");
     assertEquals(p.local, "маяк у бурю, кінематографічно", "the broken Ukrainian never reaches the field");

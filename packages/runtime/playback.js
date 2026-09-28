@@ -72,9 +72,9 @@
 
 
 /** Seconds below which a saved position counts as not started — resume goes back to 0. */
-export const RESUME_MIN = 30;          
+export const RESUME_MIN = 30;
 /** Fraction of the duration past which the film counts as finished — resume goes back to 0. */
-export const RESUME_TAIL = 0.98;       
+export const RESUME_TAIL = 0.98;
 /**
  * Where to actually start playback, given a remembered position and the media duration.
  * @param saved remembered position in seconds
@@ -84,7 +84,7 @@ export const RESUME_TAIL = 0.98;
 export function resumeAt(saved, duration) {
   const t = Number(saved), d = Number(duration);
   if (!isFinite(t) || t < RESUME_MIN) return 0;
-  if (!isFinite(d) || d <= 0) return 0;                 
+  if (!isFinite(d) || d <= 0) return 0;
   if (t >= d * RESUME_TAIL) return 0;
   return t;
 }
@@ -106,14 +106,12 @@ export function recoverPlan(kind, tried = {}) {
   return { act: "fail", delay: 0 };
 }
 
-
 /**
  * Seconds as a clock: `0:07`, `4:03`, `1:05:00`. Empty string for a live or unknown duration.
  * @param sec seconds
  * @returns the clock string, or "" when there is no finite position to show
  */
 export function fmtClock(sec) {
-  
   if (sec === null || sec === undefined || sec === "") return "";
   const n = Number(sec);
   if (!isFinite(n) || n < 0) return "";
@@ -121,10 +119,11 @@ export function fmtClock(sec) {
   const ss = String(s).padStart(2, "0");
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
 }
+
 /** Seconds of media that one full screen-width of drag is worth, for a clip of this length. */
 export function scrubSpan(duration) {
   const d = Number(duration);
-  if (!isFinite(d) || d <= 0) return 0;                  
+  if (!isFinite(d) || d <= 0) return 0;
   return Math.min(180, Math.max(30, d / 4));
 }
 /**
@@ -150,8 +149,6 @@ export function scrubTo(from, dx, width, duration) {
 export function skipTo(from, delta, duration) {
   const d = Number(duration), to = (Number(from) || 0) + (Number(delta) || 0);
   if (!isFinite(to)) return Number(from) || 0;
-  
-  
   const top = isFinite(d) && d > 0 ? Math.max(0, d - 0.25) : Infinity;
   return Math.min(top, Math.max(0, to));
 }

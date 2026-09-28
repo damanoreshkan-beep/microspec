@@ -91,11 +91,10 @@ export const DIAMOND_KEY = 34.25;
 /** Diamond cluster box `[w, h]` in key diameters. */
 export const DIAMOND_BOX = [2.92, 2.92];
 
-
 /** Two-key cluster centres, `[x%, y%]` of the cluster box — 1.60 D apart on a 22° axis. */
 export const PAIR = [
-  [79.87, 31.26],   
-  [20.13, 68.74],   
+  [79.87, 31.26],
+  [20.13, 68.74],
 ];
 /** Pair key diameter, % of the cluster box width. */
 export const PAIR_KEY = 40.26;
@@ -113,12 +112,11 @@ export const PAIR_BOX = [2.4836, 1.5993];
  *          should assert; the percentages above are an implementation of them.
  */
 export function clusterMetrics(a, b, key, box) {
-  const ratio = box[1] / box[0];                      
+  const ratio = box[1] / box[0];
   const dx = (a[0] - b[0]) / 100;
-  const dy = ((b[1] - a[1]) / 100) * ratio;           
+  const dy = ((b[1] - a[1]) / 100) * ratio;
   return { span: Math.hypot(dx, dy) / (key / 100), angle: (Math.atan2(dy, dx) * 180) / Math.PI };
 }
-
 
 /** The hub as a fraction of the whole cross, given its share of the centre cell. */
 export const hubOfCross = (hubOfCell) => hubOfCell / 3;

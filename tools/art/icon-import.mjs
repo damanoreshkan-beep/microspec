@@ -22,7 +22,7 @@ export async function importIcon(id, pngPath) {
   const webp256 = new Uint8Array(await encodeWebp({ data: new Uint8ClampedArray(px.buffer, px.byteOffset, px.byteLength), width: 256, height: 256 }, { quality: 82 }));
   const appsDir = Deno.args.find((a) => a.startsWith("--out="))?.slice(6) ?? `${ROOT}/apps`;
   const dir = `${appsDir}/${id}`;
-  await Deno.stat(dir);   
+  await Deno.stat(dir);
   await Deno.writeFile(`${dir}/icon.webp`, master);
   await Deno.writeTextFile(`${dir}/icon.svg`, iconSvgFor(webp256));
   return { master: master.length, svg: webp256.length };
@@ -30,7 +30,7 @@ export async function importIcon(id, pngPath) {
 
 if (import.meta.main) {
   for (const arg of Deno.args) {
-    if (arg.startsWith("--")) continue;                                  
+    if (arg.startsWith("--")) continue;
     const i = arg.indexOf("="); if (i < 0) throw new Error(`usage: <id>=<png>, got ${arg}`);
     const id = arg.slice(0, i), src = arg.slice(i + 1);
     const r = await importIcon(id, src);

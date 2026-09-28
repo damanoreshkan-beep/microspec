@@ -1,4 +1,3 @@
-
 import { encodePNG } from "./png.mjs";
 
 const HERE = new URL(".", import.meta.url);
@@ -21,10 +20,10 @@ if (!/\/(packages\/runtime|rt)\//.test(import.meta.resolve("/_rt/ui.js"))) {
   Deno.exit((await cmd.output()).code);
 }
 
-
 function surface(W, H) {
   const buf = new Uint8ClampedArray(W * H * 4);
-  for (let i = 3; i < buf.length; i += 4) buf[i] = 255;      
+  for (let i = 3; i < buf.length; i += 4) buf[i] = 255;
+
   const px = (o, r, g, b, a) => {
     if (a <= 0) return;
     if (a >= 1) { buf[o] = r; buf[o + 1] = g; buf[o + 2] = b; return; }
@@ -32,8 +31,6 @@ function surface(W, H) {
     buf[o + 1] = buf[o + 1] * (1 - a) + g * a;
     buf[o + 2] = buf[o + 2] * (1 - a) + b * a;
   };
-  
-  
   const rect = (x, y, w, h, [r, g, b], a = 1) => {
     const x0 = Math.round(x), y0 = Math.round(y);
     const x1 = x0 + Math.max(1, Math.round(w)), y1 = y0 + Math.max(1, Math.round(h));
@@ -44,7 +41,6 @@ function surface(W, H) {
 }
 
 const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-
 
 const flipped = new WeakMap();
 function flipCell(cell) {
@@ -58,7 +54,6 @@ function flipCell(cell) {
   return f;
 }
 
-
 function huntPainter(s, rt, PAL, glyphRects, WORLD_INDEX) {
   const { SCRH, WORLD } = rt;
   const TRANSPARENT = 255;
@@ -66,7 +61,7 @@ function huntPainter(s, rt, PAL, glyphRects, WORLD_INDEX) {
   const glyphInk = hex("#f0f0f5");
 
   return {
-    keep() {},                                   
+    keep() {},
     setWorld(colors) {
       for (const [k, idx] of Object.entries(WORLD_INDEX)) if (colors[k]) PAL[idx] = hex(colors[k]);
     },
@@ -107,7 +102,6 @@ function huntPainter(s, rt, PAL, glyphRects, WORLD_INDEX) {
   };
 }
 
-
 async function loadEngine(wasmPath, S, withBox) {
   const { instance } = await WebAssembly.instantiate(await Deno.readFile(wasmPath), {});
   const E = instance.exports;
@@ -119,6 +113,7 @@ async function loadEngine(wasmPath, S, withBox) {
     box: withBox ? (kind) => { const v = E.game_box(kind | 0); return { w: (v >> 16) & 0xffff, h: v & 0xffff }; } : null,
   };
 }
+
 const APPS = {
   hunt: {
     frames: 150,
@@ -131,7 +126,6 @@ const APPS = {
       const s = surface(rt.SCRW, rt.SCRH);
       return {
         E, s, seed: seedOverride ?? GATE_SEED,
-        
         track: (i) => rt.IN.RIGHT | ((i % 60) < 16 ? rt.IN.JUMP : 0) | ((i % 30) === 0 ? rt.IN.SHOOT : 0),
         p: huntPainter(s, rt, atlas.FULL.map(hex), render.glyphRects, atlas.WORLD_INDEX),
         draw: (p, dl, n, st, dist) => {
@@ -158,7 +152,6 @@ function upscale(buf, W, H, k) {
   return { buf: out, W: W * k, H: H * k };
 }
 
-
 function args(argv) {
   const o = { app: null, out: null, scale: 3, frames: null, seed: null, dist: null };
   for (let i = 0; i < argv.length; i++) {
@@ -166,8 +159,8 @@ function args(argv) {
     if (a === "--out") o.out = argv[++i];
     else if (a === "--scale") o.scale = Math.max(1, parseInt(argv[++i], 10) || 1);
     else if (a === "--frames") o.frames = Math.max(0, parseInt(argv[++i], 10) || 0);
-    else if (a === "--seed") o.seed = Number(argv[++i]) >>> 0;       
-    else if (a === "--dist") o.dist = Math.max(0, parseInt(argv[++i], 10) || 0);   
+    else if (a === "--seed") o.seed = Number(argv[++i]) >>> 0;
+    else if (a === "--dist") o.dist = Math.max(0, parseInt(argv[++i], 10) || 0);
     else if (!a.startsWith("-") && !o.app) o.app = a;
   }
   return o;
@@ -191,7 +184,6 @@ frame();
 
 const up = upscale(s.buf, s.W, s.H, opt.scale);
 await Deno.writeFile(out, await encodePNG(up.buf, up.W, up.H));
-
 
 const seen = new Set();
 for (let o = 0; o < s.buf.length; o += 4) seen.add((s.buf[o] << 16) | (s.buf[o + 1] << 8) | s.buf[o + 2]);

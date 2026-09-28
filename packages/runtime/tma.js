@@ -53,9 +53,9 @@ export async function initTelegram() {
   if (!inTelegram()) return;
   const w = await loadSdk();
   if (!w || !w.initData) return;
-  try { w.ready(); } catch {  }
-  try { w.expand(); } catch {  }
-  try { if (w.isVersionAtLeast && w.isVersionAtLeast("8.0")) w.requestFullscreen && w.requestFullscreen(); } catch {  }
+  try { w.ready(); } catch { }
+  try { w.expand(); } catch { }
+  try { if (w.isVersionAtLeast && w.isVersionAtLeast("8.0")) w.requestFullscreen && w.requestFullscreen(); } catch { }
   applyInsets(w);
   routeStartApp(w);
 }
@@ -71,7 +71,7 @@ export async function initTelegram() {
 function applyInsets(w) {
   try {
     const root = document.documentElement;
-    const set = (name, v) => { try { root.style.setProperty(name, (Number(v) || 0) + "px"); } catch {  } };
+    const set = (name, v) => { try { root.style.setProperty(name, (Number(v) || 0) + "px"); } catch { } };
     const push = () => {
       const s = w.safeAreaInset || {}, c = w.contentSafeAreaInset || {};
       for (const side of ["top", "right", "bottom", "left"]) {
@@ -81,10 +81,10 @@ function applyInsets(w) {
     };
     push();
     if (w.onEvent) for (const ev of ["safeAreaChanged", "contentSafeAreaChanged", "fullscreenChanged", "viewportChanged"]) {
-      try { w.onEvent(ev, push); } catch {  }
+      try { w.onEvent(ev, push); } catch { }
     }
-    try { w.setHeaderColor && w.setHeaderColor("bg_color"); } catch {  }
-  } catch {  }
+    try { w.setHeaderColor && w.setHeaderColor("bg_color"); } catch { }
+  } catch { }
 }
 
 /**
@@ -107,7 +107,7 @@ function routeStartApp(w) {
     const sp = startParam(w);
     const atRoot = location.pathname === "/" || location.pathname === "/index.html";
     if (sp && atRoot) location.replace("/" + sp + "/");
-  } catch {  }
+  } catch { }
 }
 
 /**
@@ -169,5 +169,5 @@ export function celebrate() {
       if (t < 80) requestAnimationFrame(tick); else c.remove();
     };
     requestAnimationFrame(tick);
-  } catch {  }
+  } catch { }
 }

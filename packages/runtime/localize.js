@@ -70,8 +70,8 @@ import { gate } from "./gate.js";
  * @returns `{ text, pending }` — the text to render (empty while pending) and whether a skeleton should hold
  */
 export function useLocalized(text, locale, { timeout = 6000 } = {}) {
-  useStore(trTick);                                              
-  useStore(aiTick);                                             
+  useStore(trTick);
+  useStore(aiTick);
   const src = typeof text === "string" ? text.trim() : "";
   const translated = tr(src, locale);
   const finalText = polish(translated, locale);

@@ -1,4 +1,3 @@
-
 export async function readLocales(dir) {
   const i18n = {};
   try {
@@ -6,7 +5,7 @@ export async function readLocales(dir) {
       const m = f.isFile && f.name.match(/^(.+)\.json$/);
       if (m) i18n[m[1]] = JSON.parse(await Deno.readTextFile(`${dir}/i18n/${f.name}`));
     }
-  } catch {  }
+  } catch { }
   return i18n;
 }
 

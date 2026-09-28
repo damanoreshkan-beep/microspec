@@ -3,7 +3,7 @@ import { decode as decodeWebp } from "npm:@jsquash/webp@1.4.0";
 import { encode as encodePng } from "npm:@jsquash/png@3.0.1";
 
 let inited = false;
-export async function ensure() {   
+export async function ensure() {
   if (!inited) { await initWasm(fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm")); inited = true; }
 }
 
@@ -23,8 +23,8 @@ async function generateVectorIcons(dir, brand, paths) {
   await Deno.writeFile(`${dir}/icon-512.png`, await toPng(a, 512));
   await Deno.writeFile(`${dir}/icon-192-maskable.png`, await toPng(m, 192));
   await Deno.writeFile(`${dir}/icon-512-maskable.png`, await toPng(m, 512));
-  await Deno.writeFile(`${dir}/apple-touch-icon.png`, await toPng(m, 180)); 
-  await Deno.writeFile(`${dir}/icon-fg-432.png`, await toPng(adaptiveFgSvg(brand.fg, paths), 432)); 
+  await Deno.writeFile(`${dir}/apple-touch-icon.png`, await toPng(m, 180));
+  await Deno.writeFile(`${dir}/icon-fg-432.png`, await toPng(adaptiveFgSvg(brand.fg, paths), 432));
   await Deno.writeFile(`${dir}/favicon.ico`, await icoOf([16, 32, 48].map((s) => toPng(a, s))));
 }
 
@@ -55,7 +55,7 @@ export function alphaFromBlack(rgba, w, h) {
   const out = new Uint8ClampedArray(rgba.length);
   for (let i = 0; i < rgba.length; i += 4) {
     const m = Math.max(rgba[i], rgba[i + 1], rgba[i + 2]);
-    if (m <= floor) continue;                                   
+    if (m <= floor) continue;
     const a = Math.round((m - floor) / (255 - floor) * 255);
     out[i] = Math.min(255, Math.round(rgba[i] * 255 / m)); out[i + 1] = Math.min(255, Math.round(rgba[i + 1] * 255 / m)); out[i + 2] = Math.min(255, Math.round(rgba[i + 2] * 255 / m)); out[i + 3] = a;
   }
@@ -70,7 +70,7 @@ async function icoOf(framePromises) {
   dv.setUint16(0, 0, true); dv.setUint16(2, 1, true); dv.setUint16(4, frames.length, true);
   let off = hdr;
   frames.forEach((f, i) => {
-    const size = f[16] << 24 | f[17] << 16 | f[18] << 8 | f[19];   
+    const size = f[16] << 24 | f[17] << 16 | f[18] << 8 | f[19];
     const o = 6 + 16 * i;
     ico[o] = size & 255; ico[o + 1] = size & 255; ico[o + 2] = 0; ico[o + 3] = 0;
     dv.setUint16(o + 4, 1, true); dv.setUint16(o + 6, 32, true); dv.setUint32(o + 8, f.length, true); dv.setUint32(o + 12, off, true);
@@ -82,13 +82,13 @@ async function icoOf(framePromises) {
 async function generateLuminousIcons(dir, webp) {
   await ensure();
   const { png: pngB64, rgba } = await masterPngB64(webp);
-  const any = rasterTile(pngB64, { rx: 208 });                  
-  const mask = rasterTile(pngB64, { scale: 0.74 });             
+  const any = rasterTile(pngB64, { rx: 208 });
+  const mask = rasterTile(pngB64, { scale: 0.74 });
   await Deno.writeFile(`${dir}/icon-192.png`, await toPng(any, 192));
   await Deno.writeFile(`${dir}/icon-512.png`, await toPng(any, 512));
   await Deno.writeFile(`${dir}/icon-192-maskable.png`, await toPng(mask, 192));
   await Deno.writeFile(`${dir}/icon-512-maskable.png`, await toPng(mask, 512));
-  await Deno.writeFile(`${dir}/apple-touch-icon.png`, await toPng(rasterTile(pngB64), 180)); 
+  await Deno.writeFile(`${dir}/apple-touch-icon.png`, await toPng(rasterTile(pngB64), 180));
   const fgB64 = b64(new Uint8Array(await encodePng({ data: alphaFromBlack(rgba, 1024, 1024), width: 1024, height: 1024 })));
   await Deno.writeFile(`${dir}/icon-fg-432.png`, await toPng(rasterTile(fgB64, { scale: 0.5, ground: null }), 432));
   await Deno.writeFile(`${dir}/favicon.ico`, await icoOf([16, 32, 48].map((s) => toPng(any, s))));

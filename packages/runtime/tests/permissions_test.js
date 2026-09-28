@@ -1,7 +1,5 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { PERMISSIONS, GROUPS, permLabels, permState, permAndroid } from "../permissions.js";
-
 
 Deno.test("permState: a shell-only permission is needsApp in a browser, not unsupported", async () => {
   delete globalThis.window;
@@ -24,7 +22,7 @@ Deno.test("permState: with a bridge, a capability answers via the shell", async 
 
 Deno.test("permState: a shell too old for the capability says so instead of failing quietly", async () => {
   globalThis.window = globalThis;
-  globalThis.__msShell = { call: () => {}, subscribe: () => {}, cancel: () => {} };   
+  globalThis.__msShell = { call: () => {}, subscribe: () => {}, cancel: () => {} };
   try {
     assertEquals((await permState("alarm")).state, "staleApp");
   } finally { delete globalThis.__msShell; delete globalThis.window; }

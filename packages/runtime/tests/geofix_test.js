@@ -1,14 +1,12 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { mulberry32 } from "../groove.js";
 import { meanFix, stationaryTail, segErr, totalErr, usableFix, BIAS_FRAC } from "../geofix.js";
-
 
 Deno.test("meanFix — averaging shrinks the random error toward the truth", () => {
   const rnd = mulberry32(7);
   const truth = { lat: 50.4501, lng: 30.5234 };
   const gauss = () => Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
-  const ss = Array.from({ length: 60 }, () => ({          
+  const ss = Array.from({ length: 60 }, () => ({
     lat: truth.lat + (gauss() * 5) / 110540,
     lng: truth.lng + (gauss() * 5) / (111320 * Math.cos(truth.lat * Math.PI / 180)),
     accuracy: 10, t: 0,
@@ -54,7 +52,7 @@ Deno.test("stationaryTail — 'same spot' scales with the fix quality", () => {
 });
 
 Deno.test("segErr / totalErr — a measurement carries its endpoints' doubt", () => {
-  assertEquals(segErr({ accuracy: 3 }, { accuracy: 4 }), 5);          
+  assertEquals(segErr({ accuracy: 3 }, { accuracy: 4 }), 5);
   assert(segErr({ accuracy: 3 }, { accuracy: 4 }) < 3 + 4, "independent errors must not simply add");
   assertEquals(totalErr([3, 4]), 5);
   assertEquals(totalErr([]), 0);

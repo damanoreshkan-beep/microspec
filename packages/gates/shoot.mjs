@@ -1,4 +1,3 @@
-
 const args = Deno.args;
 const flag = (n, d) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] ?? d) : d; };
 const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale", "--query"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });

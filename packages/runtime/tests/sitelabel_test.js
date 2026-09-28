@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { registrableDomain, siteName, pageLabel, pageLabelInfo, cleanPageTitle, sourceTitle, groupByDomain, hostOf, humanText } from "../sitelabel.js";
 
@@ -86,8 +85,6 @@ Deno.test("humanText: percent-escapes, entities and invisible characters, and ne
 });
 
 Deno.test("sitelabel: a malformed escape anywhere never takes the label down with it", () => {
-  
-  
   assertEquals(pageLabel("https://tube.example/clips/a-100%-sure-thing/"), "A 100% sure thing");
   assertEquals(sourceTitle("https://tube.example/%E0%A4%A/watch/1/", { hint: "Nightfall" }), "Nightfall");
   assertEquals(cleanPageTitle("Half %E0%A4%A decoded &amp; fine - Tube.example", "https://tube.example/x"), "Half %E0%A4%A decoded & fine");
@@ -99,7 +96,6 @@ Deno.test("sitelabel: an encoded path segment is a title once it is decoded", ()
   assertEquals(pageLabel("https://site.com/a%2Fb/"), "A/b", "an encoded slash is a character in ONE segment, never a new segment");
   assertEquals(sourceTitle("https://tube.example/watch/9/", { pageTitle: "Sunrise &amp; the sea &#8212; Tube.example" }), "Sunrise & the sea");
 });
-
 
 Deno.test("sourceTitle: the caller states how much room it has, and both producers honour it", () => {
   const longUrl = "https://site.com/a-very-long-page-name-that-keeps-going-and-going-forever/";

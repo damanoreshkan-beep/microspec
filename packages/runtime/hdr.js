@@ -84,7 +84,7 @@ export function decodeHDR(bytes) {
   for (;;) {
     if (pos >= buf.length) throw new Error("hdr: header never ended");
     const l = line();
-    if (l === "") break;                                  
+    if (l === "") break;
     if (l.startsWith("FORMAT=")) format = l.slice(7).trim();
   }
   if (format && !/rgbe/i.test(format)) throw new Error(`hdr: unsupported FORMAT=${format}`);
@@ -119,7 +119,7 @@ export function decodeHDR(bytes) {
         if (pos >= buf.length) throw new Error(`hdr: truncated run at row ${y}`);
         let count = buf[pos++];
         if (count > 128) {
-          count -= 128;                                   
+          count -= 128;
           const v = buf[pos++];
           if (x + count > width) throw new Error(`hdr: run overflows row ${y}`);
           for (let i = 0; i < count; i++) rgbe[row + (x++) * 4 + c] = v;
@@ -137,7 +137,7 @@ export function decodeHDR(bytes) {
 /** One RGBE pixel → linear radiance. The same maths the shader does, for tests and for CPU-side checks. */
 export function rgbeToLinear(r, g, b, e) {
   if (e === 0) return [0, 0, 0];
-  const f = Math.pow(2, e - 136);                         
+  const f = Math.pow(2, e - 136);
   return [r * f, g * f, b * f];
 }
 

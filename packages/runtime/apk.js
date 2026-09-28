@@ -256,7 +256,7 @@ export function downloadBlob(blob, filename) {
     fr.onload = () => {
       const dataUrl = String(fr.result);
       try { shell.save(filename, blob.type || "application/octet-stream", dataUrl.slice(dataUrl.indexOf(",") + 1)); }
-      catch {  }
+      catch { }
     };
     fr.readAsDataURL(blob);
     return;
@@ -291,7 +291,7 @@ export async function shareFile(blob, filename) {
     try {
       await shell.call("files.share", { name: filename, mime, base64: bytesToB64(new Uint8Array(await blob.arrayBuffer())) });
       return "shared";
-    } catch {  }
+    } catch { }
   } else {
     try {
       const file = new File([blob], filename, { type: mime });
@@ -312,7 +312,7 @@ export async function shareFile(blob, filename) {
 export async function downloadUrl(url, filename) {
   if (!url) return;
   try { downloadBlob(await (await fetch(url)).blob(), filename); }
-  catch {  }
+  catch { }
 }
 
 /**

@@ -79,7 +79,7 @@ function allApps() {
         read(`apps/${e.name}/e2e.spec.mjs`) != null
       ) ids.push(e.name);
     }
-  } catch {  }
+  } catch { }
   return ids.sort();
 }
 const appEntry = (id) =>
@@ -89,7 +89,7 @@ const appEntry = (id) =>
 
 function changedFromArgs() {
   const args = Deno.args;
-  if (args.includes("--all")) return null; 
+  if (args.includes("--all")) return null;
   const ri = args.indexOf("--range");
   if (ri >= 0 && args[ri + 1]) {
     const out = new Deno.Command("git", {
@@ -97,7 +97,7 @@ function changedFromArgs() {
     }).outputSync();
     return new TextDecoder().decode(out.stdout).split("\n").filter(Boolean);
   }
-  return null; 
+  return null;
 }
 
 async function readStdin() {

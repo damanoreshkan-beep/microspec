@@ -1,4 +1,3 @@
-
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   curvePath, isSnowCode, isStormCode, moonPhase, skyInk, skyVary, solarPosition, wmoIcon, wmoKey,

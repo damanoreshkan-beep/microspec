@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { manifestFor } from "../../../deploy/sw.mjs";
 import { pkgRoot } from "../pkgroot.js";
@@ -74,7 +73,7 @@ Deno.test("sw: registers install/activate/fetch/message — a worker with no fet
   for (const k of ["install", "activate", "fetch", "message"]) assert(typeof events[k] === "function", `missing ${k} handler`);
 });
 
-const HAVE_FARM = await Deno.stat("apps/rave/view.js").then(() => true).catch(() => false); 
+const HAVE_FARM = await Deno.stat("apps/rave/view.js").then(() => true).catch(() => false);
 Deno.test({ name: "sw manifest: a real app's shell covers document, spec, locales, runtime closure and CDN code", ignore: !HAVE_FARM, fn: () => {
   const m = manifestFor("rave");
   for (const u of ["./", "./index.html", "./spec.json", "./i18n/en.json", "./i18n/uk.json", "./view.js", "/_rt/index.js", "/_rt/render.js", "/_rt/theme.css"]) {
@@ -107,9 +106,9 @@ Deno.test("sw: a weak link is served from cache instantly; the refresh happens B
   const { events, cache } = loadSwCore("rave", { cached: { [url]: new Response("cached", { status: 200 }) }, fetch: slow });
   const e = swEvent(swReq(url));
   events.fetch(e);
-  const res = await e.responded;   
+  const res = await e.responded;
   assertEquals(await res.text(), "cached", "the response must never wait on a slow link when we hold a copy");
-  release();                        
+  release();
   await Promise.allSettled(e.waits);
   assertEquals(await (await cache.match(url)).text(), "fresh", "…and freshness still arrives, just behind the user");
 });

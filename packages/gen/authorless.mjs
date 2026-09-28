@@ -105,7 +105,7 @@ const detail = {
   ...(R.detail?.image ? { image: R.detail.image, ...(R.detail.imageFit ? { imageFit: R.detail.imageFit } : {}) } : {}),
   title: "title",
   ...(R.detail?.subtitle ? { subtitle: R.detail.subtitle } : { subtitle: "author" }),
-  body: R.detail?.body || "desc",                       
+  body: R.detail?.body || "desc",
   rows: R.detail?.rows || [],
   actions: [...(R.detail?.actions || []), { icon: "lucide:external-link", label: "open", href: "url" }],
 };

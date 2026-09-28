@@ -129,7 +129,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
     const src = rd(f);
     if (!src || !/\.(js|mjs|html)$/.test(f)) continue;
     for (const spec of staticSpecs(src)) {
-      if (resolveSpec(spec, f)) continue;                       
+      if (resolveSpec(spec, f)) continue;
       const url = imports[spec] || imports[spec.replace(/\/.*$/, "/")];
       if (url) urls.add(url);
     }
@@ -139,7 +139,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
     for (const e of Deno.readDirSync(dir)) {
       if (e.isFile && /\.(wgsl|frag)$/.test(e.name)) urls.add(`./${e.name}`);
     }
-  } catch {  }
+  } catch { }
 
   return [...urls].sort();
 }

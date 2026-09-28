@@ -1,8 +1,7 @@
+import { compile } from "tailwindcss";
 
-import { compile } from "tailwindcss"; 
-
-const TW = "https://cdn.jsdelivr.net/npm/tailwindcss@4.3.3"; 
-const DAISY = "https://esm.sh/daisyui@5";                    
+const TW = "https://cdn.jsdelivr.net/npm/tailwindcss@4.3.3";
+const DAISY = "https://esm.sh/daisyui@5";
 
 async function loadStylesheet(id, base) {
   const url = id === "tailwindcss"

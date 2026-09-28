@@ -1,5 +1,3 @@
-
-
 import { assert, assertThrows } from "jsr:@std/assert@1";
 import { validateSpec } from "../validate.js";
 
@@ -68,7 +66,7 @@ Deno.test("validateSpec: grid layout (launcher) needs a tile, exempt from feed d
 
 Deno.test("validateSpec: searchFetch requires search:true", () => {
   const spec = baseList();
-  spec.tabs[0].searchFetch = true; 
+  spec.tabs[0].searchFetch = true;
   const err = assertThrows(() => validateSpec(spec), Error);
   assert(err.message.includes("searchFetch requires search"));
 });
@@ -90,7 +88,7 @@ Deno.test("validateSpec: a card that leaves the app needs a detail (the drill-do
 
 Deno.test("validateSpec: detail.body is an accepted long-form slot", () => {
   validateSpec({ ...baseList(), detail: { title: "name", body: "desc" } });
-  validateSpec({ ...baseList(), detail: { title: "name" } });   
+  validateSpec({ ...baseList(), detail: { title: "name" } });
 });
 
 Deno.test("validateSpec: feed body prose must be translated (or declared already-localized)", () => {
@@ -98,8 +96,8 @@ Deno.test("validateSpec: feed body prose must be translated (or declared already
   const err = assertThrows(() => validateSpec(feedBody()), Error);
   assert(err.message.includes("spec.tabs[0].card.body") && /translate/.test(err.message), err.message);
 
-  validateSpec({ ...feedBody(), translate: ["desc"] });          
-  validateSpec({ ...feedBody(), localized: true });              
+  validateSpec({ ...feedBody(), translate: ["desc"] });
+  validateSpec({ ...feedBody(), localized: true });
 
   validateSpec({ ...baseList(), tabs: [{ id: "r", type: "list", icon: "i", label: "hi", card: { layout: "row", title: "name", lead: "a", trailing: "b" } }] });
   validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", card: { layout: "feed", title: "name", subtitle: "addr" } }] });

@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { logBandEdges, bandLevels, splitBands, spectralCentroid, Envelope, advanceTerrain, Parallax, seedFrame, sampleBand, idle, fib, galaxyDisc, frameFit } from "../spectrum.js";
 

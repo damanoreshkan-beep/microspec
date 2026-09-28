@@ -1,5 +1,3 @@
-
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { T, dictFor, ago, whenLabel } from "../i18n.js";
 
@@ -13,7 +11,7 @@ Deno.test("T interpolates and falls back to the raw key", () => {
 
 Deno.test("dictFor picks locale then falls back to en", () => {
   assertEquals(dictFor(i18n, "uk").hi, "привіт");
-  assertEquals(dictFor(i18n, "de").hi, "hi"); 
+  assertEquals(dictFor(i18n, "de").hi, "hi");
   assertEquals(dictFor(null, "en"), {});
 });
 
@@ -24,7 +22,7 @@ Deno.test("ago is relative and locale-aware", () => {
   assertEquals(ago(d, Date.now() - day, "en"), "yesterday");
   assertEquals(ago(d, Date.now() - day * 3, "en"), "3d");
   assertEquals(ago(d, Date.now() - day * 14, "en"), "2w");
-  assert(/\d{4}/.test(ago(d, Date.now() - day * 400, "en"))); 
+  assert(/\d{4}/.test(ago(d, Date.now() - day * 400, "en")));
 });
 
 Deno.test("whenLabel: locale-aware absolute + future countdown", () => {
@@ -34,7 +32,7 @@ Deno.test("whenLabel: locale-aware absolute + future countdown", () => {
   assert(/in 30m$/.test(whenLabel(d, Date.now() + 30 * min, "en")), "en minutes");
   assert(/in 3h$/.test(whenLabel(d, Date.now() + 180 * min, "en")), "en hours");
   assert(/за 3 дн$/.test(whenLabel(uk, Date.now() + 3 * 1440 * min, "uk")), "uk days");
-  assertEquals(whenLabel(d, Date.now() - min, "en").split(" · ").pop(), "now"); 
+  assertEquals(whenLabel(d, Date.now() - min, "en").split(" · ").pop(), "now");
   assert(!/·/.test(whenLabel(d, Date.now() + 30 * min, "en", false)), "full=false omits relative");
-  assertEquals(whenLabel(d, undefined, "en"), ""); 
+  assertEquals(whenLabel(d, undefined, "en"), "");
 });

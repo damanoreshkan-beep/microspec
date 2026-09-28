@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { fitResolution, sizeFor, estimateSeconds, QUALITY, DEFAULT, MAX_SIDE, AR } from "../imgsize.js";
 
@@ -12,7 +11,7 @@ Deno.test("imgsize fitResolution: fills the MP budget at the exact screen ratio,
 });
 
 Deno.test("imgsize fitResolution: a big screen scales DOWN to the budget", () => {
-  const r = fitResolution(4000, 4000, 2, 4);   
+  const r = fitResolution(4000, 4000, 2, 4);
   assert(r.width * r.height <= 4_000_000, `${r.width}×${r.height} over 4MP`);
   assert(r.width * r.height > 3_000_000, "should still fill most of the budget");
   assert(Math.abs(r.width - r.height) <= 32, "square in → near-square out (one 32-step of shrink-to-fit)");

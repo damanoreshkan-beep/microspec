@@ -63,8 +63,8 @@
  */
 import { pkgRoot } from "../packages/runtime/pkgroot.js";
 const R = pkgRoot(import.meta.url, 1);
-const SRC_LABEL = "packages/runtime/ui.js"; 
-const SRC = new URL(SRC_LABEL, R);           
+const SRC_LABEL = "packages/runtime/ui.js";
+const SRC = new URL(SRC_LABEL, R);
 const OUT = new URL("tools/mcp/kit.json", R);
 const IMPORT = "/_rt/ui.js";
 
@@ -119,7 +119,7 @@ function parseParam(entry) {
     const before = l.slice(0, c);
     if ((before.match(/"/g) || []).length % 2) { codeParts.push(l); return; }
     const body = l.slice(c + 2).trim();
-    const bare = !before.trim();                                
+    const bare = !before.trim();
     if (bare && !seenCode && idx === 0) prevNote = `${prevNote} ${body}`.trim();
     else note = `${note} ${body}`.trim();
     if (before.trim()) seenCode = true;
@@ -155,21 +155,21 @@ function attachNotes(entries) {
 
 const text = await Deno.readTextFile(SRC);
 const lines = text.split("\n");
-const lineStart = [];                                          
+const lineStart = [];
 { let off = 0; for (const l of lines) { lineStart.push(off); off += l.length + 1; } }
 
 const EXPORT = /^export\s+(function|const)\s+([A-Za-z_$][\w$]*)/;
 const declared = lines.filter((l) => EXPORT.test(l)).length;
 
 const exportsOut = [];
-let pending = [];                                              
-let pendingEnd = -2;                                           
+let pending = [];
+let pendingEnd = -2;
 
 for (let i = 0; i < lines.length; i++) {
   const line = lines[i];
 
   if (/^\s*\/\//.test(line)) {
-    if (pendingEnd !== i - 1) pending = [];                    
+    if (pendingEnd !== i - 1) pending = [];
     pending.push(line.replace(/^\s*\/\/ ?/, ""));
     pendingEnd = i;
     continue;

@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { cycleRepeat as tpCycleRepeat, advance as tpAdvance, clock as tpClock } from "../player.js";
 

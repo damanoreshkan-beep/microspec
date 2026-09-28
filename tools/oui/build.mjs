@@ -1,4 +1,3 @@
-
 const SRC = "https://standards-oui.ieee.org/oui/oui.csv";
 const OUT = new URL("../../apps/hive/assets/oui.txt", import.meta.url);
 
@@ -23,7 +22,7 @@ const map = new Map();
 for (const line of csv.split(/\r?\n/).slice(1)) {
   if (!line) continue;
   const r = row(line);
-  if (r[0] !== "MA-L") continue;                       
+  if (r[0] !== "MA-L") continue;
   const pref = (r[1] || "").trim().toUpperCase();
   const org = tidy((r[2] || "").trim()).slice(0, 28);
   if (!/^[0-9A-F]{6}$/.test(pref) || !org) continue;

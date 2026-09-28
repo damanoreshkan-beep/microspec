@@ -213,9 +213,9 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
     const inner = deck?.onPointerDown;
     spread.onPointerDown = (e) => { onPointerDown(e); inner?.(e); };
   }
-  
   const style = { ...(deck?.style || {}) };
   if (plate) style["--sh-tint"] = plate;
+
   const menuRow = menu.length
     ? html`<div class="ms-menu flex gap-1">
         ${menu.map((k) => html`<${Key} k=${k} t=${t} onKeyboard=${onKeyboard} radius="rounded-full" cls="w-9 h-9" />`)}
@@ -234,7 +234,6 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
           cls="px-2 py-1 w-full max-w-[7rem] truncate" />`)}
     </div>`;
 
-  
   const stage = html`
     <div data-stage-box class="flex-1 min-h-0 min-w-0 grid place-items-center">
       <div class="ms-screen sf-inset max-w-full max-h-full min-w-0 min-h-0 grid place-items-center">
@@ -244,12 +243,12 @@ export function GameConsole({ deck, pad = [], actions = [], menu = [], centre = 
         </div>
       </div>
     </div>`;
+
   const deckRow = html`
     <div class="ms-side-main shrink-0 grid items-center gap-[var(--ms-gap)] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto]">
       ${padNode}${centreNode}${actionNode}
     </div>`;
 
-  
   return html`
     <div class="h-full min-h-0 flex flex-col items-center justify-center">
       <div class="ms-shell sf-raised ms-side min-h-0 flex flex-col gap-[var(--ms-gap)]"

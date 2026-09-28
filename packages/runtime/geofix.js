@@ -66,7 +66,7 @@
 /** Fraction of a fix's reported accuracy treated as unremovable bias — the floor `meanFix` never claims below. */
 export const BIAS_FRAC = 0.5;
 const R95 = 2.4477;
-const MPD_LAT = 110540;                                   
+const MPD_LAT = 110540;
 const mpdLng = (lat) => 111320 * Math.cos((lat * Math.PI) / 180);
 
 const offs = (o, p) => ({ x: (p.lng - o.lng) * mpdLng(o.lat), y: (p.lat - o.lat) * MPD_LAT });
@@ -120,10 +120,10 @@ export function meanFix(ss) {
 
   const o = { lat, lng };
   const q = ss.map((p) => offs(o, p));
-  const vx = q.reduce((s, p) => s + p.x * p.x, 0) / (n - 1);   
+  const vx = q.reduce((s, p) => s + p.x * p.x, 0) / (n - 1);
   const vy = q.reduce((s, p) => s + p.y * p.y, 0) / (n - 1);
-  const sem95 = R95 * Math.sqrt((vx + vy) / 2 / n);            
-  const floor = BIAS_FRAC * medA;                             
+  const sem95 = R95 * Math.sqrt((vx + vy) / 2 / n);
+  const floor = BIAS_FRAC * medA;
   mean.accuracy = medA ? Math.min(medA, Math.hypot(sem95, floor)) : sem95;
   return mean;
 }

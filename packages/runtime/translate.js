@@ -84,18 +84,18 @@ export const CONTENT_LANG = "en";
 /** Counter atom bumped whenever new translations land, so components subscribed to it re-render. */
 export const trTick = atom(0);
 
-const mem = new Map();       
-const pending = new Set();   
+const mem = new Map();
+const pending = new Set();
 
 function cacheFor(target) {
   if (mem.has(target)) return mem.get(target);
   let obj = {};
-  try { obj = JSON.parse(localStorage.getItem("ms:tr:" + target) || "{}"); } catch {  }
+  try { obj = JSON.parse(localStorage.getItem("ms:tr:" + target) || "{}"); } catch { }
   mem.set(target, obj);
   return obj;
 }
 function persist(target, obj) {
-  try { localStorage.setItem("ms:tr:" + target, JSON.stringify(obj)); } catch {  }
+  try { localStorage.setItem("ms:tr:" + target, JSON.stringify(obj)); } catch { }
 }
 
 /**
@@ -128,7 +128,7 @@ async function translateOne(text, target) {
   return (data[0] || []).map((seg) => seg[0]).join("").trim() || text;
 }
 
-const NON_LATIN = /[^\p{Script=Latin}\P{L}]/u;              
+const NON_LATIN = /[^\p{Script=Latin}\P{L}]/u;
 /** True when the text carries no letter outside the Latin script — what an image Space can read as-is. */
 export const isLatin = (text) => !NON_LATIN.test(String(text || ""));
 /**
@@ -147,7 +147,7 @@ export async function toEnglish(text) {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${CONTENT_LANG}&dt=t&q=${encodeURIComponent(text)}`;
     const data = JSON.parse(await viaProxy(url, isJsonArray, 8000));
     out = (data[0] || []).map((seg) => seg[0]).join("").trim();
-  } catch {  }
+  } catch { }
   if (!out || !isLatin(out)) {
     try { out = (await askAI(text, CONTENT_LANG, "english")).text; } catch { out = ""; }
   }
@@ -182,7 +182,7 @@ export async function warm(texts, target) {
   let changed = false;
   await pool(todo, 6, async (src) => {
     try { cache[src] = await translateOne(src, target); changed = true; }
-    catch {  }
+    catch { }
     finally { pending.delete(target + " " + src); }
   });
   if (changed) { persist(target, cache); trTick.set(trTick.get() + 1); }

@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { createUsbSession, TERMINATE_GRACE_MS } from "../usbsession.js";
 
@@ -156,7 +155,7 @@ Deno.test("post: no-op on a dead worker instead of throwing", async () => {
 
 Deno.test("restart is gated on the WORKER, not on the connected atom", async () => {
   const { s, workers } = harness();
-  s.$connected.set(true);                       
+  s.$connected.set(true);
   assertEquals(s.restart(), false, "restart must not spawn a worker just because the atom says connected");
   assertEquals(workers.length, 0);
 });

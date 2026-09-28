@@ -207,7 +207,6 @@ export function Parallax({ alpha = 0.1, maxDeg = 20, gain = 1, reduced = false }
   };
 }
 
-
 /**
  * Sample the band-level array at a 0..1 fraction, clamped.
  * @param levels band levels
@@ -236,9 +235,9 @@ export function idle(phase, floor = 0.85, amp = 0.15) { return floor + amp * Mat
  * @returns [x, y, z] on the unit sphere
  */
 export function fib(i, n) {
-  const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;           
+  const y = n > 1 ? 1 - (i / (n - 1)) * 2 : 0;
   const r = Math.sqrt(Math.max(0, 1 - y * y));
-  const a = i * 2.399963229728653;                        
+  const a = i * 2.399963229728653;
   return [Math.cos(a) * r, y, Math.sin(a) * r];
 }
 

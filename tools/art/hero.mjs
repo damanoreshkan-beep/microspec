@@ -1,4 +1,3 @@
-
 import { encodePNG } from "./png.mjs";
 import { decodeHDR, downsampleRGBE } from "../../packages/runtime/hdr.js";
 
@@ -59,7 +58,7 @@ const pipeline = device.createRenderPipeline({
   primitive: { topology: "triangle-list" },
 });
 
-const ENV_W = Number(flag("env", 0)) | 0;   
+const ENV_W = Number(flag("env", 0)) | 0;
 let env = { width: 1, height: 1, rgbe: new Uint8Array([0, 0, 0, 128]) };
 try {
   const raw = await Deno.readFile(new URL(`../../apps/${app}/assets/env.hdr`, import.meta.url));
@@ -102,7 +101,7 @@ const bind = device.createBindGroup({
 });
 
 const target = device.createTexture({ size: [W, H], format: FORMAT, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
-const rowPad = Math.ceil((W * 4) / 256) * 256;            
+const rowPad = Math.ceil((W * 4) / 256) * 256;
 const readback = device.createBuffer({ size: rowPad * H, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
 
 async function renderFrame(time, vx, vy) {

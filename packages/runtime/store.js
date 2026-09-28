@@ -89,7 +89,7 @@ export function createApp(spec, dataLoad) {
   const segTab = spec.tabs.find((t) => Array.isArray(t.segments) && t.segments.length);
   const FKEY = ns + "filters";
   let savedFilters = {};
-  try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch {  }
+  try { savedFilters = JSON.parse(localStorage.getItem(FKEY) || "{}"); } catch { }
 
   const urlLocale = (() => {
     try {
@@ -110,8 +110,8 @@ export function createApp(spec, dataLoad) {
     query: atom(""),
     tab: atom(spec.tabs?.[0]?.id),
     sort: persistentAtom(ns + "sort", sortTab?.sort?.[0]?.key || ""),
-    seg: persistentAtom(ns + "seg", segTab?.segments?.[0]?.key || ""),   
-    toggles: persistentAtom(ns + "toggles", {}, JSON_CODEC),   
+    seg: persistentAtom(ns + "seg", segTab?.segments?.[0]?.key || ""),
+    toggles: persistentAtom(ns + "toggles", {}, JSON_CODEC),
 
     data: map({ items: [], meta: {}, loading: true, error: false, next: null, loadingMore: false, moreError: false }),
     filters: map({ ...(spec.filters?.defaults || {}), ...savedFilters }),
@@ -124,14 +124,14 @@ export function createApp(spec, dataLoad) {
     player: atom(null),
     installEvent: atom(null),
     installOpen: atom(false),
-    qrOpen: atom(false),          
-    searchOpen: atom(false),      
-    confirm: atom(null),          
-    undo: atom(null),             
-    update: atom(false),          
+    qrOpen: atom(false),
+    searchOpen: atom(false),
+    confirm: atom(null),
+    undo: atom(null),
+    update: atom(false),
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
-  S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch {  } });
+  S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch { } });
 
   async function load() {
     S.data.set({ ...S.data.get(), loading: true, error: false, moreError: false });
@@ -158,7 +158,7 @@ export function createApp(spec, dataLoad) {
 
   let toastTimer;
   function toast(key) {
-    S.undo.set(null);                                  
+    S.undo.set(null);
     S.toast.set(key);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => S.toast.set(""), 2200);

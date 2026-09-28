@@ -141,14 +141,14 @@ function unframe(bytes) {
  */
 export async function seal(serverKeyB64u, payload) {
   const serverKey = await importServerKey(serverKeyB64u);
-  const eph = await crypto.subtle.generateKey(P256, false, ["deriveBits"]);   
+  const eph = await crypto.subtle.generateKey(P256, false, ["deriveBits"]);
   const epkRaw = new Uint8Array(await crypto.subtle.exportKey("raw", eph.publicKey));
   const serverRaw = unb64u(serverKeyB64u);
   const { req, res } = await deriveKeys(eph.privateKey, serverKey, epkRaw, serverRaw);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, req, frame({ ...payload, ts: Date.now() })));
   const wire = new Uint8Array(1 + 65 + 12 + ct.length);
-  wire[0] = 1;                                   
+  wire[0] = 1;
   wire.set(epkRaw, 1); wire.set(iv, 66); wire.set(ct, 78);
   return { wire, resKey: res };
 }

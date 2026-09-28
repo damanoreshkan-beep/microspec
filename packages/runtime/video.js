@@ -115,7 +115,7 @@ import { resumeAt, recoverPlan, fmtClock, scrubTo, skipTo, fmtDelta } from "./pl
 export { resumeAt, RESUME_MIN, RESUME_TAIL, recoverPlan, fmtClock, scrubSpan, scrubTo, skipTo, fmtDelta } from "./playback.js";
 
 const HLS = "https://esm.sh/hls.js@1.5.17";
-const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch {  } };
+const clearSrc = (v) => { try { v.removeAttribute("src"); v.load(); } catch { } };
 
 /**
  * Attach a stream url to a `<video>` element, choosing hls.js, the native element or progressive playback; never throws.
@@ -134,7 +134,6 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
     return { destroy() { clearSrc(video); } };
   };
   if (kind !== "hls") {
-    
     let handle = attach(kind === "progressive" ? null : () => {
       createPlayer(video, url, { onReady, onError, type: "hls" }).then((h) => { handle = h; });
     });
@@ -144,12 +143,8 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
     const mod = await import(HLS);
     const Hls = mod.default || mod;
     if (!Hls?.isSupported?.()) return attach(null);
-    
-    
-    
     const hls = new Hls({ maxBufferLength: buffer, backBufferLength: 30, manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 3 });
     hls.on(Hls.Events.MANIFEST_PARSED, () => onReady());
-    
     const tried = { net: 0, media: 0 };
     let timer = 0;
     hls.on(Hls.Events.ERROR, (_e, d) => {
@@ -167,14 +162,9 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
       try { hls.recoverMediaError(); } catch { onError(d); }
     });
     hls.loadSource(url); hls.attachMedia(video);
-    return { destroy() { clearTimeout(timer); try { hls.destroy(); } catch {  } clearSrc(video); } };
+    return { destroy() { clearTimeout(timer); try { hls.destroy(); } catch { } clearSrc(video); } };
   } catch (e) { onError(e); return { destroy() { clearSrc(video); } }; }
 }
-
-
-
-
-
 
 /**
  * Full-screen video overlay component: connecting skeleton → playing (PiP, fullscreen, wake lock) or unavailable.
@@ -183,8 +173,7 @@ export async function createPlayer(video, url, { onReady = () => {}, onError = (
  */
 export function Player({ url, title, locale = "en", onClose, poster, startAt = 0, onTime, type = null }) {
   const ref = useRef(), boxRef = useRef();
-  const [state, setState] = useState("loading");   
-  
+  const [state, setState] = useState("loading");
   const [attempt, setAttempt] = useState(0);
   const canPip = typeof document !== "undefined" && document.pictureInPictureEnabled;
 
@@ -195,7 +184,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     const ready = () => {
       if (dead) return;
       const at = resumeAt(startAt, v.duration);
-      if (at > 0) { try { v.currentTime = at; } catch {  } }
+      if (at > 0) { try { v.currentTime = at; } catch { } }
       setState("playing");
     };
     createPlayer(v, url, { type, buffer: 30, onReady: ready, onError: () => { if (!dead) setState("error"); } })
@@ -203,12 +192,11 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     return () => { dead = true; handle?.destroy(); };
   }, [url, type, attempt]);
 
-  
-  
   useEffect(() => {
     const lock = wakeLock.acquire();
     return () => lock.release();
   }, []);
+
   useEffect(() => {
     if (!onTime) return;
     const id = setInterval(() => {
@@ -217,16 +205,15 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     }, 5000);
     return () => {
       clearInterval(id);
-      const v = ref.current;                            
+      const v = ref.current;
       if (v && isFinite(v.currentTime)) onTime(v.currentTime, isFinite(v.duration) ? v.duration : 0);
     };
   }, [onTime]);
-  
+
   const [playing, setPlaying] = useState(true);
   const [at, setAt] = useState(0);
   const [len, setLen] = useState(0);
   const [muted, setMuted] = useState(false);
-  
   const seeking = useRef(false);
   useEffect(() => {
     const v = ref.current; if (!v) return;
@@ -243,22 +230,21 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   }, [url, attempt]);
   const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) v.play().catch(() => {}); else v.pause(); };
 
-  
   const drag = useRef({ on: false, x0: 0, y0: 0, axis: 0, from: 0, moved: 0, at: 0 });
-  const [scrub, setScrub] = useState(null);                 
+  const [scrub, setScrub] = useState(null);
   const lastTap = useRef({ t: 0, x: 0 });
   const surfaceRef = useRef();
   const widthOf = () => surfaceRef.current?.getBoundingClientRect?.().width || 0;
   const seekTo = (to) => {
     const v = ref.current; if (!v || !isFinite(to)) return;
-    try { v.currentTime = to; } catch {  }
+    try { v.currentTime = to; } catch { }
     setAt(to);
   };
   const down = (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const v = ref.current;
     drag.current = { on: true, x0: e.clientX, y0: e.clientY, axis: 0, from: v?.currentTime || 0, moved: 0, at: 0 };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {  }
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { }
   };
   const move = (e) => {
     const d = drag.current; if (!d.on) return;
@@ -267,33 +253,32 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       d.axis = Math.abs(dx) > Math.abs(dy) ? 1 : -1;
     }
-    if (d.axis !== 1 || !len) return;                       
+    if (d.axis !== 1 || !len) return;
     d.moved = dx;
     seeking.current = true;
     const to = scrubTo(d.from, dx, widthOf(), len);
     setScrub({ to, delta: to - d.from });
-    
   };
   const up = () => {
     const d = drag.current; if (!d.on) return;
     d.on = false;
     if (d.axis === 1 && Math.abs(d.moved) > 8) {
-      seekTo(scrubTo(d.from, d.moved, widthOf(), len));      
-      d.at = Date.now();                                     
+      seekTo(scrubTo(d.from, d.moved, widthOf(), len));
+      d.at = Date.now();
     }
     seeking.current = false;
     setScrub(null);
   };
   const tapTimer = useRef(0);
-  const [jump, setJump] = useState(null);                    
+  const [jump, setJump] = useState(null);
   const surfaceTap = (e) => {
-    if (Date.now() - drag.current.at < 400) return;          
+    if (Date.now() - drag.current.at < 400) return;
     const now = Date.now(), prev = lastTap.current;
     lastTap.current = { t: now, x: e.clientX };
     if (now - prev.t < 280 && Math.abs(e.clientX - prev.x) < 60) {
       clearTimeout(tapTimer.current);
       lastTap.current = { t: 0, x: 0 };
-      if (!len) return;                                      
+      if (!len) return;
       const box = surfaceRef.current?.getBoundingClientRect?.();
       const dir = box && e.clientX - box.left < box.width / 2 ? -1 : 1;
       seekTo(skipTo(ref.current?.currentTime || 0, dir * 10, len));
@@ -305,7 +290,6 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     tapTimer.current = setTimeout(() => toggle(), 280);
   };
   useEffect(() => () => clearTimeout(tapTimer.current), []);
-  
   useEffect(() => {
     const onKey = (e) => {
       if (e.defaultPrevented || /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || "")) return;
@@ -317,10 +301,10 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [len]);
-  const seek = (e) => { const v = ref.current, to = Number(e.target.value); setAt(to); if (v && isFinite(to)) { try { v.currentTime = to; } catch {  } } };
+  const seek = (e) => { const v = ref.current, to = Number(e.target.value); setAt(to); if (v && isFinite(to)) { try { v.currentTime = to; } catch { } } };
   const sound = () => { const v = ref.current; if (v) v.muted = !v.muted; };
 
-  const pip = async () => { try { const v = ref.current; document.pictureInPictureElement ? await document.exitPictureInPicture() : await v?.requestPictureInPicture(); } catch {  } };
+  const pip = async () => { try { const v = ref.current; document.pictureInPictureElement ? await document.exitPictureInPicture() : await v?.requestPictureInPicture(); } catch { } };
   const openBtn = html`<a href=${url} target="_blank" rel="noopener" class="btn btn-sm btn-outline text-white border-white/30 gap-2"><iconify-icon icon="lucide:external-link"></iconify-icon>${media("openExternal", locale)}</a>`;
   const retryBtn = html`<button id="player-retry" class="btn btn-sm btn-primary gap-2" onClick=${() => { setState("loading"); setAttempt((n) => n + 1); }}><iconify-icon icon="lucide:rotate-cw"></iconify-icon>${media("retry", locale)}</button>`;
   return html`<div ref=${boxRef} role="dialog" aria-modal="true" aria-label=${title || media("player", locale)} class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:var(--ms-safe-top)">
@@ -334,7 +318,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
       onPointerDown=${state === "playing" ? down : null} onPointerMove=${state === "playing" ? move : null}
       onPointerUp=${state === "playing" ? up : null} onPointerCancel=${state === "playing" ? up : null}
       onClick=${state === "playing" ? surfaceTap : null}>
-      
+      ${""}
       <video ref=${ref} autoplay playsinline disableremoteplayback controlslist="nodownload nofullscreen noremoteplayback"
         poster=${poster || ""}
         class=${`w-full max-h-full bg-black pointer-events-none ${state === "playing" ? "" : "opacity-0"}`}></video>
@@ -353,7 +337,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
         <div>${media("unavailable", locale)}</div>
         <div class="flex items-center gap-2 flex-wrap justify-center">${retryBtn}${openBtn}</div></div>` : null}
     </div>
-    
+    ${""}
     ${state === "playing" ? html`<div id="player-bar" class="flex items-center gap-3 px-3 py-2 text-white bg-black/70" style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
       <button id="player-play" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(playing ? "pause" : "play", locale)} onClick=${toggle}>
         <iconify-icon icon=${playing ? "lucide:pause" : "lucide:play"} class="text-lg"></iconify-icon></button>

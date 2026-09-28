@@ -157,7 +157,7 @@ export function hexRgb(hex) {
  */
 export function iconTint(bg, fg, dark) {
   const rgb = hexRgb(fg), [, sat] = rgbToHsl(rgb);
-  const hue = (sat < 18 && luminance(rgb) > 0.5) ? bg : fg;   
+  const hue = (sat < 18 && luminance(rgb) > 0.5) ? bg : fg;
   return dark
     ? { tile: `linear-gradient(145deg, color-mix(in oklch, ${hue} 24%, ${bg}), ${bg})`, glyph: fg }
     : { tile: `linear-gradient(145deg, color-mix(in oklch, ${hue} 22%, #fff), color-mix(in oklch, ${hue} 8%, #fff))`, glyph: `color-mix(in oklch, ${hue} 84%, #000)` };
@@ -171,7 +171,7 @@ export function iconTint(bg, fg, dark) {
  */
 export function palette(px, k = 5) {
   const pts = [];
-  const stride = 4 * Math.max(1, Math.floor(px.length / 4 / 4000)); 
+  const stride = 4 * Math.max(1, Math.floor(px.length / 4 / 4000));
   for (let i = 0; i + 2 < px.length; i += stride) pts.push([px[i], px[i + 1], px[i + 2]]);
   if (!pts.length) return [];
   let boxes = [pts];
@@ -184,7 +184,7 @@ export function palette(px, k = 5) {
         if (mx - mn > bestRange) { bestRange = mx - mn; bi = idx; bestCh = c; }
       }
     });
-    if (bi < 0 || bestRange === 0) break; 
+    if (bi < 0 || bestRange === 0) break;
     const box = boxes[bi].slice().sort((a, b) => a[bestCh] - b[bestCh]);
     const mid = box.length >> 1;
     boxes.splice(bi, 1, box.slice(0, mid), box.slice(mid));

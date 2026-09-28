@@ -65,9 +65,9 @@
  */
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
-import { gate } from "./gate.js";   
+import { gate } from "./gate.js";
 
-const DPR_CAP = 2;   
+const DPR_CAP = 2;
 
 const VS = `
 @vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
@@ -94,7 +94,7 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
   state.vary = vary;
 
   useEffect(() => {
-    if (gate) return;                                  
+    if (gate) return;
     const canvas = ref.current;
     if (!canvas || !navigator.gpu) return;
 
@@ -176,7 +176,7 @@ export function HeroStage({ shader, seed = 0, ink, vary }) {
       state.dead = true;
       cancelAnimationFrame(state.raf);
       state.cleanup?.();
-      try { state.device?.destroy?.(); } catch {  }
+      try { state.device?.destroy?.(); } catch { }
       state.device = null;
     };
   }, []);

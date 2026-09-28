@@ -92,7 +92,6 @@ import { askAI, cacheFor, persist, pending, aiTick, reading } from "./ai-core.js
 import { pool } from "./feed.js";
 import { CONTENT_LANG, rememberEnglish, warm, tr } from "./translate.js";
 
-
 /**
  * One-shot creative generation, the raw answer; never cached, "" on any failure.
  * @param mode "line" (one short thought of meaning) or "scene" (one style-free visual scene in a given spirit, in English) — the spark carries the essence and what to avoid repeating; the picture prompts are {@link suggestPrompt}
@@ -115,7 +114,7 @@ export async function suggest(mode, spark, locale) {
 export async function suggestPrompt(mode, spark, locale) {
   const raw = await suggest(mode, spark, locale);
   let j = null;
-  try { const m = raw.match(/\{[\s\S]*\}/); j = m ? JSON.parse(m[0]) : null; } catch {  }
+  try { const m = raw.match(/\{[\s\S]*\}/); j = m ? JSON.parse(m[0]) : null; } catch { }
   const en = typeof j?.en === "string" ? j.en.trim() : "";
   if (!en) return null;
   const loc = String(locale || CONTENT_LANG).slice(0, 2);
@@ -129,7 +128,6 @@ export async function suggestPrompt(mode, spark, locale) {
   return { en, local };
 }
 const cleanScript = (text) => !/\p{Script=Latin}[\p{L}\p{M}]*[^\p{Script=Latin}\P{L}]|[^\p{Script=Latin}\P{L}][\p{L}\p{M}]*\p{Script=Latin}/u.test(text);
-
 
 /**
  * The cached natural rewrite of a machine-translated string, synchronously.
@@ -169,12 +167,11 @@ export async function warmPolish(texts, locale) {
   let changed = false;
   await pool(todo, 2, async (src) => {
     try { const { text: out } = await askAI(src, locale, "polish"); cache[src] = out || src; changed = true; }
-    catch {  }
+    catch { }
     finally { pending.delete(locale + " " + src); }
   });
   if (changed) { persist("", locale, cache); aiTick.set(aiTick.get() + 1); }
 }
-
 
 const SUM = reading("sum", "summarize");
 /** Sync: the cached reading for a facts signature `key` in `locale`, or "" on a miss. */

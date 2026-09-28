@@ -91,7 +91,7 @@ export function cacheFor(ns, locale) {
   const k = ns ? ns + ":" + locale : locale;
   if (mem.has(k)) return mem.get(k);
   let obj = {};
-  try { obj = JSON.parse(localStorage.getItem("ms:ai:" + k) || "{}"); } catch {  }
+  try { obj = JSON.parse(localStorage.getItem("ms:ai:" + k) || "{}"); } catch { }
   mem.set(k, obj);
   return obj;
 }
@@ -103,7 +103,7 @@ export function cacheFor(ns, locale) {
  */
 export function persist(ns, locale, obj) {
   const k = ns ? ns + ":" + locale : locale;
-  try { localStorage.setItem("ms:ai:" + k, JSON.stringify(obj)); } catch {  }
+  try { localStorage.setItem("ms:ai:" + k, JSON.stringify(obj)); } catch { }
 }
 
 /**
@@ -143,7 +143,7 @@ export function reading(ns, mode) {
     try {
       const { text: out, truncated, ungrounded } = await askAI(text, locale, mode, extra);
       if (out && !truncated && !ungrounded) { cache[key] = out; persist(ns, locale, cache); aiTick.set(aiTick.get() + 1); }
-    } catch {  }
+    } catch { }
     finally { pending.delete(tag); }
   };
   return { get, has, warm };

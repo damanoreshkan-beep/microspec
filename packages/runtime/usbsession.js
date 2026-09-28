@@ -114,7 +114,7 @@ export function createUsbSession({
   clearTimer = clearTimeout,
 } = {}) {
   const $connected = atom(false);
-  const $usbOk = atom(true);          
+  const $usbOk = atom(true);
   let worker = null;
   let pendingKill = null;
 
@@ -123,12 +123,12 @@ export function createUsbSession({
 
   function stopWorker() {
     if (!worker) return;
-    try { worker.postMessage({ type: "stop" }); } catch {  }
+    try { worker.postMessage({ type: "stop" }); } catch { }
     const w = worker;
-    worker = null;                                    
+    worker = null;
     pendingKill = setTimer(() => {
       pendingKill = null;
-      try { w.terminate(); } catch {  }
+      try { w.terminate(); } catch { }
     }, TERMINATE_GRACE_MS);
   }
 
@@ -142,7 +142,7 @@ export function createUsbSession({
       onMessage(m, session);
     };
     const first = start();
-    if (first) { try { worker.postMessage(first); } catch {  } }
+    if (first) { try { worker.postMessage(first); } catch { } }
   }
 
   async function connect() {

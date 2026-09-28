@@ -100,7 +100,7 @@ const canVibrate = typeof navigator !== "undefined" && "vibrate" in navigator;
 /** Short vibration feedback — `buzz(pattern)`, `tick`, `bump`, `ok`; a silent no-op where unsupported. */
 export const haptic = {
   supported: canVibrate,
-  buzz: (pattern) => { try { if (canVibrate) navigator.vibrate(pattern); } catch {  } },
+  buzz: (pattern) => { try { if (canVibrate) navigator.vibrate(pattern); } catch { } },
   tick: () => haptic.buzz(8),
   bump: () => haptic.buzz(18),
   ok: () => haptic.buzz([12, 40, 12]),
@@ -161,7 +161,7 @@ export const wakeLock = {
     const take = async () => {
       if (!live || sentinel || document.visibilityState !== "visible") return;
       try { sentinel = await navigator.wakeLock.request("screen"); sentinel.addEventListener?.("release", () => { sentinel = null; }); }
-      catch { sentinel = null; }                                   
+      catch { sentinel = null; }
     };
     const onVis = () => { if (document.visibilityState === "visible") take(); };
     document.addEventListener("visibilitychange", onVis);
@@ -171,13 +171,12 @@ export const wakeLock = {
       release() {
         live = false;
         document.removeEventListener("visibilitychange", onVis);
-        try { sentinel?.release(); } catch {  }
+        try { sentinel?.release(); } catch { }
         sentinel = null;
       },
     };
   },
 };
-
 
 const LOCK = 0.15, FLAT = 0.5;
 
@@ -191,8 +190,8 @@ const LOCK = 0.15, FLAT = 0.5;
 export function lookHeadingDeg(alpha, beta, gamma) {
   const r = Math.PI / 180, cA = Math.cos(alpha * r), sA = Math.sin(alpha * r);
   const sB = Math.sin(beta * r), cG = Math.cos(gamma * r), sG = Math.sin(gamma * r);
-  const x = -cA * sG - sA * sB * cG;                                   
-  const y = -sA * sG + cA * sB * cG;                                   
+  const x = -cA * sG - sA * sB * cG;
+  const y = -sA * sG + cA * sB * cG;
   if (Math.hypot(x, y) < LOCK) return null;
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
 }
@@ -204,9 +203,9 @@ export function lookHeadingDeg(alpha, beta, gamma) {
  */
 export function screenHeadingDeg(alpha, beta) {
   const r = Math.PI / 180, cB = Math.cos(beta * r);
-  const x = -Math.sin(alpha * r) * cB;                                 
-  const y = Math.cos(alpha * r) * cB;                                  
-  if (Math.abs(cB) < LOCK) return null;                                
+  const x = -Math.sin(alpha * r) * cB;
+  const y = Math.cos(alpha * r) * cB;
+  if (Math.abs(cB) < LOCK) return null;
   return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
 }
 
@@ -227,8 +226,8 @@ export function heldHeadingDeg(alpha, beta, gamma, screenAngle = 0) {
   const k = Math.abs(Math.cos(beta * Math.PI / 180));
   if (k >= FLAT) return ui;
   const t = k <= LOCK ? 1 : (FLAT - k) / (FLAT - LOCK);
-  const w = t * t * (3 - 2 * t);                                       
-  const d = ((look - ui + 540) % 360) - 180;                           
+  const w = t * t * (3 - 2 * t);
+  const d = ((look - ui + 540) % 360) - 180;
   return (ui + w * d + 360) % 360;
 }
 
@@ -243,7 +242,7 @@ export const compass = {
   start(onHeading, { trueNorth = true, look = false } = {}) {
     if (!this.supported) return () => {};
     let ema = null, dec = null, wmm = null, stopGeo = () => {};
-    let geoState = geo.supported ? "pending" : "unsupported";   
+    let geoState = geo.supported ? "pending" : "unsupported";
 
     if (trueNorth && geo.supported) {
       stopGeo = geo.watch(async (p) => {
@@ -252,7 +251,7 @@ export const compass = {
           const y = wmm.decimalYear();
           dec = wmm.inRange(y) ? wmm.declination(p.lat, p.lng, (p.altitude || 0) / 1000, y) : null;
           geoState = "ok";
-        } catch { dec = null; geoState = "ok"; }                                   
+        } catch { dec = null; geoState = "ok"; }
       }, (e) => { dec = null; geoState = e === "denied" ? "denied" : "unavailable"; },
       { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 });
     }
@@ -262,14 +261,14 @@ export const compass = {
       const tilt = typeof e.beta === "number" && typeof e.gamma === "number";
       let h = null;
       if (typeof e.webkitCompassHeading === "number") {
-        h = look ? e.webkitCompassHeading : (e.webkitCompassHeading + ang) % 360;       
-      } else if (e.absolute && typeof e.alpha === "number") {                           
+        h = look ? e.webkitCompassHeading : (e.webkitCompassHeading + ang) % 360;
+      } else if (e.absolute && typeof e.alpha === "number") {
         if (look) h = tilt ? lookHeadingDeg(e.alpha, e.beta, e.gamma) : (360 - e.alpha) % 360;
         else h = tilt ? heldHeadingDeg(e.alpha, e.beta, e.gamma, ang) : (360 - e.alpha + ang) % 360;
       }
-      if (h == null) return;                                                            
+      if (h == null) return;
       if (ema == null) ema = h;
-      else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; } 
+      else { const d = ((h - ema + 540) % 360) - 180; ema = (ema + 0.25 * d + 360) % 360; }
       onHeading(wmm ? wmm.trueFrom(ema, dec) : ema, { magnetic: ema, declination: dec, isTrue: dec != null, geo: geoState });
     };
     const evt = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
@@ -290,7 +289,7 @@ export const tilt = {
     if (!this.supported) return () => {};
     const handler = (e) => {
       let beta = typeof e.beta === "number" ? e.beta : null, gamma = typeof e.gamma === "number" ? e.gamma : null;
-      const a = (screen.orientation && screen.orientation.angle) || 0;                 
+      const a = (screen.orientation && screen.orientation.angle) || 0;
       if (a === 90 || a === 270) { const b = beta; beta = gamma; gamma = b == null ? null : -b; }
       onTilt({ beta, gamma });
     };
@@ -310,20 +309,20 @@ export const camera = {
       try { stream = await open(); }
       catch (e) {
         if (!e || !/NotReadableError|AbortError|OverconstrainedError/.test(e.name)) throw e;
-        await new Promise((r) => setTimeout(r, RELEASE_MS));   
+        await new Promise((r) => setTimeout(r, RELEASE_MS));
         if (stopped) return () => {};
         stream = await open(true);
       }
-      if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; } 
-      if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch {  } }
+      if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; }
+      if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch { } }
     } catch (e) {
       onErr?.(e && e.name === "NotAllowedError" ? "denied" : "unavailable");
       return () => {};
     }
     return () => {
       stopped = true;
-      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch {  }
-      try { if (video && video.srcObject === stream) video.srcObject = null; } catch {  }
+      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch { }
+      try { if (video && video.srcObject === stream) video.srcObject = null; } catch { }
     };
   },
   /**
@@ -401,18 +400,18 @@ export const mic = {
     const finish = (v) => {
       if (dead) return;
       dead = true; clearTimeout(take);
-      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch {  }
+      try { stream?.getTracks().forEach((tr) => tr.stop()); } catch { }
       stream = null; settle(v);
     };
     const fail = (kind) => { onErr?.(kind); finish(null); };
     const guard = setTimeout(() => fail("timeout"), timeoutMs);
     navigator.mediaDevices.getUserMedia(MIC_CONSTRAINTS).then((s) => {
       clearTimeout(guard);
-      if (dead) { s.getTracks().forEach((tr) => tr.stop()); return; }        
+      if (dead) { s.getTracks().forEach((tr) => tr.stop()); return; }
       stream = s; onStream?.(s);
       const mime = this.mime(), chunks = [];
       try { rec = new MediaRecorder(s, mime ? { mimeType: mime, audioBitsPerSecond: bitsPerSecond } : { audioBitsPerSecond: bitsPerSecond }); }
-      catch { fail("error"); return; }                                        
+      catch { fail("error"); return; }
       const settings = () => { try { return s.getAudioTracks()[0]?.getSettings?.() || {}; } catch { return {}; } };
       rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
       rec.onerror = () => fail("error");
@@ -422,8 +421,8 @@ export const mic = {
     }).catch((e) => { clearTimeout(guard); fail(micErr(e)); });
     const halt = (keep) => {
       clearTimeout(guard);
-      if (rec && keep) { try { if (rec.state !== "inactive") { rec.stop(); return; } } catch {  } }
-      try { if (rec && rec.state !== "inactive") rec.stop(); } catch {  }
+      if (rec && keep) { try { if (rec.state !== "inactive") { rec.stop(); return; } } catch { } }
+      try { if (rec && rec.state !== "inactive") rec.stop(); } catch { }
       finish(null);
     };
     return { done, stop: () => halt(true), cancel: () => halt(false) };

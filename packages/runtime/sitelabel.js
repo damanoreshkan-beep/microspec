@@ -91,7 +91,7 @@
 import { resolveSearch } from "./urlquery.js";
 
 const decodeOnce = (s) => {
-  try { return decodeURIComponent(s); } catch {  }
+  try { return decodeURIComponent(s); } catch { }
   return s.replace(/(?:%[0-9a-f]{2})+/gi, (m) => { try { return decodeURIComponent(m); } catch { return m; } });
 };
 const percentDecode = (s) => { const one = decodeOnce(s); return /%[0-9a-f]{2}/i.test(one) ? decodeOnce(one) : one; };
@@ -110,9 +110,8 @@ const decodeEntities = (s) => s.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]{1,9
     try { return String.fromCodePoint(cp); } catch { return m; }
   }
   const hit = NAMED[g] ?? NAMED[g.toLowerCase()];
-  return hit === undefined ? m : hit;                                  
+  return hit === undefined ? m : hit;
 });
-
 
 /**
  * Turn machine text (percent-encoded, entity-laden, or both) into the text a person reads. Never throws.
@@ -122,13 +121,11 @@ const decodeEntities = (s) => s.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]{1,9
 export function humanText(raw) {
   const s = decodeEntities(percentDecode(String(raw ?? "")));
   return s
-    .replace(/[\u0000-\u001f\u007f]+/g, " ")                                  
-    .replace(/[\u200b-\u200f\u2060\ufeff]/g, "")                              
-    .replace(/\s+/g, " ")                                              
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/[\u200b-\u200f\u2060\ufeff]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
-
-
 
 const MULTI_SUFFIX = new Set([
   "co.uk", "org.uk", "ac.uk", "gov.uk", "co.jp", "co.kr", "co.nz", "co.za", "co.in", "co.il",
@@ -145,7 +142,6 @@ export function hostOf(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return String(url || "").replace(/^www\./, ""); }
 }
 
-
 /**
  * The registrable domain of a host — the site, so subdomains group together (commons.wikimedia.org → wikimedia.org).
  * @param host a hostname
@@ -160,8 +156,6 @@ export function registrableDomain(host) {
 
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
-
-
 /**
  * The site's display name: the capitalised label before the public suffix (mixkit.co → Mixkit).
  * @param url a page URL
@@ -173,18 +167,11 @@ export function siteName(url) {
   return cap(first) || d;
 }
 
-
 const NOISE = /^(?:index|default|home|main|page|pages|p|pg|paged|list|browse|view|watch|embed|media|videos?|clips?|en|uk|ua|ru|de|pl|www|html?|php)$/i;
-const isId = (s) => /^[0-9]+$/.test(s) || /^[0-9a-f]{8,}$/i.test(s);   
-
-
-
+const isId = (s) => /^[0-9]+$/.test(s) || /^[0-9a-f]{8,}$/i.test(s);
 
 const WEAK_WORD = /^(?:a|the|view|views|watch|watching|play|player|preview|video|videos|vid|clip|clips|movie|movies|film|films|media|stream|streams|embed|item|page|show|new|hot|best|top|free|online|hd|sd|full)$/i;
-
-
 const isWeakToken = (w) => WEAK_WORD.test(w) || /^\d+$/.test(w) || (/[A-Za-z]/.test(w) && /\d/.test(w)) || w.length < 2;
-
 /**
  * Is this label only a URL shape ("View video", "Video81234567") rather than a name? True when every token is weak.
  * @param label a derived label
@@ -194,11 +181,12 @@ export function isWeakLabel(label) {
   const toks = String(label || "").split(/[\s.,:;/|–—-]+/).filter(Boolean);
   return !toks.length || toks.every(isWeakToken);
 }
+
 const prettify = (raw, max) => {
-  let s = humanText(raw)                                 
-    .replace(/\.(?:html?|php|aspx?|jsp)$/i, "")          
-    .replace(/^[A-Za-zА-Яа-яІіЇїЄєҐґ]{2,12}:/, "")       
-    .replace(/^[0-9]+[-_](?=\D)/, "")                    
+  let s = humanText(raw)
+    .replace(/\.(?:html?|php|aspx?|jsp)$/i, "")
+    .replace(/^[A-Za-zА-Яа-яІіЇїЄєҐґ]{2,12}:/, "")
+    .replace(/^[0-9]+[-_](?=\D)/, "")
     .replace(/[-_+]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -209,9 +197,6 @@ const prettify = (raw, max) => {
   const sp = cut.lastIndexOf(" ");
   return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd() + "…";
 };
-
-
-
 
 /**
  * Derive a page's readable title from its URL and say whether the derivation found a name or only a shape.
@@ -224,11 +209,8 @@ export function pageLabelInfo(url, { max = 42 } = {}) {
   if (!raw) return { label: "", weak: true };
   let u;
   try { u = new URL(raw); } catch { const l = prettify(raw, max) || raw; return { label: l, weak: isWeakLabel(l) }; }
-  const sr = resolveSearch(raw);                                     
+  const sr = resolveSearch(raw);
   if (sr.searchable && sr.term.trim()) { const l = prettify(sr.term.trim(), max); return { label: l, weak: isWeakLabel(l) }; }
-  
-  
-  
   const segs = u.pathname.split("/").map((s) => humanText(s)).filter(Boolean);
   for (let i = segs.length - 1; i >= 0; i--) {
     const seg = segs[i];
@@ -239,8 +221,6 @@ export function pageLabelInfo(url, { max = 42 } = {}) {
   return { label: siteName(raw), weak: segs.length > 0 };
 }
 
-
-
 /**
  * The readable title of THAT page (not the site), derived from its URL.
  * @param url the page URL
@@ -248,8 +228,6 @@ export function pageLabelInfo(url, { max = 42 } = {}) {
  * @returns the label; the site name for a bare root, the raw string for a non-URL
  */
 export function pageLabel(url, opts) { return pageLabelInfo(url, opts).label; }
-
-
 
 const SEP = /\s+[-–—|·•:»«]+\s+|\s+[-–—|·•»«]\s*$|^\s*[-–—|·•»«]\s+/;
 /**
@@ -260,7 +238,7 @@ const SEP = /\s+[-–—|·•:»«]+\s+|\s+[-–—|·•»«]\s*$|^\s*[-–—
  * @returns the cleaned title, or "" when nothing worth showing is left
  */
 export function cleanPageTitle(raw, url, { max = 64 } = {}) {
-  let s = humanText(raw);                                            
+  let s = humanText(raw);
   if (!s) return "";
   const site = siteName(url).toLowerCase(), host = hostOf(url).toLowerCase();
   const key = (x) => x.toLowerCase().replace(/[^a-z0-9а-яїієґ]+/gi, "");
@@ -276,19 +254,10 @@ export function cleanPageTitle(raw, url, { max = 64 } = {}) {
     s = parts.join(" – ");
   }
   s = s.replace(/^["'“”«»\s]+|["'“”«»\s]+$/g, "").trim();
-  if (!s || isWeakLabel(s) || isSite(s)) return "";                  
+  if (!s || isWeakLabel(s) || isSite(s)) return "";
   if (s.length > max) { const cut = s.slice(0, max), sp = cut.lastIndexOf(" "); s = (sp > max * 0.6 ? cut.slice(0, sp) : cut).trimEnd() + "…"; }
   return s;
 }
-
-
-
-
-
-
-
-
-
 
 /**
  * THE one answer to "what is this page called": a URL that names the page wins, then the page's own title,
@@ -303,8 +272,6 @@ export function sourceTitle(url, { pageTitle = "", hint = "", max = 0 } = {}) {
   if (!weak) return label;
   return cleanPageTitle(pageTitle, url, lim) || cleanPageTitle(hint, url, lim) || label;
 }
-
-
 
 /**
  * Group pages by the site they belong to, in first-appearance order.

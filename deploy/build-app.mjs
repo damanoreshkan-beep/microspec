@@ -1,4 +1,3 @@
-
 import { buildTailwind } from "./tailwind.mjs";
 import { generateAppIcons } from "./icons.mjs";
 import { BOOT_BEACON } from "./boot-beacon.mjs";
@@ -22,8 +21,8 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   const importmap = (() => {
     const m = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
     const im = m ? JSON.parse(m[1]) : { imports: {} };
-    im.imports["/_rt/"] = `file://${rtDir}/`; 
-    im.imports["@microspec/core/runtime/"] = `file://${rtDir}/`; 
+    im.imports["/_rt/"] = `file://${rtDir}/`;
+    im.imports["@microspec/core/runtime/"] = `file://${rtDir}/`;
     return im;
   })();
 
@@ -56,7 +55,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   out = /<link href="\/_rt\/theme\.css"[^>]*>/.test(out)
     ? out.replace(/(<link href="\/_rt\/theme\.css"[^>]*>)/, '$1\n  <link rel="stylesheet" href="app.css">')
     : out.replace(/<\/head>/, '  <link rel="stylesheet" href="app.css">\n</head>');
-  out = out.replaceAll("/_rt/", "../_rt/"); 
+  out = out.replaceAll("/_rt/", "../_rt/");
   await Deno.writeTextFile(`${outDir}/index.html`, out);
 
   const shipped = out + "\n" + (await Deno.readTextFile(`${outDir}/app.js`));
@@ -73,7 +72,7 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
 }
 
 if (import.meta.main) {
-  const ROOT = Deno.cwd(); 
+  const ROOT = Deno.cwd();
   const id = Deno.args[0] || "store";
   const RT = await Deno.stat(`${ROOT}/rt/index.js`).then(() => `${ROOT}/rt`).catch(() => `${ROOT}/packages/runtime`);
   const APP = `${ROOT}/apps/${id}`, OUT = `${ROOT}/dist-compat/${id}`;

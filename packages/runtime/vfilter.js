@@ -79,10 +79,6 @@ const clipId = (u) => {
   return m && segs.includes(m[1]) ? m[1] : "";
 };
 
-
-
-
-
 /**
  * Drop duplicate clips from a feed, preserving order; a later copy with a poster replaces an earlier posterless one.
  * @param items feed items ({ video, orig?, poster? }); a non-array yields []
@@ -100,8 +96,8 @@ export function dedupeVideos(items) {
     const hit = keys.find((k) => at.has(k));
     if (hit != null) {
       const i = at.get(hit);
-      if (!out[i].poster && it && it.poster) out[i] = it;           
-      for (const k of keys) if (!at.has(k)) at.set(k, i);           
+      if (!out[i].poster && it && it.poster) out[i] = it;
+      for (const k of keys) if (!at.has(k)) at.set(k, i);
       continue;
     }
     out.push(it);
@@ -109,9 +105,6 @@ export function dedupeVideos(items) {
   }
   return out;
 }
-
-
-
 
 function lumaStats(rgba) {
   if (!rgba || rgba.length < 4) return null;
@@ -125,10 +118,6 @@ function lumaStats(rgba) {
   return { mean, peak, std: Math.sqrt(Math.max(0, sumSq / n - mean * mean)) };
 }
 
-
-
-
-
 /**
  * Classify an RGBA sample as a black/broken poster: near-zero mean luma and no bright pixel anywhere.
  * @param rgba RGBA bytes from getImageData
@@ -140,10 +129,6 @@ export function isBlackSample(rgba, { meanMax = 12, peakMax = 24 } = {}) {
   return !!s && s.mean <= meanMax && s.peak <= peakMax;
 }
 
-
-
-
-
 /**
  * Classify an RGBA sample as a flat/placeholder poster: a near-uniform fill of any colour (luma std ≈ 0).
  * @param rgba RGBA bytes from getImageData
@@ -154,8 +139,6 @@ export function isFlatSample(rgba, { stdMax = 6 } = {}) {
   const s = lumaStats(rgba);
   return !!s && s.std <= stdMax;
 }
-
-
 
 /**
  * Whether a feed item carries a usable poster (a non-empty string after trimming).

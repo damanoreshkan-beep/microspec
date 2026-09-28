@@ -90,7 +90,7 @@ export const N = 16;
 
 /** Metric weight of each of the 16 grid positions (Longuet-Higgins & Lee): 0 on the downbeat down to -4 on a sixteenth offbeat. */
 export const METRIC_WEIGHTS = [0, -4, -3, -4, -2, -4, -3, -4, -1, -4, -3, -4, -2, -4, -3, -4];
-const WMIN = -4, WSPAN = 4;   
+const WMIN = -4, WSPAN = 4;
 
 /**
  * Euclidean rhythm (Toussaint 2005 / Bjorklund): spread k onsets over n steps as evenly as possible.
@@ -138,7 +138,7 @@ export function syncopation(p) {
     let best = -Infinity;
     for (let d = 1; d < p.length; d++) {
       const j = (i + d) % p.length;
-      if (j === next) break;                       
+      if (j === next) break;
       if (METRIC_WEIGHTS[j] > best) best = METRIC_WEIGHTS[j];
     }
     if (best > METRIC_WEIGHTS[i]) s += best - METRIC_WEIGHTS[i];
@@ -174,7 +174,7 @@ export const density = (p) => (p.length ? p.reduce((n, v) => n + (v ? 1 : 0), 0)
 export const grooveU = (x, mu, sigma) => Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma));
 
 const RATIOS = [[1, 1], [16, 15], [9, 8], [6, 5], [5, 4], [4, 3], [45, 32], [3, 2], [8, 5], [5, 3], [9, 5], [15, 8]];
-const HMAX = 1 / Math.log2(2);   
+const HMAX = 1 / Math.log2(2);
 /**
  * Consonance of an interval (Bowling & Purves 2018), scored from its just-intonation ratio.
  * @param semitones interval from the root in semitones (any integer; reduced mod 12)
@@ -213,9 +213,9 @@ const pick = (rng, arr) => arr[Math.floor(rng() * arr.length) % arr.length];
 
 /** Per-band syncopation targets `{ mu, sigma, w }` for the low / mid / high roles — each its own inverted-U and weight. */
 export const BANDS = {
-  low: { mu: 0.06, sigma: 0.12, w: 1.4 },    
-  mid: { mu: 0.42, sigma: 0.18, w: 2.2 },    
-  high: { mu: 0.26, sigma: 0.20, w: 1.0 },   
+  low: { mu: 0.06, sigma: 0.12, w: 1.4 },
+  mid: { mu: 0.42, sigma: 0.18, w: 2.2 },
+  high: { mu: 0.26, sigma: 0.20, w: 1.0 },
 };
 
 const CHROMA = [0, 3, 5, 7, 10, 12];
@@ -244,7 +244,6 @@ export function riffHarmonicity(riff, bassPattern) {
   return hit.reduce((s, n) => s + harmonicity(n), 0) / hit.length;
 }
 
-
 /**
  * Draw the line-up for one generation: each role plays with probability `p`, and a low-band voice is always kept.
  * @param rng a seeded random function
@@ -254,7 +253,7 @@ export function riffHarmonicity(riff, bassPattern) {
 export function sampleVoices(rng, roles) {
   const on = roles.filter((r) => r.p >= 1 || rng() < r.p);
   const low = roles.filter((r) => r.band === "low");
-  return on.some((r) => r.band === "low") || !low.length ? on : on.concat(low[0]);   
+  return on.some((r) => r.band === "low") || !low.length ? on : on.concat(low[0]);
 }
 
 /**
@@ -323,7 +322,7 @@ export function scoreGroove(cand, roles) {
 export function generateGroove(roles, { seed, tries = 220 } = {}) {
   const s = seed >>> 0;
   const rng = mulberry32(s);
-  const voices = sampleVoices(rng, roles);       
+  const voices = sampleVoices(rng, roles);
   let best = null, bestScore = -Infinity, sum = 0;
   for (let i = 0; i < tries; i++) {
     const cand = buildCandidate(rng, voices);

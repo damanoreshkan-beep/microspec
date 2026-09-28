@@ -1,5 +1,3 @@
-
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { bjorklund, rotate, syncopation, syncopationNorm, harmonicity, grooveU, mulberry32, generateGroove, buildCandidate, scoreGroove, METRIC_WEIGHTS } from "../groove.js";
 
@@ -17,7 +15,7 @@ Deno.test("bjorklund reproduces Toussaint's traditional rhythms", () => {
 Deno.test("bjorklund edges: k<=0, k>=n, n=0 never throw", () => {
   assertEquals(str(bjorklund(0, 8)), "........");
   assertEquals(str(bjorklund(8, 8)), "xxxxxxxx");
-  assertEquals(str(bjorklund(99, 4)), "xxxx");     
+  assertEquals(str(bjorklund(99, 4)), "xxxx");
   assertEquals(bjorklund(3, 0), []);
   assertEquals(str(bjorklund(-2, 4)), "....");
 });

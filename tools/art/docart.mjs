@@ -308,7 +308,7 @@ let stale = 0, written = 0;
 for (const [name, svg] of Object.entries(files)) {
   const path = `${OUT}/${name}`;
   let current = null;
-  try { current = await Deno.readTextFile(path); } catch {  }
+  try { current = await Deno.readTextFile(path); } catch { }
   if (current === svg) continue;
   if (check) { console.error(`  ✗ ${path} is ${current == null ? "missing" : "stale"} — run \`deno task docart\``); stale++; continue; }
   await Deno.writeTextFile(path, svg);
@@ -328,7 +328,7 @@ if (wantPng) {
   await Deno.mkdir(dir, { recursive: true });
   const fonts = [];
   for (const f of ["/usr/share/fonts/liberation/LiberationMono-Regular.ttf", "/usr/share/fonts/liberation/LiberationMono-Bold.ttf"]) {
-    try { fonts.push(await Deno.readFile(f)); } catch {  }
+    try { fonts.push(await Deno.readFile(f)); } catch { }
   }
   const only = Deno.args.find((a) => a.startsWith("--only="))?.slice(7);
   for (const [name, svg] of Object.entries(files)) {

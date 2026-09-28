@@ -45,4 +45,4 @@
  */
 import { atom } from "nanostores";
 /** Counter atom bumped by the sealed transport on every 401 "sign in" refusal; the shell opens the sign-in screen when it changes. */
-export const authWall = atom(0);   
+export const authWall = atom(0);

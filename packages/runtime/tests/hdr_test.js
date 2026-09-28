@@ -1,4 +1,3 @@
-
 import { assert, assertEquals, assertThrows, assertAlmostEquals } from "jsr:@std/assert@1";
 import { decodeHDR, rgbeToLinear, downsampleRGBE } from "../hdr.js";
 
@@ -30,10 +29,10 @@ Deno.test("decodes new-style RLE, components stored separately", () => {
 
 Deno.test("RLE literal spans and runs mix within one component", () => {
   const W = 8;
-  const comp = (vals) => vals;                       
+  const comp = (vals) => vals;
   const scan = new Uint8Array([
     2, 2, 0, W,
-    ...comp([4, 1, 2, 3, 4, 132, 9]),                
+    ...comp([4, 1, 2, 3, 4, 132, 9]),
     ...comp([136, 7]),
     ...comp([136, 7]),
     ...comp([136, 128]),
@@ -66,7 +65,7 @@ Deno.test("HDR really is high dynamic range — values far above 1.0 survive", (
 Deno.test("downsample averages in LINEAR space, not on the packed bytes", () => {
   const src = {
     width: 2, height: 1,
-    rgbe: new Uint8Array([128, 128, 128, 129,  128, 128, 128, 137 ]),
+    rgbe: new Uint8Array([128, 128, 128, 129, 128, 128, 128, 137]),
   };
   const out = downsampleRGBE(src, 1);
   assertEquals(out.width, 1);

@@ -72,7 +72,7 @@
  */
 
 import { generateAppIcons } from "./icons.mjs";
-import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";   
+import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";
 import { buildManifest } from "./manifest.mjs";
 import { buildAppCompat } from "./build-app.mjs";
 
@@ -135,7 +135,7 @@ async function gitCount(path) {
 const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
 const CORE = "1." + (await gitCount("packages/runtime"));
 for await (const e of Deno.readDir(RTSRC)) {
-  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");   
+  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");
   if (!keep || !(await isFileAt(RTSRC, e))) continue;
   if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\nexport const CORE = "${CORE}";\n`);
   else await Deno.copyFile(`${RTSRC}/${e.name}`, `${OUT}/_rt/${e.name}`);
@@ -150,19 +150,19 @@ if (RT_OVERLAY) {
 
 const ids = [];
 const skipped = [];
-const previews = new Map();   
+const previews = new Map();
 for await (const a of Deno.readDir("apps")) {
   if (!a.isDirectory || !(await has(`apps/${a.name}/spec.json`))) continue;
   const outDir = `${OUT}/${a.name}`;
-  const rt = (s) => s.replaceAll("/_rt/", "../_rt/");   
+  const rt = (s) => s.replaceAll("/_rt/", "../_rt/");
   await Deno.mkdir(outDir, { recursive: true });
-  const appVer = "1." + (await gitCount(`apps/${a.name}`));   
+  const appVer = "1." + (await gitCount(`apps/${a.name}`));
   for await (const f of Deno.readDir(`apps/${a.name}`)) {
     if (!f.isFile || f.name === "e2e.spec.mjs" || /\.(md|bak\.[a-z]+\.js)$/.test(f.name)) continue;
     if (/\.(html|js|css|json|svg|png|webp|webmanifest|wgsl|frag)$/.test(f.name)) {
       if (f.name === "spec.json") {
         const spec = JSON.parse(await Deno.readTextFile(`apps/${a.name}/spec.json`));
-        if (!spec.version) spec.version = appVer;               
+        if (!spec.version) spec.version = appVer;
         await Deno.writeTextFile(`${outDir}/spec.json`, rt(JSON.stringify(spec, null, 2) + "\n"));
       } else if (/\.(html|js|json)$/.test(f.name)) {
         await Deno.writeTextFile(`${outDir}/${f.name}`, rt(await Deno.readTextFile(`apps/${a.name}/${f.name}`)));
@@ -194,9 +194,9 @@ for await (const a of Deno.readDir("apps")) {
     const uk = JSON.parse(await Deno.readTextFile(`apps/${a.name}/i18n/uk.json`));
     const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
     await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline, master }));
-    previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });   
+    previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });
   }
-  await assertInstallable(outDir, a.name);   
+  await assertInstallable(outDir, a.name);
   ids.push(a.name);
 }
 

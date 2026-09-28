@@ -1,7 +1,5 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { hexRgb, iconTint } from "../colour.js";
-
 
 Deno.test("hexRgb: parses #rrggbb, #rgb shorthand, tolerates junk", () => {
   assertEquals(hexRgb("#ECECEE"), [236, 236, 238]);
@@ -24,7 +22,7 @@ Deno.test("iconTint: light theme → pastel accent tile, no black square", () =>
 });
 
 Deno.test("iconTint: inky/neutral accent falls back to the brand bg (stays legible on light)", () => {
-  const it = iconTint("#0A0A0F", "#ECECEE", false);   
+  const it = iconTint("#0A0A0F", "#ECECEE", false);
   assert(it.tile.includes("#0A0A0F"), "light tile colours from the brand bg, not the near-white accent");
   assert(!it.glyph.includes("#ECECEE"), "glyph is not the invisible near-white accent");
   assert(iconTint("#231708", "#FFD21E", false).tile.includes("#FFD21E"), "saturated yellow stays the hue source");

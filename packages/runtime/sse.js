@@ -65,7 +65,7 @@ export function parseSse() {
   const flush = (out) => {
     if (!lines.length) { event = null; return; }
     const raw = lines.join("\n"); lines = [];
-    let data = raw; try { data = JSON.parse(raw); } catch {  }
+    let data = raw; try { data = JSON.parse(raw); } catch { }
     out.push({ event: event || "message", data });
     event = null;
   };

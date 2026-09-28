@@ -1,4 +1,4 @@
-const LOOP = 12; 
+const LOOP = 12;
 
 const P = "#58a6ff", T = "#c9d1d9", G = "#3fb950", R = "#f85149", D = "#8b949e";
 const lines = [
@@ -22,7 +22,7 @@ const lines = [
 
 const padX = 24, top = 52, lh = 22, W = 760;
 const H = top + lines.length * lh + 20;
-const esc = (s) => s; 
+const esc = (s) => s;
 
 const rows = lines.map(([txt, , start], i) => {
   const y = top + i * lh;

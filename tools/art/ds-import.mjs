@@ -28,7 +28,7 @@ const alphaFromWhite = (d, w, h) => {
   const out = new Uint8ClampedArray(d.length);
   for (let i = 0; i < d.length; i += 4) {
     const mn = Math.min(d[i], d[i + 1], d[i + 2]);
-    if (mn >= floor) continue;                                   
+    if (mn >= floor) continue;
     const a = Math.min(255, Math.round((floor - mn) / floor * 255));
     const af = a / 255;
     out[i] = Math.max(0, Math.min(255, Math.round((d[i] - floor * (1 - af)) / af)));
@@ -40,7 +40,7 @@ const alphaFromWhite = (d, w, h) => {
 };
 
 for (const arg of Deno.args) {
-  if (arg.startsWith("--")) continue;                            
+  if (arg.startsWith("--")) continue;
   const m = /^([nd]):([a-z]+)=(.+)$/.exec(arg);
   if (!m) throw new Error(`usage: n:<name>=<png> | d:<name>=<png>, got ${arg}`);
   const [, set, name, src] = m;

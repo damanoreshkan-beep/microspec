@@ -55,12 +55,12 @@
  * @module
  */
 const KEY = "ms:lastgen";
-const STORE_SIDE = 768;   
+const STORE_SIDE = 768;
 
 function downscale(src) {
   return new Promise((resolve) => {
     const url = typeof src === "string" ? src : URL.createObjectURL(src);
-    const done = (v) => { if (typeof src !== "string") { try { URL.revokeObjectURL(url); } catch {  } } resolve(v); };
+    const done = (v) => { if (typeof src !== "string") { try { URL.revokeObjectURL(url); } catch { } } resolve(v); };
     const img = new Image();
     img.onload = () => {
       try {
@@ -89,7 +89,7 @@ export async function writeLastGen(src, prompt) {
     const url = await downscale(src);
     if (!url) return;
     localStorage.setItem(KEY, JSON.stringify({ url, prompt: String(prompt || "").slice(0, 400), ts: Date.now() }));
-  } catch {  }
+  } catch { }
 }
 
 /**

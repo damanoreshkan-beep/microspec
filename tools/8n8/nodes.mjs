@@ -1,4 +1,3 @@
-
 export const NODES = [
   {
     id: "ideate", kind: "agent", phase: "author", needs: [], scope: "farm", frozen: null,

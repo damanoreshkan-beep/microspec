@@ -112,7 +112,7 @@ export function field(latDeg, lonDeg, altKm = 0, year = EPOCH) {
   const st = Math.sqrt(1 - ct * ct);
   const r = Math.sqrt(altKm * altKm + 2 * q1 + (A4 - C4 * srlat2) / (q * q));
   const d = Math.sqrt(A2 * crlat2 + B2 * srlat2);
-  const ca = (altKm + d) / r;                     
+  const ca = (altKm + d) / r;
   const sa = C2 * crlat * srlat / (r * d);
 
   const sp = [0, srlon], cp = [1, crlon];
@@ -139,7 +139,7 @@ export function field(latDeg, lonDeg, altKm = 0, year = EPOCH) {
     }
   }
 
-  let Xp = 0, Yp = 0, Zp = 0;                     
+  let Xp = 0, Yp = 0, Zp = 0;
   for (let n = 1; n <= NMAX; n++) {
     const aor = (RE / r) ** (n + 2);
     for (let m = 0; m <= n; m++) {
@@ -160,7 +160,7 @@ export function field(latDeg, lonDeg, altKm = 0, year = EPOCH) {
   return {
     X, Y, Z, H,
     F: Math.hypot(H, Z),
-    declination: Math.atan2(Y, X) * R2D,          
+    declination: Math.atan2(Y, X) * R2D,
     inclination: Math.atan2(Z, H) * R2D,
   };
 }

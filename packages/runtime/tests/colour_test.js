@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { rgbToHex, rgbToHsl, avgColor, luminance, ink, palette } from "../colour.js";
 
@@ -8,7 +7,7 @@ Deno.test("colour rgbToHex: padded, clamped, upper-case", () => {
   assertEquals(rgbToHex([0, 0, 0]), "#000000");
   assertEquals(rgbToHex([255, 255, 255]), "#FFFFFF");
   assertEquals(rgbToHex([122, 90, 200]), "#7A5AC8");
-  assertEquals(rgbToHex([-5, 300, 15]), "#00FF0F"); 
+  assertEquals(rgbToHex([-5, 300, 15]), "#00FF0F");
 });
 
 Deno.test("colour rgbToHsl: primaries, greys, achromatic", () => {
@@ -17,19 +16,19 @@ Deno.test("colour rgbToHsl: primaries, greys, achromatic", () => {
   assertEquals(rgbToHsl([0, 0, 255]), [240, 100, 50]);
   assertEquals(rgbToHsl([0, 0, 0]), [0, 0, 0]);
   assertEquals(rgbToHsl([255, 255, 255]), [0, 0, 100]);
-  assertEquals(rgbToHsl([128, 128, 128]), [0, 0, 50]); 
+  assertEquals(rgbToHsl([128, 128, 128]), [0, 0, 50]);
 });
 
 Deno.test("colour avgColor: mean over RGBA, alpha ignored", () => {
   assertEquals(avgColor(rgba([[255, 0, 0], [0, 0, 255]])), [128, 0, 128]);
   assertEquals(avgColor(rgba([[10, 20, 30]])), [10, 20, 30]);
-  assertEquals(avgColor(new Uint8ClampedArray(0)), [0, 0, 0]); 
+  assertEquals(avgColor(new Uint8ClampedArray(0)), [0, 0, 0]);
 });
 
 Deno.test("colour ink: readable over a swatch (WCAG luminance)", () => {
-  assertEquals(ink([255, 255, 255]), "#000000"); 
-  assertEquals(ink([0, 0, 0]), "#FFFFFF");       
-  assertEquals(ink([250, 220, 60]), "#000000");  
+  assertEquals(ink([255, 255, 255]), "#000000");
+  assertEquals(ink([0, 0, 0]), "#FFFFFF");
+  assertEquals(ink([250, 220, 60]), "#000000");
   assert(luminance([255, 255, 255]) > luminance([0, 0, 0]));
 });
 

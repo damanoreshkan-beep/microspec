@@ -84,7 +84,7 @@ const DIST = flag("--dist", "dist");
 const OUT = flag("--out", "dist-eye");
 const only = (flag("--apps", "") || "").split(",").filter(Boolean);
 const light = args.includes("--light");
-const dev = { ...DEVICES.s25ultra, dpr: 2 };   
+const dev = { ...DEVICES.s25ultra, dpr: 2 };
 
 const apps = [];
 for await (const e of Deno.readDir(DIST)) if (e.isDirectory && e.name !== "_rt" && !e.name.startsWith(".")) apps.push(e.name);

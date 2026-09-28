@@ -1,4 +1,3 @@
-
 import { assertEquals, assertAlmostEquals } from "jsr:@std/assert@1";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 import { hapticFor, lookHeadingDeg, screenHeadingDeg, heldHeadingDeg, camControls } from "../sensors.js";

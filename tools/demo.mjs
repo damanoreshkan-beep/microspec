@@ -55,7 +55,7 @@ const has = (p) => { try { Deno.statSync(p); return true; } catch { return false
 let present = false;
 try {
   for (const e of Deno.readDirSync("apps")) if (e.isDirectory && has(`apps/${e.name}/spec.json`)) { present = true; break; }
-} catch {  }
+} catch { }
 if (present) {
   if (!has("apps/store")) {
     const { code } = await new Deno.Command("deno", { args: ["run", "-A", "deploy/sw.mjs"], stdout: "inherit", stderr: "inherit" }).output();

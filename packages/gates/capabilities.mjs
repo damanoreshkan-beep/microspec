@@ -61,7 +61,7 @@
  * @module
  */
 
-const ROOT = Deno.cwd(); 
+const ROOT = Deno.cwd();
 const read = (p) => { try { return Deno.readTextFileSync(`${ROOT}/${p}`); } catch { return null; } };
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -72,8 +72,8 @@ export const SYMBOL_CAPS = {
     compass: ["compass", "orientation"], tilt: ["orientation"], wakeLock: ["wakeLock"],
   },
   "/_rt/camprime.js": { CameraPrime: ["camera"], MicPrime: ["microphone"] },
-  "/_rt/camstage.js": { CamStage: ["camera", "wakeLock"] },   
-  "/_rt/intake.js": { Camera: ["camera"] },   
+  "/_rt/camstage.js": { CamStage: ["camera", "wakeLock"] },
+  "/_rt/intake.js": { Camera: ["camera"] },
   "/_rt/auth.js": { "*": ["auth"] },
   "/_rt/hackrf.js": { "*": ["usb"] },
 };

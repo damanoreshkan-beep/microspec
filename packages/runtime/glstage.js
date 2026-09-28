@@ -178,7 +178,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, camTex);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
             gl.activeTexture(gl.TEXTURE0);
-          } catch { return; }   
+          } catch { return; }
           camLast = src; camTime = video ? src.currentTime : -1; camAspect = w / h;
           if (!camBound) { camBound = 1; canvas.dataset.cam = "yes"; }
         };
@@ -203,10 +203,10 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.activeTexture(gl.TEXTURE0);
             tex2Aspect = img.naturalWidth / (img.naturalHeight || 1); tex2Bound = 1;
             canvas.dataset.tex2 = "yes";
-          } catch {  }
+          } catch { }
         };
         if (state.tex2Url) state.loadTex2(state.tex2Url);
-        gl.activeTexture(gl.TEXTURE0);   
+        gl.activeTexture(gl.TEXTURE0);
         const texture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 128, 255]));
@@ -231,7 +231,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             texAspect = w / h;
             canvas.dataset.tex = "yes";
             state.texReady?.(1);
-          } catch {  }
+          } catch { }
         };
         if (state.texUrl) state.loadTex(state.texUrl);
 
@@ -249,7 +249,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         let tick = 0;
         const frame = () => {
           if (state.dead) return;
-          if (document.hidden || (gate && (tick++ & 1))) { state.raf = requestAnimationFrame(frame); return; }   
+          if (document.hidden || (gate && (tick++ & 1))) { state.raf = requestAnimationFrame(frame); return; }
           const now = performance.now();
           gl.uniform2f(uRes, canvas.width, canvas.height);
           gl.uniform1f(uTime, still ? 2 : (now - t0) / 1000);
@@ -288,7 +288,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
       state.dead = true;
       cancelAnimationFrame(state.raf);
       state.cleanup?.();
-      try { state.gl?.getExtension("WEBGL_lose_context")?.loseContext(); } catch {  }
+      try { state.gl?.getExtension("WEBGL_lose_context")?.loseContext(); } catch { }
       state.gl = null;
     };
   }, []);

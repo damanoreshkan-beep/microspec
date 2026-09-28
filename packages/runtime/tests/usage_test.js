@@ -52,7 +52,7 @@ Deno.test("hookOf: nothing to name, and a node with no attributes at all", () =>
 
 Deno.test("hookOf: the walk is bounded, so a deep tree cannot cost a tap its frame", () => {
   let el = node({ "data-root": "" });
-  for (let i = 0; i < 20; i++) el = node({ class: "x" }, el);   
+  for (let i = 0; i < 20; i++) el = node({ class: "x" }, el);
   assertEquals(hookOf(el), "", "beyond the hop limit the tap is simply uncounted");
 });
 

@@ -14,7 +14,7 @@ Deno.test("strip: the edge fade is a scroll-driven mask on two registered number
   const block = css.match(/@supports \(animation-timeline: scroll\(\)\) \{([\s\S]*?)\n\}/);
   assert(block, "the fade must sit behind @supports (animation-timeline: scroll()) — the Safari 16 floor has no timelines");
   const b = block[1];
-  assertMatch(b, /--ms-sx-l:\s*0;\s*--ms-sx-r:\s*0;/);                      
+  assertMatch(b, /--ms-sx-l:\s*0;\s*--ms-sx-r:\s*0;/);
   assertMatch(b, /animation-timeline:\s*scroll\(self inline\)/);
   assertMatch(b, /mask-image:\s*linear-gradient\(to right, transparent 0, #000 calc\(var\(--ms-sx-l\) \* 1\.75rem\), #000 calc\(100% - var\(--ms-sx-r\) \* 1\.75rem\), transparent 100%\)/);
   assertMatch(b, /@keyframes ms-strip-edges \{ from \{ --ms-sx-l: 0; --ms-sx-r: 1; \} to \{ --ms-sx-l: 1; --ms-sx-r: 0; \} \}/);

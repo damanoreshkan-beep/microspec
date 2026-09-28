@@ -71,7 +71,7 @@ export function resolveSearch(url) {
   const keys = [...u.searchParams.keys()];
   if (!keys.length) return miss;
   for (const name of SEARCH_KEYS) {
-    const hit = keys.find((k) => k.toLowerCase() === name);            
+    const hit = keys.find((k) => k.toLowerCase() === name);
     if (hit) return { searchable: true, key: hit, term: u.searchParams.get(hit) || "" };
   }
   return miss;

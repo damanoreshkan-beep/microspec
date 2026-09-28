@@ -105,9 +105,9 @@ export function installUsage(S) {
   installed = true;
   startedAt = Date.now();
 
-  document.addEventListener("pointerdown", (e) => { try { bump(taps, hookOf(e.target)); } catch {  } }, { capture: true, passive: true });
+  document.addEventListener("pointerdown", (e) => { try { bump(taps, hookOf(e.target)); } catch { } }, { capture: true, passive: true });
 
-  try { S?.screen?.listen?.((v) => bump(screens, v || "root")); } catch {  }
+  try { S?.screen?.listen?.((v) => bump(screens, v || "root")); } catch { }
 
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushUsage(); });
   addEventListener("pagehide", flushUsage);

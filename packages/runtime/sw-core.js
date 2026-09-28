@@ -95,11 +95,11 @@ const CDN = [
   "https://fonts.gstatic.com",
 ];
 
-const COLD_TIMEOUT = 12000;   
-const REVAL_TIMEOUT = 20000;  
-const WALK_MAX = 90;          
+const COLD_TIMEOUT = 12000;
+const REVAL_TIMEOUT = 20000;
+const WALK_MAX = 90;
 const WALK_DEPTH = 3;
-const WALK_PARSE_MAX = 512 * 1024; 
+const WALK_PARSE_MAX = 512 * 1024;
 
 function cacheNameFor(url) {
   if (url.origin === self.location.origin) {
@@ -108,7 +108,7 @@ function cacheNameFor(url) {
   }
   return CDN.includes(url.origin) ? CDN_CACHE : null;
 }
-self.MS_POLICY = { cacheNameFor, APP_CACHE, CDN_CACHE, CDN };   
+self.MS_POLICY = { cacheNameFor, APP_CACHE, CDN_CACHE, CDN };
 
 const isNav = (req) => req.mode === "navigate" || req.destination === "document";
 const cacheable = (res) => !!res && res.status === 200 && (res.type === "basic" || res.type === "cors" || res.type === "default");
@@ -118,7 +118,7 @@ const isManifest = (req, url) => req.destination === "manifest" || /\/manifest\.
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
-  if (req.headers.has("range")) return;             
+  if (req.headers.has("range")) return;
   let url;
   try { url = new URL(req.url); } catch { return; }
   if (url.protocol !== "https:" && url.protocol !== "http:") return;
@@ -133,7 +133,7 @@ async function serve(e, req, url, name) {
   const hit = await lookup(cache, req);
   if (hit) {
     if (shouldRevalidate(req.url)) e.waitUntil(revalidate(cache, req, url));
-    return hit;                                      
+    return hit;
   }
   try {
     const res = await timedFetch(req, url, COLD_TIMEOUT, false);
@@ -184,7 +184,7 @@ function shouldRevalidate(url) {
     if (self.navigator && self.navigator.onLine === false) return false;
     const c = self.navigator && self.navigator.connection;
     if (c && (c.saveData === true || /^(slow-)?2g$/.test(c.effectiveType || ""))) return false;
-  } catch {  }
+  } catch { }
   revalidated.add(url);
   return true;
 }
@@ -196,7 +196,7 @@ async function revalidate(cache, req, url) {
     const prev = await cache.match(req, { ignoreVary: true });
     await cache.put(req, res.clone());
     if (prev && url.origin === self.location.origin && differs(prev, res)) announce();
-  } catch {  }
+  } catch { }
 }
 
 function differs(a, b) {

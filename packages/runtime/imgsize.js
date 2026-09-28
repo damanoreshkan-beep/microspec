@@ -77,16 +77,16 @@ export function fitResolution(vw, vh, dpr = 1, maxMP = 4) {
   let w = Math.max(1, vw) * (dpr || 1), h = Math.max(1, vh) * (dpr || 1);
   const budget = Math.max(0.25, maxMP) * 1_000_000;
   const area = w * h;
-  if (area > budget) { const s = Math.sqrt(budget / area); w *= s; h *= s; }   
+  if (area > budget) { const s = Math.sqrt(budget / area); w *= s; h *= s; }
   w = snap(w); h = snap(h);
   while (w * h > budget && (w > MIN || h > MIN)) { if (w >= h) w = Math.max(MIN, w - MULT); else h = Math.max(MIN, h - MULT); }
   return { width: w, height: h, mp: Math.round((w * h) / 10_000) / 100 };
 }
 
 /** The composer's frame: portrait 3:4, as width ÷ height. */
-export const AR = 3 / 4;                                   
+export const AR = 3 / 4;
 /** Per-side ceiling (px) the free FLUX Spaces honour before silently clamping. */
-export const MAX_SIDE = 2048;                              
+export const MAX_SIDE = 2048;
 /** Long-edge stops (px) of the quality slider, draft to max; each a multiple of 128 so ×AR stays 32-aligned. */
 export const QUALITY = [512, 768, 1024, 1536, 2048];
 /** Index into `QUALITY` of the default stop (1024 long edge → 768×1024). */

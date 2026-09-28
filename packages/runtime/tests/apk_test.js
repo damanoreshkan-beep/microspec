@@ -1,4 +1,3 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { apkPower } from "../apk.js";
 import { FLAVOURS, FLAVOUR_OF } from "../shell-actions.js";

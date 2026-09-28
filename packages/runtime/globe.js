@@ -121,7 +121,7 @@ export const ringAround = (lat, lon, km) => geoCircle().center([lon, lat]).radiu
 export function Globe({ onPick, selected, marker, focus, points, paths, spin = true, height = 340 }) {
   const wrap = useRef(), canvas = useRef();
   const S = useRef({ rot: focus ? [-focus.lon, -focus.lat] : [10, -20], drag: null, fly: null, raf: 0, zoom: 1, ptrs: new Map(), pinch: null, pinched: false, lastTap: 0 });
-  const P = useRef({}); P.current = { onPick, selected, marker, points, paths, spin }; 
+  const P = useRef({}); P.current = { onPick, selected, marker, points, paths, spin };
   const [ready, setReady] = useState(!!LAND);
 
   useEffect(() => { loadWorld().then(() => setReady(true)).catch(() => {}); }, []);
@@ -141,7 +141,7 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
 
     const draw = () => {
       const s = S.current, p = P.current, c = pal();
-      proj.scale(baseScale * s.zoom).rotate(s.rot); 
+      proj.scale(baseScale * s.zoom).rotate(s.rot);
       const path = geoPath(proj, ctx);
       ctx.clearRect(0, 0, size, size);
       ctx.beginPath(); path({ type: "Sphere" }); ctx.fillStyle = c.ocean; ctx.fill();
@@ -178,7 +178,7 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
         if (k >= 1) s.fly = null; dirty = true;
       } else if (p.spin && s.ptrs.size === 0 && s.zoom <= 1.05 && p.selected == null && p.marker == null) { s.rot = [s.rot[0] + 0.12, s.rot[1]]; dirty = true; }
       if (s.drag) dirty = true;
-      if (p.points && p.points.some((pt) => pt.pulse)) dirty = true; 
+      if (p.points && p.points.some((pt) => pt.pulse)) dirty = true;
       if (size && dirty) { draw(); dirty = false; }
       S.current.raf = requestAnimationFrame(frame);
     };
@@ -200,12 +200,12 @@ export function Globe({ onPick, selected, marker, focus, points, paths, spin = t
       const s = S.current; if (!s.ptrs.has(e.pointerId)) return;
       s.ptrs.delete(e.pointerId); dirty = true;
       if (s.ptrs.size < 2) s.pinch = null;
-      if (s.ptrs.size === 1) { const pt = [...s.ptrs.values()][0]; s.drag = { x: pt.x, y: pt.y, rot: [...s.rot], moved: 99 }; return; } 
+      if (s.ptrs.size === 1) { const pt = [...s.ptrs.values()][0]; s.drag = { x: pt.x, y: pt.y, rot: [...s.rot], moved: 99 }; return; }
       if (s.ptrs.size > 0) return;
       const tap = s.drag && s.drag.moved < 6 && !s.pinched; s.drag = null;
       if (!tap) return;
       const now = performance.now();
-      if (now - s.lastTap < 280 && s.zoom > 1.02) { s.zoom = 1; s.lastTap = 0; return; }  
+      if (now - s.lastTap < 280 && s.zoom > 1.02) { s.zoom = 1; s.lastTap = 0; return; }
       s.lastTap = now;
       if (P.current.onPick) {
         const rect = cv.getBoundingClientRect(), px = e.clientX - rect.left, py = e.clientY - rect.top;

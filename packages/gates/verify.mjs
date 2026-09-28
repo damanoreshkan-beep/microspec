@@ -1,4 +1,3 @@
-#!/usr/bin/env -S deno run -A
 /* @ts-self-types="./verify.d.mts" */
 /**
  * # verify — the deep gate: every DOM check across an app's states in one Chromium session
@@ -108,14 +107,14 @@ const isBlank = (ev) => ev(() => (document.body.innerText || "").replace(/\s/g, 
 
 try {
   const page = await browser.newPage();
-  await page.setViewportSize({ width: dev.width, height: dev.height });   
+  await page.setViewportSize({ width: dev.width, height: dev.height });
   const { h, ev } = makeHelpers(page);
 
   const runErrs = [];
   try {
     page.addEventListener("pageerror", (e) => runErrs.push("uncaught: " + String(e.detail?.message || e.detail || e).split("\n")[0].slice(0, 200)));
     page.addEventListener("console", (e) => { if (e.detail?.type === "error") { const tx = String(e.detail.text || ""); if (!/favicon|net::|Failed to load resource|ERR_|status of [45]|CORS|Access-Control/i.test(tx)) runErrs.push("console.error: " + tx.slice(0, 200)); } });
-  } catch {  }
+  } catch { }
 
   console.log(`\n  verify: ${appdir}\n`);
 
@@ -203,7 +202,7 @@ try {
 
   console.log(`  ${C.d}animation${C.x}`);
   await gotoAndSettle(page, srv.url + "?__anim=1", 600);
-  await h.wait(2600);                                                     
+  await h.wait(2600);
   const spA = await spinnerCount(ev);
   spA === 0 ? ok("animations: no spinner after settle") : no("animations: spinner leaked", `${spA}`);
   (await isBlank(ev)) ? no("animations: app still visible", "blank after animating") : ok("animations: app still visible + settled");

@@ -93,7 +93,7 @@ const loadGis = () => (gisP ||= new Promise((resolve, reject) => {
   s.onerror = () => { gisP = null; reject(new Error("gis-load")); };
   document.head.appendChild(s);
 }));
-let prompted = false;   
+let prompted = false;
 
 /**
  * The sign-in surface: Google's GIS button plus a quiet GitHub action in a browser, a browser-pairing button
@@ -107,7 +107,7 @@ let prompted = false;
 export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onError, className = "" }) {
   const t = L[lang(locale)] || L.en;
   const slot = useRef(), box = useRef();
-  const [clientId, setClientId] = useState(gate ? "mock-google-client" : null);   
+  const [clientId, setClientId] = useState(gate ? "mock-google-client" : null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const wantGoogle = github !== "primary";
@@ -154,7 +154,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       render();
       mo = new MutationObserver(render);
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-      if (!prompted) { prompted = true; try { gis.prompt(); } catch {  } }
+      if (!prompted) { prompted = true; try { gis.prompt(); } catch { } }
     })();
     return () => { live = false; mo?.disconnect(); };
   }, [clientId, wantGoogle]);
@@ -173,7 +173,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   };
 
   const inShell = !gate && shell.present;
-  const [pairing, setPairing] = useState(null);   
+  const [pairing, setPairing] = useState(null);
   useEffect(() => {
     if (!pairing) return;
     let live = true; const t0 = Date.now();

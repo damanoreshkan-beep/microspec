@@ -1,10 +1,9 @@
-
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { generateMelody, scoreMelody } from "../melody.js";
 import { mulberry32 } from "../groove.js";
 
-const D_KURD = [0, 7, 8, 10, 12, 14, 15, 17, 19];        
-const C_MAJOR = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];      
+const D_KURD = [0, 7, 8, 10, 12, 14, 15, 17, 19];
+const C_MAJOR = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];
 
 Deno.test("generateMelody is deterministic, seed-addressable, and in-scale", () => {
   const a = generateMelody(D_KURD, { seed: 2024 }), b = generateMelody(D_KURD, { seed: 2024 });
@@ -41,7 +40,7 @@ Deno.test("THE CLAIM: generated melodies are SMOOTHER than random — not a dice
 });
 
 Deno.test("scoreMelody rewards a resolving, stepwise phrase over a leapy unresolved one", () => {
-  const stepwise = [0, 1, 2, 1, 2, 3, 2, 1, 0].map((i) => ({ i }));      
-  const leapy = [0, 8, 1, 7, 2, 6, 3, 5, 4].map((i) => ({ i }));         
+  const stepwise = [0, 1, 2, 1, 2, 3, 2, 1, 0].map((i) => ({ i }));
+  const leapy = [0, 8, 1, 7, 2, 6, 3, 5, 4].map((i) => ({ i }));
   assert(scoreMelody(stepwise, C_MAJOR) > scoreMelody(leapy, C_MAJOR), "sweet phrase must outscore the leapy one");
 });

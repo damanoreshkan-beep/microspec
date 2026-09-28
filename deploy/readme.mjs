@@ -63,7 +63,7 @@ import { readLocales } from "../packages/gen/compose.mjs";
 const has = async (p) => { try { await Deno.stat(p); return true; } catch { return false; } };
 const readJson = async (p) => JSON.parse(await Deno.readTextFile(p));
 
-const ACCENT = "C13BFF";                 
+const ACCENT = "C13BFF";
 const CAP = {
   usb: "WebUSB", camera: "Camera", sensors: "Sensors", audio: "Audio", geo: "Location",
   storage: "Offline store", clipboard: "Clipboard", share: "Share", wakelock: "Wake lock",

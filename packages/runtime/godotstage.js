@@ -73,7 +73,7 @@ export function godotSave(name) { return shell.call("godot.save", name ? { name 
  */
 export function GodotStage({ pack, params = {}, onState, gestures = true, className = "", children }) {
   const [state, setState] = useState("idle");
-  const sent = useRef({});            
+  const sent = useRef({});
   const cb = useRef(onState); cb.current = onState;
   const live = godotAvailable();
 

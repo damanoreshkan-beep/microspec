@@ -59,10 +59,10 @@
  */
 import { html } from "htm/preact";
 import { useRef, useEffect } from "preact/hooks";
-import { gate } from "./gate.js";   
+import { gate } from "./gate.js";
 
 const DPR_CAP = 2;
-const N = 800;                     
+const N = 800;
 
 const VS = `
   attribute vec2 a_pos; attribute float a_size; attribute float a_alpha;
@@ -97,7 +97,7 @@ export function Dust({ active = true, progress = null }) {
   progRef.current = progress;
 
   useEffect(() => {
-    if (gate) return;                                  
+    if (gate) return;
     const canvas = ref.current; if (!canvas) return;
     const gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: false, antialias: true });
     if (!gl) return;
@@ -105,7 +105,7 @@ export function Dust({ active = true, progress = null }) {
     gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VS));
     gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FS));
     gl.linkProgram(prog); gl.useProgram(prog);
-    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);   
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     const home = new Float32Array(N * 2), ang = new Float32Array(N), rad = new Float32Array(N),
       ph = new Float32Array(N), sz = new Float32Array(N), px = new Float32Array(N * 2), pv = new Float32Array(N * 2);
@@ -113,7 +113,7 @@ export function Dust({ active = true, progress = null }) {
     for (let i = 0; i < N; i++) {
       const r = Math.sqrt(i / N), a = i * GA;
       home[i * 2] = Math.cos(a) * r * 0.78; home[i * 2 + 1] = Math.sin(a) * r * 0.78;
-      ang[i] = Math.random() * Math.PI * 2; rad[i] = 0.45 + Math.random() * 1.5;   
+      ang[i] = Math.random() * Math.PI * 2; rad[i] = 0.45 + Math.random() * 1.5;
       ph[i] = Math.random() * Math.PI * 2; sz[i] = 1.0 + Math.random() * 1.6;
       px[i * 2] = home[i * 2]; px[i * 2 + 1] = home[i * 2 + 1];
     }
@@ -138,7 +138,7 @@ export function Dust({ active = true, progress = null }) {
       const t = (now - t0) / 1000;
       const target = progRef.current == null ? 0 : Math.min(1, Math.max(0, progRef.current));
       gather += (target - gather) * 0.03;
-      const fit = aspect >= 1 ? [1 / aspect, 1] : [1, aspect];   
+      const fit = aspect >= 1 ? [1 / aspect, 1] : [1, aspect];
       for (let i = 0; i < N; i++) {
         const wave = 0.5 + 0.5 * Math.sin(t * 0.7 + ph[i]);
         const spread = (0.28 + 0.9 * wave) * (1 - gather * 0.85);
@@ -150,7 +150,7 @@ export function Dust({ active = true, progress = null }) {
         pv[i * 2 + 1] += (ty - px[i * 2 + 1]) * 0.05; pv[i * 2 + 1] *= 0.9; px[i * 2 + 1] += pv[i * 2 + 1];
         pos[i * 2] = px[i * 2] * fit[0]; pos[i * 2 + 1] = px[i * 2 + 1] * fit[1];
         size[i] = sz[i] * dpr * (0.75 + wave * 0.5);
-        alpha[i] = 0.13 + 0.11 * (1 - Math.min(1, spread));   
+        alpha[i] = 0.13 + 0.11 * (1 - Math.min(1, spread));
       }
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
@@ -167,6 +167,7 @@ export function Dust({ active = true, progress = null }) {
   }, []);
 
   return html`<div class="absolute inset-0 overflow-hidden" style="background:radial-gradient(120% 120% at 50% 45%, #16131f 0%, #0a0a0f 70%)">
+    ${""}
     <div class="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 rounded-full"
       style="width:40vmin;height:40vmin;background:radial-gradient(circle, rgba(242,199,102,0.22) 0%, transparent 62%);filter:blur(8px)"></div>
     ${gate ? null : html`<canvas ref=${ref} class="absolute inset-0 w-full h-full"></canvas>`}

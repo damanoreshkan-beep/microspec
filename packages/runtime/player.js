@@ -70,7 +70,7 @@ export const REPEAT_ICON = { off: "lucide:repeat", all: "lucide:repeat", one: "l
  * @returns the following entry of REPEAT_MODES
  */
 export function cycleRepeat(mode) {
-  const i = Math.max(0, REPEAT_MODES.indexOf(mode));    
+  const i = Math.max(0, REPEAT_MODES.indexOf(mode));
   return REPEAT_MODES[(i + 1) % REPEAT_MODES.length];
 }
 
@@ -88,12 +88,12 @@ export function advance(index, length, { step = 1, repeat = "off", shuffle = fal
   if (repeat === "one" && !manual) return Math.min(Math.max(index, 0), len - 1);
   if (shuffle) {
     let n = Math.floor(rng() * (len - 1));
-    if (n >= index) n += 1;                            
+    if (n >= index) n += 1;
     return Math.min(n, len - 1);
   }
   const next = index + step;
   if (next >= len) return repeat === "off" && !manual ? -1 : 0;
-  if (next < 0) return len - 1;                        
+  if (next < 0) return len - 1;
   return next;
 }
 

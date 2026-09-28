@@ -81,12 +81,12 @@ import { ACTIONS, CATALOGUE_BRIDGE } from "./shell-actions.js";
 
 /** The closed set of ShellError codes — app code branches on these values, never on a message. */
 export const ERR = {
-  unsupported: "unsupported",   
-  staleBridge: "staleBridge",   
-  denied: "denied",             
-  needsSettings: "needsSettings", 
-  unavailable: "unavailable",   
-  failed: "failed",             
+  unsupported: "unsupported",
+  staleBridge: "staleBridge",
+  denied: "denied",
+  needsSettings: "needsSettings",
+  unavailable: "unavailable",
+  failed: "failed",
 };
 
 /** The error every shell call/subscribe rejects with: `code` is one of ERR.*, `detail` the shell's own note. */
@@ -120,7 +120,7 @@ const pending = new Map();
 function deliver(msg) {
   const entry = msg && pending.get(msg.id);
   if (!entry) return;
-  if (msg.stream) { entry.onEvent?.(msg.value); return; }     
+  if (msg.stream) { entry.onEvent?.(msg.value); return; }
   pending.delete(msg.id);
   if (msg.ok) entry.resolve(msg.value);
   else entry.reject(new ShellError(msg.code || ERR.failed, msg.detail));
@@ -130,7 +130,7 @@ function listen() {
   if (typeof window === "undefined" || listen.done) return;
   listen.done = true;
   window.__msShellReply = deliver;
-  window.addEventListener("msShell:reply", (e) => deliver(e && e.detail));   
+  window.addEventListener("msShell:reply", (e) => deliver(e && e.detail));
 }
 
 /**
@@ -188,7 +188,7 @@ export const shell = {
   /** ERR.* explaining why hasCapability() is false, or "" when it is true. */
   whyCapability(cap) {
     const ids = shell.actions.filter((id) => ACTIONS[id].capability === cap);
-    if (!ids.length) return ERR.unsupported;                    
+    if (!ids.length) return ERR.unsupported;
     if (ids.some((id) => shell.has(id))) return "";
     return ids.some((id) => shell.why(id) === ERR.staleBridge) ? ERR.staleBridge : ERR.unsupported;
   },
@@ -224,7 +224,7 @@ export const shell = {
     const a = ACTIONS[id];
     if (!a || a.kind !== "subscribe" || typeof onEvent !== "function") return () => {};
     if (gate) { onEvent(structuredCloneish(a.mock)); return () => {}; }
-    const fail = (e) => { try { onError?.(e); } catch {  } };
+    const fail = (e) => { try { onError?.(e); } catch { } };
     const why = shell.why(id);
     if (why) { fail(new ShellError(why, id)); return () => {}; }
     listen();
@@ -234,7 +234,7 @@ export const shell = {
     catch (e) { pending.delete(reqId); fail(new ShellError(ERR.failed, String(e && e.message || e))); return () => {}; }
     return () => {
       pending.delete(reqId);
-      try { native().cancel(reqId); } catch {  }
+      try { native().cancel(reqId); } catch { }
     };
   },
 };

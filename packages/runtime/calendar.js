@@ -115,7 +115,7 @@ export function monthGrid(ym, weekStart = 1) {
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push(null);
   for (let d = 1; d <= len; d++) cells.push({ key: `${year}-${pad2(month)}-${pad2(d)}`, day: d });
-  while (cells.length % 7) cells.push(null);          
+  while (cells.length % 7) cells.push(null);
   const weeks = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   return { year, month, weeks };
@@ -136,7 +136,7 @@ export function markMap(marks) {
 }
 
 const intlLoc = (loc) => (loc === "uk" ? "uk-UA" : loc || "en-US");
-const WEEK_REF = Date.UTC(2024, 0, 1);   
+const WEEK_REF = Date.UTC(2024, 0, 1);
 
 /**
  * The month calendar (Preact): a 7-column grid of the month's own days, a dot on every marked day, one
@@ -177,6 +177,7 @@ export function Calendar({ month, value, marks, onPick, onMonth, min, max, pick 
   return html`<div class="@container flex flex-col gap-2" data-calendar=${ym}>
     <div class="flex items-center justify-between gap-1">
       ${arrow("lucide:chevron-left", prev, canPrev, sys("calPrev", lang))}
+      ${""}
       <span data-cal-title aria-live="polite" class="font-semibold text-center grow min-w-0 truncate first-letter:uppercase">${title}</span>
       ${arrow("lucide:chevron-right", next, canNext, sys("calNext", lang))}
     </div>

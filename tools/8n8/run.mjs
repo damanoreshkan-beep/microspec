@@ -88,7 +88,7 @@ const flagOf = (name) => args.find((a) => a.startsWith(`--${name}=`))?.split("="
 const has = (name) => args.includes(`--${name}`);
 const flow = args.find((a) => !a.startsWith("--")) ?? "gates";
 const ctx = { app: flagOf("app"), recipe: flagOf("recipe") };
-const CONCURRENCY = Number(flagOf("jobs") ?? 4);   
+const CONCURRENCY = Number(flagOf("jobs") ?? 4);
 
 const C = { dim: "\x1b[2m", red: "\x1b[31m", green: "\x1b[32m", yellow: "\x1b[33m", bold: "\x1b[1m", off: "\x1b[0m" };
 
@@ -138,7 +138,7 @@ if (needsApp.length && !ctx.app) {
   Deno.exit(2);
 }
 
-const results = new Map();   
+const results = new Map();
 const started = Date.now();
 
 const inPlan = (d) => wanted.has(d) && byId(d).kind === "script";
@@ -226,7 +226,7 @@ while (pending.size) {
   }
   if (!wave.length) {
     if (dead.length) continue;
-    break;    
+    break;
   }
   for (let i = 0; i < wave.length; i += CONCURRENCY) {
     await Promise.all(wave.slice(i, i + CONCURRENCY).map((n) => { pending.delete(n.id); return exec(n); }));
@@ -272,7 +272,7 @@ if (!failed.length && flow === "gates") {
       flow, at: new Date().toISOString(), seconds: Number(secs),
       tree: treeHash(), nodes: [...results.keys()].sort(),
     }, null, 1));
-  } catch {  }
+  } catch { }
 }
 
 Deno.exit(failed.length ? 1 : 0);

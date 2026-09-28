@@ -25,11 +25,11 @@ async function xvfbRunning(dnum) {
 export async function ensureDisplayUp() {
   ensureDisplay();
   const dnum = Deno.env.get("DISPLAY_NUM") ?? "99";
-  if (Deno.env.get("DISPLAY") !== `:${dnum}`) return true;                 
+  if (Deno.env.get("DISPLAY") !== `:${dnum}`) return true;
   const sock = `/tmp/.X11-unix/X${dnum}`;
-  if (await xvfbRunning(dnum) && await fileExists(sock)) return true;       
-  try { await Deno.remove(sock); } catch {  }            
-  try { await Deno.remove(`/tmp/.X${dnum}-lock`); } catch {  }
+  if (await xvfbRunning(dnum) && await fileExists(sock)) return true;
+  try { await Deno.remove(sock); } catch { }
+  try { await Deno.remove(`/tmp/.X${dnum}-lock`); } catch { }
   new Deno.Command("Xvfb", { args: [`:${dnum}`, "-screen", "0", "1280x900x24", "-extension", "MIT-SHM", "-nolisten", "tcp"], stdin: "null", stdout: "null", stderr: "null" }).spawn().unref();
   for (let i = 0; i < 50; i++) { if (await fileExists(sock) && await xvfbRunning(dnum)) return true; await sleep(100); }
   return false;
@@ -83,7 +83,6 @@ export function makeHelpers(page) {
       for (const c of codes) await h.keyUp(c);
     },
     hasClass: (s, c) => ev((s, c) => !!document.querySelector(s)?.classList.contains(c), s, c),
-    
     css: (s, prop) => ev((s, prop) => {
       const el = document.querySelector(s);
       return el ? getComputedStyle(el).getPropertyValue(prop).trim() : null;
@@ -104,17 +103,16 @@ export function makeHelpers(page) {
   };
   return { h, ev };
 }
+
 export async function gotoAndSettle(page, url, settle = 3500) {
   await page.goto(url, { waitUntil: "load" });
   await sleep(settle);
   await layoutStill(page);
 }
 
-
 export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
   const read = () => page.evaluate(() => {
-    try { document.fonts?.ready?.catch?.(() => {}); } catch {  }
-    
+    try { document.fonts?.ready?.catch?.(() => {}); } catch { }
     const pending = [...document.querySelectorAll('link[rel~="stylesheet"]')]
       .filter((l) => { try { return new URL(l.href, location.href).origin === location.origin && !l.sheet; } catch { return false; } }).length;
     return document.documentElement.scrollWidth + ":" + document.documentElement.scrollHeight +
@@ -124,11 +122,12 @@ export async function layoutStill(page, { tries = 12, gap = 80 } = {}) {
   for (let i = 0; i < tries; i++) {
     await sleep(gap);
     const now = await read();
-    if (now === prev && /:1:0$/.test(now)) return true;                 
+    if (now === prev && /:1:0$/.test(now)) return true;
     prev = now;
   }
   return false;
 }
+
 export const BREAKPOINTS = [
   { id: "phone-sm",    w: 320,  h: 568,  note: "9:16 · small-phone floor" },
   { id: "phone",       w: 384,  h: 832,  note: "20:9 · reference device" },
@@ -141,27 +140,17 @@ export const BREAKPOINTS = [
   { id: "desktop",     w: 1280, h: 900,  note: "16:10 · desktop" },
 ];
 
-
-
-
-
-
-
 export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) {
   const out = [];
   for (const bp of BREAKPOINTS) {
-    
     if (bp.w < minWidth) continue;
     await page.setViewportSize({ width: bp.w, height: bp.h });
-    await sleep(260);                                   
+    await sleep(260);
     const m = await ev(() => {
       const de = document.documentElement;
       const ox = de.scrollWidth - window.innerWidth;
       let sel = "?";
       if (ox > 1) {
-        
-        
-        
         const clipped = (el) => {
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const cs = getComputedStyle(p);
@@ -173,14 +162,11 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         };
         let far = window.innerWidth, node = null;
         for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5 && !clipped(el)) { far = r.right; node = el; } }
-        
         const chain = [];
         for (let el = node; el && el !== document.body && chain.length < 5; el = el.parentElement) {
           const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
           const b = el.getBoundingClientRect();
           chain.push(`${el.tagName.toLowerCase()}${c ? "." + c : ""}[w${Math.round(b.width)}→x${Math.round(b.right)}]`);
-          
-          
           if (chain.length === 2) {
             const sibs = [...el.children].slice(0, 6).map((k) => {
               const kb = k.getBoundingClientRect();
@@ -197,14 +183,11 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
       if (fit) {
         const v = document.getElementById("view");
         oy = v ? Math.max(v.scrollHeight - v.clientHeight, de.scrollHeight - window.innerHeight) : 0;
-        
         if (oy > 1 && v) {
           let low = v.getBoundingClientRect().bottom, node = null;
           for (const el of v.querySelectorAll("*")) { const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > low + 0.5) { low = r.bottom; node = el; } }
           const name = (el) => { const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : ""; return el.tagName.toLowerCase() + (c ? "." + c : ""); };
           if (node) {
-            
-            
             const kids = [...node.children].slice(0, 4).map((k) => {
               const cs = getComputedStyle(k);
               const tracks = cs.display.includes("grid") ? ` ${cs.gridTemplateColumns.split(" ").length}tr` : "";
@@ -214,15 +197,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           }
         }
       }
-      
-      
-      
-      
-      
-      
-      
-      
-      
       let hide = 0, hsel = "?", hgeo = "";
       const nav = document.querySelector("nav[data-dock]");
       const view = document.getElementById("view");
@@ -231,15 +205,8 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
           if (r.width < 8 || r.height < 8) continue;
-          
-          
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          
-          
-          
-          
-          
           let vr = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
           for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
             const pcs = getComputedStyle(p);
@@ -247,14 +214,13 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
             const pr = p.getBoundingClientRect();
             vr = { top: Math.max(vr.top, pr.top), bottom: Math.min(vr.bottom, pr.bottom), left: Math.max(vr.left, pr.left), right: Math.min(vr.right, pr.right) };
           }
-          if (vr.right - vr.left <= 1 || vr.bottom - vr.top <= 1) continue;   
+          if (vr.right - vr.left <= 1 || vr.bottom - vr.top <= 1) continue;
           const over = Math.min(vr.bottom, d.bottom) - Math.max(vr.top, d.top);
           const across = Math.min(vr.right, d.right) - Math.max(vr.left, d.left);
           if (over > 1 && across > 1 && over > hide) {
             hide = over;
             const c = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
             hsel = el.tagName.toLowerCase() + (c ? "." + c : "");
-            
             const chain = [];
             for (let q = el; q && q !== document.body && chain.length < 4; q = q.parentElement) {
               const qs = getComputedStyle(q), qr = q.getBoundingClientRect();
@@ -265,23 +231,19 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
           }
         }
       }
-      
       let clear = 999, csel = "?";
       if (nav && view) {
         const d = nav.getBoundingClientRect();
-        const vertical = d.width < window.innerWidth * 0.9;      
+        const vertical = d.width < window.innerWidth * 0.9;
         for (const el of view.querySelectorAll("*")) {
           const r = el.getBoundingClientRect();
           if (r.width < 24 || r.height < 12) continue;
           const cs = getComputedStyle(el);
           if (cs.pointerEvents === "none" || cs.position === "fixed" || el.getAttribute("aria-hidden") === "true") continue;
-          
           const painted = cs.backgroundImage !== "none" ||
             !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(cs.backgroundColor) ||
             cs.boxShadow !== "none" || parseFloat(cs.borderTopWidth) > 0;
           if (!painted) continue;
-          
-          
           let skip = false;
           for (let q = el.parentElement; q && q !== document.body; q = q.parentElement) {
             const qs = getComputedStyle(q);
@@ -312,7 +274,6 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
         pass: { name: `${label}: один екран без скролу (fit)`, ok: true },
         fail: { name: `${label}: fit-екран не вміщується`, ok: false, msg: `+${m.oy}px по висоті — винуватець: ${m.vsel}. Ущільніть через --ms-* або перенесіть у Sheet` },
       });
-      
       if (m.clear >= 0 && m.clear < m.minGap) {
         out.push({ name: `${label}: контент притиснутий до хрому (fit)`, ok: false,
           msg: `${m.clear}px замість ${m.minGap}px — ${m.csel}. Просвіт має бути щонайменше --ms-gap: інакше віджет читається як приварений до таб-бару` });
@@ -328,12 +289,8 @@ export async function runResponsiveMatrix(page, ev, dev, { minWidth = 0 } = {}) 
   return out;
 }
 
-
-
-
 export async function runDesignChecks(ev) {
   const out = [];
-  
   await ev(() => { const s = document.createElement("style"); s.id = "__freeze"; s.textContent = "*,*::before,*::after{transition:none!important;animation:none!important}"; document.head.appendChild(s); });
   const runAxe = () => ev(async () => {
     const r = await axe.run(document, { resultTypes: ["violations"] });
@@ -348,8 +305,6 @@ export async function runDesignChecks(ev) {
   try {
     await ev(async (src) => { await new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }, AXE);
     out.push(axeResult(await runAxe(), "(dark)"));
-    
-    
     const base = await ev(() => document.documentElement.getAttribute("data-theme") || "signal");
     const flipped = await ev((th) => { const t = th.includes("light") ? th : th + "-light"; document.documentElement.setAttribute("data-theme", t); return t; }, base);
     await sleep(200);
@@ -357,18 +312,15 @@ export async function runDesignChecks(ev) {
     await ev((th) => document.documentElement.setAttribute("data-theme", th), base);
   } catch (e) { out.push({ name: "a11y (axe)", ok: false, msg: "не вдалось завантажити axe: " + e.message }); }
 
-  
   const ovi = await ev(() => {
     const ov = document.documentElement.scrollWidth - window.innerWidth;
     if (ov <= 1) return { ov: 0 };
-    
     const nameOf = (el) => {
       const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 2).join(".") : "";
       return (el.id ? "#" + el.id : el.tagName.toLowerCase()) + (cls ? "." + cls : "");
     };
     let sel = "?", far = window.innerWidth;
     for (const el of document.querySelectorAll("body *")) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.right > far + 0.5) { far = r.right; sel = nameOf(el); } }
-    
     if (sel === "?") {
       let leftmost = 0, lsel = "", widest = null, w = 0;
       for (const el of document.querySelectorAll("body *")) {
@@ -382,9 +334,7 @@ export async function runDesignChecks(ev) {
     return { ov, sel };
   });
   out.push(ovi.ov <= 1 ? { name: "phone 384px: без горизонтального overflow", ok: true } : { name: "phone 384px: overflow", ok: false, msg: `+${ovi.ov}px — винуватець: ${ovi.sel}` });
-  
-  
-  
+
   const shifted = await ev(() => {
     const bad = [];
     for (const sel of ["header.navbar", "nav[data-dock]"]) {
@@ -402,6 +352,7 @@ export async function runDesignChecks(ev) {
   out.push(shifted.length
     ? { name: "хром-декор без бічного зсуву", ok: false, msg: shifted.join("; ") }
     : { name: "хром-декор без бічного зсуву", ok: true });
+
   await ev(() => document.getElementById("__freeze")?.remove());
   return out;
 }

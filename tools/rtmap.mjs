@@ -83,7 +83,7 @@ try {
   names = [...Deno.readDirSync("rt")]
     .filter((e) => e.isFile && e.name.endsWith(".js") && !e.name.endsWith("_test.js"))
     .map((e) => e.name).sort();
-} catch {  }
+} catch { }
 if (!names.length) {
   if (check) console.log("  ✓ no rt/ overlay — no preflight map needed");
   Deno.exit(0);
@@ -98,14 +98,14 @@ const resolvedCore = async () => {
     const lock = JSON.parse(await Deno.readTextFile("deno.lock"));
     const v = lock.specifiers?.[`jsr:@microspec/core@${spec}`];
     if (v) return v;
-  } catch {  }
-  try { return JSON.parse(await Deno.readTextFile("node_modules/@microspec/core/package.json")).version; } catch {  }
+  } catch { }
+  try { return JSON.parse(await Deno.readTextFile("node_modules/@microspec/core/package.json")).version; } catch { }
   console.error(`rtmap: jsr:@microspec/core@${spec} has not resolved yet — run deno task install first`); Deno.exit(1);
 };
 const pin = await resolvedCore();
 const base = `https://jsr.io/@microspec/core/${pin}/`;
 
-const manUrl = new URL("../deno.json", import.meta.url); 
+const manUrl = new URL("../deno.json", import.meta.url);
 const manifest = manUrl.protocol === "file:"
   ? JSON.parse(await Deno.readTextFile(manUrl))
   : await (await fetch(manUrl)).json();

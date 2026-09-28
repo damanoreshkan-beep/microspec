@@ -70,13 +70,13 @@
 const PKG = "node_modules/@jsr/microspec__core/packages/runtime/";
 /** Repo-relative prefix of the core runtime directory in this tree (the framework checkout's own, else the JSR package's). */
 export const RT = (() => {
-  try { Deno.statSync("packages/runtime/index.js"); return "packages/runtime/"; } catch {  }
+  try { Deno.statSync("packages/runtime/index.js"); return "packages/runtime/"; } catch { }
   try { Deno.statSync(PKG + "index.js"); return PKG; } catch { return "packages/runtime/"; }
 })();
 /** File names of the product's own domain modules under rt/ — the overlay that shadows the core for those /_rt/ names. */
 export const RT_OVERLAY = (() => {
   const names = new Set();
-  try { for (const e of Deno.readDirSync("rt")) if (e.isFile && e.name.endsWith(".js")) names.add(e.name); } catch {  }
+  try { for (const e of Deno.readDirSync("rt")) if (e.isFile && e.name.endsWith(".js")) names.add(e.name); } catch { }
   return names;
 })();
 const BARE_RT = "@microspec/core/runtime/";
@@ -218,10 +218,10 @@ export function isGlobal(f, coreSet) {
     /^tools\//.test(f)
   ) return true;
   if (f === "deno.json" || f === "deno.jsonc" || f === "deno.lock") return true;
-  if (f === "package.json" || f === ".npmrc") return true; 
-  if ((f.startsWith(RT) || f.startsWith("rt/")) && !f.endsWith(".js")) return true; 
-  if (f === RT + "sw-core.js") return true; 
-  if (coreSet.has(f)) return true; 
+  if (f === "package.json" || f === ".npmrc") return true;
+  if ((f.startsWith(RT) || f.startsWith("rt/")) && !f.endsWith(".js")) return true;
+  if (f === RT + "sw-core.js") return true;
+  if (coreSet.has(f)) return true;
   return false;
 }
 
@@ -236,8 +236,8 @@ export function classifyAffected(changed, apps, coreSet) {
   const allIds = apps.map((a) => a.id).sort();
   const hit = new Set();
   for (const f of changed) {
-    if (isTest(f) || isDoc(f)) continue; 
-    if (isGlobal(f, coreSet)) return allIds; 
+    if (isTest(f) || isDoc(f)) continue;
+    if (isGlobal(f, coreSet)) return allIds;
     const am = /^apps\/([^/]+)\//.exec(f);
     if (am) {
       if (allIds.includes(am[1])) hit.add(am[1]);
@@ -247,7 +247,7 @@ export function classifyAffected(changed, apps, coreSet) {
       for (const a of apps) if (a.closure.has(f)) hit.add(a.id);
       continue;
     }
-    return allIds; 
+    return allIds;
   }
   return [...hit].sort();
 }

@@ -79,7 +79,7 @@ import * as satlib from "./satellite.js";
  */
 export const sat = satlib;
 
-const R_EARTH = 6378.137;   
+const R_EARTH = 6378.137;
 
 /** A recent ISS TLE (`{ name, line1, line2 }`) baked in as the offline / first-paint / gate fallback. */
 export const FALLBACK_TLE = {
@@ -135,11 +135,11 @@ export function subpoint(rec, date) {
  */
 export function sunEciUnit(date) {
   const jd = sat.jday(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds());
-  const n = jd - 2451545.0;                                   
+  const n = jd - 2451545.0;
   const g = ((357.529 + 0.98560028 * n) % 360) * Math.PI / 180;
   const L = (280.459 + 0.98564736 * n) % 360;
-  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;   
-  const eps = (23.439 - 3.6e-7 * n) * Math.PI / 180;          
+  const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+  const eps = (23.439 - 3.6e-7 * n) * Math.PI / 180;
   return { x: Math.cos(lambda), y: Math.cos(eps) * Math.sin(lambda), z: Math.sin(eps) * Math.sin(lambda) };
 }
 

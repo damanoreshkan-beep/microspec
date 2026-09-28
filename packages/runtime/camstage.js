@@ -133,18 +133,18 @@ export function camPoint(u, v, vw, vh, mirror, asp) {
  */
 export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIcon, primeFull = false, facing = "environment", torch = false, constraints = null, still = null, onVideo, onState, fullscreen = true, gestures = true, pinch = gestures, tap = gestures, show = false, picClassName = "", className = "", children }) {
   const L = LBL[loc] || LBL.en;
-  const standby = gate && !still;                    
-  const [enabled, setEnabled] = useState(!!still || standby);   
+  const standby = gate && !still;
+  const [enabled, setEnabled] = useState(!!still || standby);
   const [err, setErr] = useState(null);
-  const [focus, setFocus] = useState(null);           
+  const [focus, setFocus] = useState(null);
   const [full, setFull] = useState(false);
   const videoRef = useRef(), imgRef = useRef(), stageRef = useRef();
   const ctl = useRef(null), capsRef = useRef(null), readyRef = useRef(standby);
   const cb = useRef({ onVideo, onState }); cb.current = { onVideo, onState };
-  const cons = useRef(constraints); cons.current = constraints;   
+  const cons = useRef(constraints); cons.current = constraints;
   const emit = () => cb.current.onState?.({ ready: readyRef.current, caps: capsRef.current, fullscreen: full, err });
   useEffect(emit, [full, err]);
-  useEffect(() => { if (standby) emit(); }, []);      
+  useEffect(() => { if (standby) emit(); }, []);
 
   useEffect(() => {
     if (!still) return;
@@ -186,8 +186,8 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
   }, []);
   const toggleFull = () => {
     const el = stageRef.current; if (!fsSupported || !el) return;
-    if (document.fullscreenElement === el) { try { document.exitFullscreen?.(); } catch {  } return; }
-    try { const r = el.requestFullscreen?.({ navigationUI: "hide" }) || el.webkitRequestFullscreen?.(); r?.catch?.(() => {}); } catch {  }
+    if (document.fullscreenElement === el) { try { document.exitFullscreen?.(); } catch { } return; }
+    try { const r = el.requestFullscreen?.({ navigationUI: "hide" }) || el.webkitRequestFullscreen?.(); r?.catch?.(() => {}); } catch { }
   };
 
   const pg = useRef({ pts: new Map(), d0: 0, z0: 1, z: 1, raf: 0 }).current;
@@ -208,7 +208,7 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     const [a, b] = [...pg.pts.values()];
     const d = Math.hypot((a.cx ?? a.x) - (b.cx ?? b.x), (a.cy ?? a.y) - (b.cy ?? b.y));
     pg.z = Math.min(zc.max, Math.max(zc.min, pg.z0 * d / pg.d0));
-    if (!pg.raf) pg.raf = requestAnimationFrame(() => { pg.raf = 0; ctl.current?.zoom(pg.z); });   
+    if (!pg.raf) pg.raf = requestAnimationFrame(() => { pg.raf = 0; ctl.current?.zoom(pg.z); });
   };
   const onUp = (e) => {
     const p = pg.pts.get(e.pointerId); pg.pts.delete(e.pointerId);
@@ -231,13 +231,13 @@ export function CamStage({ loc, reason, onSettings, onEnable, privacy, privacyIc
     <video ref=${videoRef} autoplay muted playsinline aria-hidden="true" class=${still ? HIDDEN : pic}></video>
     ${still ? html`<img ref=${imgRef} src=${still} alt="" aria-hidden="true" decoding="async" class=${pic} />` : null}
     ${children}
+    ${""}
     <div data-gestures role=${tap && fullscreen ? "button" : null} aria-label=${tap && fullscreen ? (full ? L.exit : L.stage) : null}
       class=${`absolute inset-0 z-[1] touch-none ${pinch || tap ? "" : "pointer-events-none"}`} style="touch-action:none"
       onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp}>
       ${focus ? html`<div key=${focus.k} data-focus aria-hidden="true" class="cs-focus" style=${`left:${focus.x}px;top:${focus.y}px`}></div>` : null}
     </div>
     ${on ? null : (() => {
-      
       const prime = html`<${CameraPrime} loc=${loc} reason=${reason} privacy=${privacy} privacyIcon=${privacyIcon}
         onEnable=${() => { setErr(null); setEnabled(true); onEnable?.(); }} onSettings=${onSettings}
         denied=${err === "denied"} unavailable=${err === "unavailable" || err === "unsupported"} />`;

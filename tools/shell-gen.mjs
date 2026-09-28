@@ -58,7 +58,7 @@
  * The Android action catalogue generates both sides; `--check` fails when they drift.
  * @module
  */
-import Ajv2020 from "npm:ajv@8/dist/2020.js";   
+import Ajv2020 from "npm:ajv@8/dist/2020.js";
 
 import { pkgRoot } from "../packages/runtime/pkgroot.js";
 const ROOT = pkgRoot(import.meta.url, 1);

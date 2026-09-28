@@ -71,7 +71,7 @@ export async function buildManifest() {
   for await (const a of Deno.readDir("apps")) {
     if (!a.isDirectory || a.name === "store" || !(await has(`apps/${a.name}/spec.json`))) continue;
     const spec = await readJson(`apps/${a.name}/spec.json`);
-    if (spec.hidden) continue;   
+    if (spec.hidden) continue;
     const i18n = await readLocales(`apps/${a.name}`);
     const d = i18n.uk || i18n.en || {};
     const byLocale = (key) => Object.fromEntries(
@@ -88,7 +88,7 @@ export async function buildManifest() {
     for (const tb of tabs) if (await has(`apps/store/assets/shot-${a.name}--${tb.id}.webp`)) shots.push(tb.id);
     apps.push({
       id: a.name,
-      title: d.title || a.name,                  
+      title: d.title || a.name,
       titles: byLocale("title"),
       tagline: d.profTagline || "",
       taglines: byLocale("profTagline"),

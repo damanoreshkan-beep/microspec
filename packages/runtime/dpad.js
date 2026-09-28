@@ -105,9 +105,9 @@ export const fromPointer = (el, within = 500) => !!el && Date.now() - (pointered
 /** The activation guard every app's onClick should use: keyboard and AT only. */
 export const keyboardOnly = (fn) => (e) => { if (!e.detail && !fromPointer(e.currentTarget)) fn(e); };
 
-
 /** The input bit mask — the contract between a deck and a simulation, mirrored in every game. */
 export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
+
 /**
  * `useTouchDeck()` — the whole control deck as ONE touch surface.
  *
@@ -125,7 +125,6 @@ export const PAD = { LEFT: 1, RIGHT: 2, JUMP: 4, RUN: 8, DOWN: 16, SHOOT: 32 };
  * which is exactly the documented reason an app may call `haptic.*` itself: an outcome the tap
  * could not predict. Neither fires twice, because they own different events.
  */
-
 const MIN_PRESS = 90;
 
 /**
@@ -135,16 +134,16 @@ const MIN_PRESS = 90;
  */
 export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}) {
   const mask = useRef(0);
-  const held = useRef(new Map());          
-  const since = useRef(new Map());         
+  const held = useRef(new Map());
+  const since = useRef(new Map());
   const pressed = useRef(new Set());
-  const latched = useRef(new Set());       
-  const lastTap = useRef(new Map());       
-  const synth = useRef(0);                 
-  const keys = useRef(0);                  
-  const root = useRef(null);               
+  const latched = useRef(new Set());
+  const lastTap = useRef(new Map());
+
+  const synth = useRef(0);
+  const keys = useRef(0);
+  const root = useRef(null);
   const bitOf = (el) => +el?.getAttribute("data-bit") || 0;
-  
   const recompute = () => {
     let m = synth.current | keys.current;
     for (const el of held.current.values()) m |= bitOf(el);
@@ -180,7 +179,6 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
     if (el.hasAttribute("data-latch")) el.setAttribute("aria-pressed", latched.current.has(el) ? "true" : "false");
     if (stay) pressed.current.add(el); else pressed.current.delete(el);
   };
-  
   const at = (e) => {
     const hit = (e.clientX || e.clientY) ? document.elementFromPoint(e.clientX, e.clientY) : null;
     return hit?.closest?.("[data-bit],[data-act]") || e.target?.closest?.("[data-bit],[data-act]") || null;
@@ -190,22 +188,20 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
     const el = held.current.get(id);
     if (!el) return;
     held.current.delete(id);
-    
     if (![...held.current.values()].includes(el)) paint(el, false);
     recompute();
   }, []);
 
-  
   const move = useCallback((e, first) => {
     const found = at(e);
     const was = held.current.get(e.pointerId) || null;
     const el = found || (first ? null : was);
     if (el === was) return;
     if (el) held.current.set(e.pointerId, el); else held.current.delete(e.pointerId);
-    if (was && ![...held.current.values()].includes(was)) paint(was, false);   
+    if (was && ![...held.current.values()].includes(was)) paint(was, false);
     if (el) {
       paint(el, true);
-      if (!first) haptic.bump();      
+      if (!first) haptic.bump();
     }
     recompute();
   }, []);
@@ -216,7 +212,7 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
     ref: root,
     style: { touchAction: "none" },
     onPointerDown: (e) => {
-      try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {  }
+      try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { }
       since.current.set(e.pointerId, e.timeStamp);
       move(e, true);
     },
@@ -224,13 +220,11 @@ export function useTouchDeck({ onAct, latchMs = 320, minPress = MIN_PRESS } = {}
     onPointerUp: (e) => {
       const el = held.current.get(e.pointerId);
       markPointer(el);
-      
       const began = since.current.get(e.pointerId);
       since.current.delete(e.pointerId);
       const bit = bitOf(el);
       if (bit && (began == null || e.timeStamp - began < minPress)) pulse(bit, minPress);
       if (el?.hasAttribute("data-act")) onAct?.(el.getAttribute("data-act"), el);
-      
       if (el?.hasAttribute("data-latch")) {
         if (latched.current.has(el)) { latched.current.delete(el); haptic.tick(); }
         else if (e.timeStamp - (lastTap.current.get(el) ?? -Infinity) < latchMs) { latched.current.add(el); haptic.ok(); }
@@ -256,6 +250,7 @@ export const KEYS = {
 
 /** Momentary keys — the ones a console has as buttons rather than as directions. */
 export const ACTION_KEYS = { Enter: "start", KeyM: "sound" };
+
 /**
  * Feeds the deck's mask from the keyboard. It reports the WHOLE held set on every change rather
  * than toggling a bit, so the deck stays the single owner of the mask and a key held while a
@@ -274,7 +269,7 @@ export function useKeyboardPad(setKeys, onAction) {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       if (ACTION_KEYS[e.code] && !e.repeat) { e.preventDefault(); onAction?.(ACTION_KEYS[e.code]); return; }
       if (!KEYS[e.code]) return;
-      e.preventDefault();                       
+      e.preventDefault();
       if (!e.repeat) { down.add(e.code); apply(); }
     };
     const up = (e) => { if (down.delete(e.code)) apply(); };

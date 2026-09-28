@@ -72,7 +72,7 @@ export async function notifyAsk() {
   const st = await permState("notifications");
   if (st !== "prompt") return st;
   if (localStorage.getItem(ASKED)) return st;
-  try { localStorage.setItem(ASKED, "1"); } catch {  }
+  try { localStorage.setItem(ASKED, "1"); } catch { }
   return permRequest("notifications");
 }
 
@@ -89,7 +89,7 @@ export async function notify({ id = "ms-note", title, body = "", tag = id, icon 
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return false;
     const reg = await navigator.serviceWorker?.getRegistration?.();
     if (reg?.showNotification) { await reg.showNotification(title, { body, tag, icon, badge: icon, data: { url }, renotify: true }); return true; }
-    new Notification(title, { body, tag, icon });   
+    new Notification(title, { body, tag, icon });
     return true;
   } catch { return false; }
 }

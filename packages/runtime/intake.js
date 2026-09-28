@@ -98,7 +98,7 @@ export async function toDataURL(url, maxSide = MAX_SIDE) {
   catch (e) {
     if (gate || !/^(blob|data):/.test(url)) throw e;
     let about = { type: "", size: 0 };
-    try { const bl = await (await fetch(url)).blob(); about = { type: bl.type, size: bl.size }; } catch {  }
+    try { const bl = await (await fetch(url)).blob(); about = { type: bl.type, size: bl.size }; } catch { }
     report("intake.decode", { step: "local", msg: e?.message || String(e), ...about }, "warn");
     let converted;
     try { converted = await convertAtEdge(url); }
@@ -210,14 +210,14 @@ export function Camera({ loc, reason, privacy, onCapture, onClose, onSettings })
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
         if (!live) { stream.getTracks().forEach((tr) => tr.stop()); return; }
         streamRef.current = stream;
-        const v = videoRef.current; if (v) { v.srcObject = stream; v.setAttribute?.("playsinline", ""); try { await v.play?.(); } catch {  } }
+        const v = videoRef.current; if (v) { v.srcObject = stream; v.setAttribute?.("playsinline", ""); try { await v.play?.(); } catch { } }
       } catch (e) { if (live) setErr(e && e.name === "NotAllowedError" ? "denied" : "unavailable"); }
     })();
-    return () => { live = false; try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch {  } streamRef.current = null; const v = videoRef.current; try { if (v) v.srcObject = null; } catch {  } };
+    return () => { live = false; try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch { } streamRef.current = null; const v = videoRef.current; try { if (v) v.srcObject = null; } catch { } };
   }, [enabled]);
   const capture = () => {
     const v = videoRef.current; if (!v || !(v.videoWidth > 0)) return;
-    try { const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0); onCapture(c.toDataURL("image/jpeg", 0.92)); } catch {  }
+    try { const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0); onCapture(c.toDataURL("image/jpeg", 0.92)); } catch { }
   };
   const on = enabled && !err;
   return html`<${Fragment}>

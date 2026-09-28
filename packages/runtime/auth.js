@@ -93,10 +93,10 @@ import { gate } from "./gate.js";
 
 const GH = `${VPS_PROXY}/gh`;
 const SID_KEY = "ms:gh:sid";
-const USER_KEY = "ms:gh:user";   
-const PROV_KEY = "ms:gh:prov";   
+const USER_KEY = "ms:gh:user";
+const PROV_KEY = "ms:gh:prov";
 const GOOGLE = `${VPS_PROXY}/google`;
-const TG = `${VPS_PROXY}/tg`;   
+const TG = `${VPS_PROXY}/tg`;
 const PWA_ORIGIN = typeof location !== "undefined" ? location.origin : "";
 const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { return ""; } })();
 
@@ -108,7 +108,7 @@ export const session = atom(null);
 
 let panelAsked = null;
 export function adminPanel() {
-  if (gate) return Promise.resolve(null);          
+  if (gate) return Promise.resolve(null);
   const s = session.get();
   if (!s?.sid) { panelAsked = null; return Promise.resolve(null); }
   panelAsked ??= fetch(`${VPS_PROXY}/admin/whoami`, {
@@ -130,11 +130,11 @@ export const MOCK_GOOGLE_SESSION = { sid: "mock-sid-google", user: { login: "oct
 export const isLoggedIn = () => !!session.get();
 
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {  } };
-const lsDel = (k) => { try { localStorage.removeItem(k); } catch {  } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
+const lsDel = (k) => { try { localStorage.removeItem(k); } catch { } };
 const lsGetJSON = (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
-const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch {  } };
-const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); panelAsked = null; };   
+const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch { } };
+const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); panelAsked = null; };
 
 const trimUser = (u) => (u && u.login ? {
   login: u.login, name: u.name || u.login, avatar: u.avatar_url || "", html_url: u.html_url || `https://github.com/${u.login}`,
@@ -153,7 +153,7 @@ async function edgeAt(url, body, timeout = 12000) {
     return await r.json();
   } catch (e) {
     if (e && typeof e.status === "number") throw e;
-    const err = new Error(`${url} network`); err.status = 0; throw err;   
+    const err = new Error(`${url} network`); err.status = 0; throw err;
   } finally { clearTimeout(to); }
 }
 const me = (sid, provider) => (provider === "google" ? edgeAt(`${GOOGLE}/me`, { sid }) : provider === "telegram" ? edgeAt(`${TG}/me`, { sid }) : edge("me", { sid }));
@@ -168,15 +168,15 @@ export async function restore() {
   if (!sid) { session.set(null); return null; }
   const provider = lsGet(PROV_KEY) || "github";
   const cached = lsGetJSON(USER_KEY);
-  if (cached) session.set({ sid, user: cached, provider });   
+  if (cached) session.set({ sid, user: cached, provider });
   try {
     const j = await me(sid, provider);
     const user = provider === "github" ? trimUser(j && j.user) : trimGoogleUser(j && j.user);
     if (user) { lsSetJSON(USER_KEY, user); const s = { sid, user, provider }; session.set(s); return s; }
     return session.get();
   } catch (e) {
-    if (e && e.status === 401) { dropStored(); session.set(null); return null; }   
-    return session.get();                                                          
+    if (e && e.status === 401) { dropStored(); session.set(null); return null; }
+    return session.get();
   }
 }
 
@@ -200,7 +200,7 @@ export function login({ scope = SCOPE } = {}) {
       if (e.origin !== EDGE_ORIGIN) return;
       const d = e.data;
       if (!d || d.source !== "microspec-gh" || typeof d.sid !== "string") return;
-      lsSet(SID_KEY, d.sid);                              
+      lsSet(SID_KEY, d.sid);
       try {
         const j = await edge("me", { sid: d.sid });
         const user = trimUser(j && j.user);
@@ -212,8 +212,8 @@ export function login({ scope = SCOPE } = {}) {
       } catch (err) { finish(reject, err); }
     };
     const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);
-    const timer = setTimeout(() => { try { popup.close(); } catch {  } finish(reject, new Error("timeout")); }, 180000);
-    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch {  } }
+    const timer = setTimeout(() => { try { popup.close(); } catch { } finish(reject, new Error("timeout")); }, 180000);
+    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { } }
     addEventListener("message", onMsg);
   });
 }
@@ -352,8 +352,8 @@ export async function logout() {
   dropStored();
   session.set(null);
   if (gate || !s) return;
-  if (s.provider === "google") { try { globalThis.google?.accounts?.id?.disableAutoSelect?.(); } catch {  } return; }
-  try { await edge("logout", { sid: s.sid }); } catch {  }
+  if (s.provider === "google") { try { globalThis.google?.accounts?.id?.disableAutoSelect?.(); } catch { } return; }
+  try { await edge("logout", { sid: s.sid }); } catch { }
 }
 
 const trimGoogleUser = (u) => (u && (u.email || u.login) ? {
@@ -371,7 +371,7 @@ export function googleClientId() {
       const r = await fetch(`${GOOGLE}/config`, { signal: ctrl.signal }); clearTimeout(to);
       if (!r.ok) return "";
       const j = await r.json(); return typeof j?.clientId === "string" ? j.clientId : "";
-    } catch { clientIdP = null; return ""; }     
+    } catch { clientIdP = null; return ""; }
   })());
 }
 
@@ -395,7 +395,7 @@ export async function loginGoogle(credential) {
 export async function loginTelegram(initData) {
   if (gate) { session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
   let id = initData;
-  if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch {  } }
+  if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch { } }
   if (!id) throw Object.assign(new Error("no-telegram"), { status: 0 });
   const j = await edgeAt(`${TG}/verify`, { initData: String(id) });
   const user = trimGoogleUser(j && j.user);
@@ -433,8 +433,8 @@ export function loginTelegramWeb() {
       finish(resolve, s);
     };
     const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);
-    const timer = setTimeout(() => { try { popup.close(); } catch {  } finish(reject, new Error("timeout")); }, 180000);
-    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch {  } }
+    const timer = setTimeout(() => { try { popup.close(); } catch { } finish(reject, new Error("timeout")); }, 180000);
+    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { } }
     addEventListener("message", onMsg);
   });
 }

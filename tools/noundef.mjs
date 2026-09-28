@@ -63,7 +63,7 @@ const entries = [];
 for await (const e of Deno.readDir("apps")) {
   if (!e.isDirectory) continue;
   for (const f of ["view.js", "data.js", "stream.js"]) {
-    try { await Deno.stat(`apps/${e.name}/${f}`); entries.push(`apps/${e.name}/${f}`); } catch {  }
+    try { await Deno.stat(`apps/${e.name}/${f}`); entries.push(`apps/${e.name}/${f}`); } catch { }
   }
 }
 entries.sort();

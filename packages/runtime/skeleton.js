@@ -78,7 +78,7 @@ const CH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789абвгґдежзиклмнпр
 const rc = () => CH[(Math.random() * CH.length) | 0];
 const now = () => (typeof performance !== "undefined" && performance.now ? performance.now() : 0);
 const isGate = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");   
+const forceAnim = typeof location !== "undefined" && location.search.includes("__anim");
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const instant = () => !forceAnim && (isGate || reduced());
 

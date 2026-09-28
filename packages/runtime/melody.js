@@ -68,7 +68,6 @@
 
 import { mulberry32, harmonicity } from "./groove.js";
 
-
 const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
 const gauss = (x, mu, sigma) => Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma));
 
@@ -97,8 +96,8 @@ function buildPhrase(rng, scale, len, restP) {
     if (rng() < restP) { notes.push({ rest: true }); continue; }
     const weights = scale.map((off, i) => {
       const leap = Math.abs(i - prev);
-      const step = gauss(leap, 0, 2.4);                        
-      return (0.05 + step) * (0.4 + 0.6 * harmonicity(off));   
+      const step = gauss(leap, 0, 2.4);
+      return (0.05 + step) * (0.4 + 0.6 * harmonicity(off));
     });
     const i = pickW(rng, weights);
     notes.push({ i }); prev = i;

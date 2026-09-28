@@ -226,7 +226,7 @@ async function handle(msg) {
       }
       case "notifications/initialized":
       case "notifications/cancelled":
-        return;                                                  
+        return;
       case "ping":
         return ok(id, {});
       case "tools/list":
@@ -255,7 +255,7 @@ async function handle(msg) {
       case "prompts/get":
         return ok(id, await getPrompt(params?.name, params?.arguments ?? {}));
       default:
-        if (isNotification) return;                              
+        if (isNotification) return;
         return err(id, -32601, `Method not found: ${method}`);
     }
   } catch (e) {

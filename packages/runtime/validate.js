@@ -70,7 +70,7 @@
  */
 
 /** Spec contract major version; a spec declaring a different `v` is rejected. Bump on a breaking spec change. */
-export const SPEC_MAJOR = 1; 
+export const SPEC_MAJOR = 1;
 
 const TAB_TYPES = new Set(["list", "converter", "profile", "dashboard", "tool"]);
 const nonEmpty = (v) => typeof v === "string" && v.trim() !== "";

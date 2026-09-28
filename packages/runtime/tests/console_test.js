@@ -1,4 +1,3 @@
-
 import { assert } from "jsr:@std/assert@1";
 import { pkgRoot } from "../pkgroot.js";
 const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));

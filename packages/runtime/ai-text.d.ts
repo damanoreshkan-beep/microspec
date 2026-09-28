@@ -133,3 +133,4 @@ export const summary: any;
 export const isSummarized: any;
 /** Async: synthesise the reading for `key` from `text` once, cache it and bump `aiTick`. */
 export const warmSummary: any;
+export { aiTick } from "./ai-core.js";

@@ -144,3 +144,4 @@ export function useSwipe({ onLeft, onRight, onUp, onDown, threshold }?: {
  * @returns true when the sheet should fly out rather than spring back
  */
 export function pastDismiss(dy: any, vy: any): boolean;
+export { swipeDir } from "./swipe.js";

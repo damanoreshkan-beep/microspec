@@ -135,3 +135,4 @@ export function Player({ url, title, locale, onClose, poster, startAt, onTime, t
     onTime: any;
     type?: any;
 }): any;
+export { resumeAt, RESUME_MIN, RESUME_TAIL, recoverPlan, fmtClock, scrubSpan, scrubTo, skipTo, fmtDelta } from "./playback.js";

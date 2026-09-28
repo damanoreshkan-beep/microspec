@@ -55,3 +55,4 @@
  * @returns `spec.version`, or "1.0" when the spec declares none
  */
 export function appVersion(spec: any): any;
+export { BUILD, CORE } from "./build.js";

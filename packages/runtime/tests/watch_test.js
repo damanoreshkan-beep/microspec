@@ -48,7 +48,7 @@ Deno.test("the admin row is a word here and a path from the edge", async () => {
   }
   assert(sys("adminRow", "uk") !== sys("adminRow", "en"));
   const P = (rel) => new URL(rel, pkgRoot(import.meta.url, 3));
-  const src = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const src = (await Promise.all(["render", "render-ctx", "list", "profile", "screens", "chrome", "dash"].map((n) => Deno.readTextFile(P(`packages/runtime/${n}.js`))))).join("\n");
   const auth = await Deno.readTextFile(P("packages/runtime/auth.js"));
   assert(!/\/feed\/admin\/ui/.test(src + auth), "the panel's path must not be written in the public runtime");
   assert(/adminPanel\(\)/.test(src), "the row asks the edge instead");

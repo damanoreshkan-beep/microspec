@@ -12,7 +12,7 @@ Deno.test("scanCandidates: tokens with CSS variables inside brackets survive who
 });
 
 Deno.test("scanCandidates: the runtime kit's own classes are all kept whole (no token ends at an open bracket)", async () => {
-  const src = await Deno.readTextFile(P("packages/runtime/render.js"));
+  const src = (await Promise.all(["render", "render-ctx", "list", "profile", "screens", "chrome", "dash"].map((n) => Deno.readTextFile(P(`packages/runtime/${n}.js`))))).join("\n");
   const got = scanCandidates(src);
   const broken = got.filter((t) => t.includes("var(") && !/\)\]$|\)$/.test(t));
   assertEquals(broken, [], "var() tokens cut inside brackets");

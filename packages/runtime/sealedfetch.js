@@ -138,6 +138,7 @@ export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)
       headers: { "content-type": "text/plain" },
       body: wire,
       signal: init.signal,
+      keepalive: !!init.keepalive && wire.length < 60000,
     });
     if (!r.ok) throw new Error(`sealed transport ${r.status}`);
 

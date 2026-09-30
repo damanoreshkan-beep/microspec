@@ -10,6 +10,7 @@
  * @module
  */
 import "./tests/apk_test.js";
+import "./tests/sealedfetch_test.js";
 import "./tests/calendar_test.js";
 import "./tests/watch_test.js";
 import "./tests/candidates_test.js";

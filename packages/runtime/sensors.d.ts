@@ -34,6 +34,10 @@
  * - {@link heldHeadingDeg} — `(alpha, beta, gamma, screenAngle = 0) → deg`: the hand-held compass reading at any pitch, screen-top while flat, camera axis while upright, smoothstep-crossfaded between; never null while β/γ are numbers.
  * - {@link tilt} — `supported`, `needsPermission`, `request()` (the same gesture-gated permission as compass); `start(onTilt) → stop fn`, `onTilt({ beta, gamma })` screen-orientation aware, no true-north, no geolocation.
  *
+ * **Motion**
+ * - {@link motion} — `supported`, `needsPermission`, `request() → Promise<boolean>` (from a tap); `start(onSample) → stop fn`, ~60 Hz gyroscope + accelerometer in the DEVICE frame, which does not turn with the screen.
+ * - {@link motionSample} — `(event) → { rot: [x, y, z] deg/s | null, acc: [x, y, z] m/s² incl. gravity | null, t }`; pure. The SIGN of `acc` differs by platform (the spec and Android report +9.8 on the axis pointing up at rest, iOS −9.8) — derive "up" from the pose, never from the sign.
+ *
  * **Media**
  * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment", constraints = null }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.
  * - {@link camControls} — `(track) → { caps: { torch, zoom, focus }, torch(on), zoom(z), focusAt(x, y) }`, pure over `getCapabilities` / `applyConstraints`.
@@ -125,6 +129,17 @@ export function screenHeadingDeg(alpha: any, beta: any): number;
  */
 export function heldHeadingDeg(alpha: any, beta: any, gamma: any, screenAngle?: number): number;
 /**
+ * One devicemotion event as device-frame vectors: x right, y to the top of the device, z out of the screen.
+ * @param e a DeviceMotionEvent (or anything shaped like one)
+ * @returns `{ rot, acc, t }` — `rot` [x, y, z] deg/s (spec: alpha → x, beta → y, gamma → z), `acc` [x, y, z]
+ *   m/s² including gravity, either null when the device did not report it; `t` the event timestamp, ms
+ */
+export function motionSample(e: any): {
+    rot: any[];
+    acc: any[];
+    t: any;
+};
+/**
  * Controls over one video track (pure over `getCapabilities` / `applyConstraints`, so a fake track tests it).
  * `caps.torch` — the LED exists; `caps.zoom` — `{ min, max, step, now }` or null; `caps.focus` — the track takes a
  * focus mode. `torch(on)`, `zoom(z)` (clamped to the range) and `focusAt(x, y)` (0..1 from the top-left; tries
@@ -181,6 +196,13 @@ export const tilt: {
     needsPermission: boolean;
     request(): Promise<boolean>;
     start(onTilt: any): () => void;
+};
+/** Raw gyroscope + accelerometer samples in the DEVICE frame — `request()` from a tap (the iOS motion prompt), `start(onSample)` → stop fn, `onSample(motionSample)`. */
+export const motion: {
+    supported: boolean;
+    needsPermission: boolean;
+    request(): Promise<boolean>;
+    start(onSample: any): () => void;
 };
 /** A live camera stream on a <video> — `start(videoEl, onErr, opts)` → stop fn that releases every track. */
 export const camera: {
@@ -274,6 +296,10 @@ export const mic: {
  * - {@link screenHeadingDeg} — `(alpha, beta) → deg | null`: heading of the top edge of the screen from the spec's rotation matrix; null within ~9° of upright.
  * - {@link heldHeadingDeg} — `(alpha, beta, gamma, screenAngle = 0) → deg`: the hand-held compass reading at any pitch, screen-top while flat, camera axis while upright, smoothstep-crossfaded between; never null while β/γ are numbers.
  * - {@link tilt} — `supported`, `needsPermission`, `request()` (the same gesture-gated permission as compass); `start(onTilt) → stop fn`, `onTilt({ beta, gamma })` screen-orientation aware, no true-north, no geolocation.
+ *
+ * **Motion**
+ * - {@link motion} — `supported`, `needsPermission`, `request() → Promise<boolean>` (from a tap); `start(onSample) → stop fn`, ~60 Hz gyroscope + accelerometer in the DEVICE frame, which does not turn with the screen.
+ * - {@link motionSample} — `(event) → { rot: [x, y, z] deg/s | null, acc: [x, y, z] m/s² incl. gravity | null, t }`; pure. The SIGN of `acc` differs by platform (the spec and Android report +9.8 on the axis pointing up at rest, iOS −9.8) — derive "up" from the pose, never from the sign.
  *
  * **Media**
  * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment", constraints = null }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.

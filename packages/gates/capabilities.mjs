@@ -70,7 +70,7 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export const SYMBOL_CAPS = {
   "/_rt/sensors.js": {
     geo: ["geo"], camera: ["camera"], mic: ["microphone"],
-    compass: ["compass", "orientation"], tilt: ["orientation"], wakeLock: ["wakeLock"],
+    compass: ["compass", "orientation"], tilt: ["orientation"], motion: ["motion"], wakeLock: ["wakeLock"],
   },
   "/_rt/camprime.js": { CameraPrime: ["camera"], MicPrime: ["microphone"] },
   "/_rt/camstage.js": { CamStage: ["camera", "wakeLock"] },

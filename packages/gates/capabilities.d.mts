@@ -91,6 +91,7 @@ export const SYMBOL_CAPS: {
         mic: string[];
         compass: string[];
         tilt: string[];
+        motion: string[];
         wakeLock: string[];
     };
     "/_rt/camprime.js": {

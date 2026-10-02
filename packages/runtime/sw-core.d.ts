@@ -32,23 +32,18 @@
  *
  * ## In practice
  * ```js
- * // index.js — the page's half of the update handshake, reduced. The worker never swaps itself in.
+ * // index.js — the page's half, reduced. An update is taken at LAUNCH, silently; nobody is asked.
  * navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
- *   const offer = () => S.update.set(true);                     // render.js paints the restart snackbar
- *   if (reg.waiting && navigator.serviceWorker.controller) offer();
- *   navigator.serviceWorker.addEventListener("message", (e) => { if (e.data?.type === "ms-update") offer(); });
- *   app.applyUpdate = () => {
- *     if (reg.waiting) reg.waiting.postMessage("ms-skip-waiting");   // → controllerchange → reload
- *     else location.reload();
- *   };
+ *   if (reg.waiting && navigator.serviceWorker.controller) reg.waiting.postMessage("ms-skip-waiting");
  * });
+ * navigator.serviceWorker.addEventListener("controllerchange", () => location.reload());   // once, guarded
  * ```
  *
  * ## How it fits
  * Imports nothing and is imported by nothing in the module sense: it reads `self.MS` from the stub that
  * `importScripts` it. `deploy/sw.mjs` (the `sw` 8n8 node, `jsr:@microspec/core/sw`) generates that stub for
  * every app from its import graph and reds a stale one; `gen/scaffold.mjs` writes the placeholder stub a
- * new app starts with. index.js registers the worker and answers `ms-update` / sends `ms-skip-waiting`;
+ * new app starts with. index.js registers the worker and sends `ms-skip-waiting` at launch;
  * notify.js's notifications land in the `notificationclick` handler here. All 74 farm apps ship a stub that
  * loads it; `tests/sw_test.js` evaluates the file under a fake `self` and `CacheStorage`.
  *
@@ -63,9 +58,15 @@
  * - The manifest is network-first (`cache: "no-cache"`) with the cached copy as the fallback: on Android an install bakes
  *   `name`, `icons`, `display`, `start_url`, `orientation` into a WebAPK, and the browser's 24-hour update check is an
  *   ordinary fetch that lands in this worker — a cache hit would hand it the manifest the app was installed with, forever.
- * - `skipWaiting` is never automatic. A changed same-origin shell file (compared by ETag / Last-Modified / Content-Length,
- *   once per worker lifetime) or a waiting worker tells the page, which offers a restart; only the page's
- *   `ms-skip-waiting` message triggers the swap. No validator on either side means "unchanged" — a false prompt is worse than a late one.
+ * - An update is a NEW VERSION, never a changed header. The build stamps each deployed stub with a content
+ *   hash of the app it ships (`version`, `hashed: true`), so sw.js changes only when this app does. The
+ *   old rule — "a cached file's ETag differs" — fired for every app after every deploy, because a deploy
+ *   rewrites every file's mtime: prompts for nothing, sometimes twice. There is no prompt now at all.
+ * - A hashed worker's shell (its precache + navigations) is served from its own cache and never refreshed
+ *   file by file; only a new worker brings new files, all at once. Everything else same-origin is
+ *   stale-while-revalidate, silently. An unhashed stub (dev, the gate) refreshes everything, as before.
+ * - The swap happens when the page asks at launch (`ms-skip-waiting`) and only while one window of the app
+ *   is open; otherwise the worker waits for the next launch.
  * - Each URL is revalidated at most once per worker lifetime, and never when offline, `saveData`, or on (slow-)2g — so a weak
  *   link behaves like no link instead of worse than one. A cold miss races a 12 s timeout, then falls back to cache, then to `./`.
  * - Untouched on purpose: non-GET, `range` requests (206 is not cacheable — media streams itself), non-http(s) schemes, `/feed`

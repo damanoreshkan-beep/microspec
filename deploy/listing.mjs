@@ -25,6 +25,10 @@
  *   says what the person gets; how it is built belongs in RESEARCH.md.
  * - **catalog** — `apps/store/apps.json` agrees with the tree on icon, shots, titles and taglines (run
  *   `manifest` after changing any of them).
+ * - **changelog** — `apps/store/changelog.json`, when the store keeps one: newest first; every entry has a
+ *   dated id, an existing app and a sentence per locale that passes the same word rules (at most 200
+ *   characters); and every app added since the changelog began is announced in it. The entries are what a
+ *   person is told after an update, so they say what changed for them and nothing about how.
  *
  * ## Exit codes
  * - `0` — every card is complete, or there is no store.
@@ -70,6 +74,38 @@ export function sameCard(listed, fresh) {
   return key(listed) === key(fresh);
 }
 
+/**
+ * What is wrong with the store's changelog.
+ * @param entries the parsed `changelog.json` — newest first, `{ id, date, app, uk, en }`
+ * @param apps the catalog entries (`{ id, added? }`); the store itself counts as an app
+ * @returns the problems, empty when every entry is fit to be shown
+ */
+export function changelogProblems(entries, apps) {
+  if (!Array.isArray(entries)) return ["changelog.json is not a list"];
+  const out = [], ids = new Set(), known = new Set([...apps.map((a) => a.id), "store"]);
+  let last = "9999";
+  for (const e of entries) {
+    const at = `changelog ${e?.id || "(no id)"}:`;
+    if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9-]+$/.test(e?.id || "")) { out.push(`${at} id must be <yyyy-mm-dd>-<slug>`); continue; }
+    if (ids.has(e.id)) out.push(`${at} duplicate id`);
+    ids.add(e.id);
+    if (e.date !== e.id.slice(0, 10)) out.push(`${at} date must equal the id's date`);
+    if (e.date > last) out.push(`${at} out of order — newest first`);
+    last = e.date;
+    if (!known.has(e.app)) out.push(`${at} unknown app "${e.app}"`);
+    for (const loc of ["uk", "en"]) {
+      const t = String(e[loc] || "").trim();
+      if (!t) { out.push(`${at} no ${loc} text`); continue; }
+      if (t.length > 200) out.push(`${at} ${loc} is ${t.length} characters (max 200)`);
+      const words = [...new Set([...t.matchAll(JARGON)].map((m) => m[0]))];
+      if (words.length) out.push(`${at} ${loc} says how it is built, not what changed for a person: ${words.join(", ")}`);
+    }
+  }
+  const since = entries.length ? entries[entries.length - 1].date : null;
+  if (since) for (const a of apps) if (a.added && a.added >= since && !entries.some((e) => e.app === a.id)) out.push(`changelog: "${a.id}" was added ${a.added} and nobody was told — write its entry`);
+  return out;
+}
+
 if (import.meta.main) {
   if (!(await has(`${APPS}/store/spec.json`))) { console.log("  ✓ no store in this tree — no cards to check"); Deno.exit(0); }
   const apps = await buildManifest();
@@ -90,6 +126,11 @@ if (import.meta.main) {
     for (const [loc, text] of Object.entries(a.taglines)) for (const p of taglineProblems(text)) say(`description (${loc}) ${p}`);
     if (!Object.keys(a.taglines).length) say("no description (profTagline)");
     if (!sameCard(listed.get(a.id), a)) say("apps/store/apps.json is stale for this app — run manifest");
+  }
+  if (await has(`${APPS}/store/changelog.json`)) {
+    let log = null;
+    try { log = JSON.parse(await Deno.readTextFile(`${APPS}/store/changelog.json`)); } catch { }
+    bad.push(...changelogProblems(log, apps));
   }
   if (!bad.length) { console.log(`  ✓ ${apps.length} store cards complete: icon, screenshots, a description for people`); Deno.exit(0); }
   for (const b of bad) console.error(`  ✗ ${b}`);

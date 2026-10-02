@@ -102,10 +102,18 @@ must exist because scope is derived from the SW script's path and GitHub Pages c
 4. **Back off on a bad link** — background revalidation is skipped when `onLine === false`, when
    `connection.saveData` is set, or on `2g`/`slow-2g`; and each URL is revalidated at most once per SW
    lifetime. A slow link must not be flooded with revalidations competing with the app's real data.
-5. **Freshness is not lost** — every launch revalidates the shell in the background, so the next launch is
-   current. When a revalidation finds a *changed* same-origin shell file, or a new SW reaches `waiting`, the
-   page is told and offers a restart (`S.update` → snackbar). `skipWaiting` is never automatic: a cache-first
-   SW that swaps caches under a running page causes version skew.
+5. **An update is a new VERSION, taken at launch, and nobody is asked** (2026-10-02; it replaced a restart
+   prompt). The build stamps each deployed `sw.js` with a content hash of the app's inputs — its own files
+   and the runtime modules it imports — and rewrites the precache to the built shell (`app.js`, `app.css`).
+   So `sw.js` changes only when this app does; the browser installs the new worker in the background; the
+   page asks it to take over right after the next page load (`update.js`), with one guarded reload, and only
+   while one window of the app is open. A hashed shell is never refreshed file by file.
+   What it replaced, measured: "a cached file's ETag differs" was the trigger, and a deploy rewrites every
+   file's mtime — so every app offered an update after every deploy (ten in one day), and twice when the
+   user accepted before every file had been re-checked. Hashing the built `app.js` instead of the inputs
+   failed too: the deploy stamp is inside it and the minifier names variables by character frequency, so a
+   new stamp reshuffled 1 bundle in 88. After a swap the page shows the store changelog's entry for this
+   app, once, if there is one — a sentence for a person, not a version number.
 
 ### What is deliberately *not* precached
 

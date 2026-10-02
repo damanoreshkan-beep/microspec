@@ -33,12 +33,19 @@ export async function buildAppCompat({ srcDir, outDir, rtDir, sharedSources = []
   await Deno.writeTextFile(`${stage}/entry.js`, entry[1]);
   await Deno.writeTextFile(`${stage}/importmap.json`, JSON.stringify(importmap, null, 2));
 
-  const bundle = await new Deno.Command("deno", {
-    args: ["bundle", "--platform", "browser", "--minify", "--import-map", `${stage}/importmap.json`, `${stage}/entry.js`, "-o", `${outDir}/app.js`],
-    stdout: "piped", stderr: "piped",
-  }).output();
+  // The bundle downloads the app's CDN graph, so a CI runner's bad minute fails it: three tries, then the
+  // error carries the bundler's own words (the caller used to keep only the first line, which is the label).
+  let bundle;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    bundle = await new Deno.Command("deno", {
+      args: ["bundle", "--platform", "browser", "--minify", "--import-map", `${stage}/importmap.json`, `${stage}/entry.js`, "-o", `${outDir}/app.js`],
+      stdout: "piped", stderr: "piped",
+    }).output();
+    if (bundle.success) break;
+    if (attempt < 3) await new Promise((r) => setTimeout(r, 4000 * attempt));
+  }
   await Deno.remove(stage, { recursive: true }).catch(() => {});
-  if (!bundle.success) throw new Error(`deno bundle failed:\n${dec.decode(bundle.stderr).split("\n").slice(-8).join("\n")}`);
+  if (!bundle.success) throw new Error(`deno bundle failed 3 times: ${dec.decode(bundle.stderr).replace(/\x1b\[[0-9;]*m/g, "").trim().split("\n").slice(-12).join(" ⏎ ")}`);
 
   const appJs = [];
   for await (const e of Deno.readDir(srcDir)) {

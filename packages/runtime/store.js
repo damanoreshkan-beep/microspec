@@ -128,7 +128,7 @@ export function createApp(spec, dataLoad) {
     searchOpen: atom(false),
     confirm: atom(null),
     undo: atom(null),
-    update: atom(false),
+    update: atom(null),
   };
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
   S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch { } });

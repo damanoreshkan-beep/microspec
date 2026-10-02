@@ -33,23 +33,18 @@
  *
  * ## In practice
  * ```js
- * // index.js — the page's half of the update handshake, reduced. The worker never swaps itself in.
+ * // index.js — the page's half, reduced. An update is taken at LAUNCH, silently; nobody is asked.
  * navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
- *   const offer = () => S.update.set(true);                     // render.js paints the restart snackbar
- *   if (reg.waiting && navigator.serviceWorker.controller) offer();
- *   navigator.serviceWorker.addEventListener("message", (e) => { if (e.data?.type === "ms-update") offer(); });
- *   app.applyUpdate = () => {
- *     if (reg.waiting) reg.waiting.postMessage("ms-skip-waiting");   // → controllerchange → reload
- *     else location.reload();
- *   };
+ *   if (reg.waiting && navigator.serviceWorker.controller) reg.waiting.postMessage("ms-skip-waiting");
  * });
+ * navigator.serviceWorker.addEventListener("controllerchange", () => location.reload());   // once, guarded
  * ```
  *
  * ## How it fits
  * Imports nothing and is imported by nothing in the module sense: it reads `self.MS` from the stub that
  * `importScripts` it. `deploy/sw.mjs` (the `sw` 8n8 node, `jsr:@microspec/core/sw`) generates that stub for
  * every app from its import graph and reds a stale one; `gen/scaffold.mjs` writes the placeholder stub a
- * new app starts with. index.js registers the worker and answers `ms-update` / sends `ms-skip-waiting`;
+ * new app starts with. index.js registers the worker and sends `ms-skip-waiting` at launch;
  * notify.js's notifications land in the `notificationclick` handler here. All 74 farm apps ship a stub that
  * loads it; `tests/sw_test.js` evaluates the file under a fake `self` and `CacheStorage`.
  *
@@ -64,9 +59,15 @@
  * - The manifest is network-first (`cache: "no-cache"`) with the cached copy as the fallback: on Android an install bakes
  *   `name`, `icons`, `display`, `start_url`, `orientation` into a WebAPK, and the browser's 24-hour update check is an
  *   ordinary fetch that lands in this worker — a cache hit would hand it the manifest the app was installed with, forever.
- * - `skipWaiting` is never automatic. A changed same-origin shell file (compared by ETag / Last-Modified / Content-Length,
- *   once per worker lifetime) or a waiting worker tells the page, which offers a restart; only the page's
- *   `ms-skip-waiting` message triggers the swap. No validator on either side means "unchanged" — a false prompt is worse than a late one.
+ * - An update is a NEW VERSION, never a changed header. The build stamps each deployed stub with a content
+ *   hash of the app it ships (`version`, `hashed: true`), so sw.js changes only when this app does. The
+ *   old rule — "a cached file's ETag differs" — fired for every app after every deploy, because a deploy
+ *   rewrites every file's mtime: prompts for nothing, sometimes twice. There is no prompt now at all.
+ * - A hashed worker's shell (its precache + navigations) is served from its own cache and never refreshed
+ *   file by file; only a new worker brings new files, all at once. Everything else same-origin is
+ *   stale-while-revalidate, silently. An unhashed stub (dev, the gate) refreshes everything, as before.
+ * - The swap happens when the page asks at launch (`ms-skip-waiting`) and only while one window of the app
+ *   is open; otherwise the worker waits for the next launch.
  * - Each URL is revalidated at most once per worker lifetime, and never when offline, `saveData`, or on (slow-)2g — so a weak
  *   link behaves like no link instead of worse than one. A cold miss races a 12 s timeout, then falls back to cache, then to `./`.
  * - Untouched on purpose: non-GET, `range` requests (206 is not cacheable — media streams itself), non-http(s) schemes, `/feed`
@@ -81,6 +82,8 @@
 const CFG = self.MS || { app: "app", version: "0", precache: [] };
 
 const APP_CACHE = `ms-${CFG.app}-${CFG.version}`;
+const HASHED = CFG.hashed === true;
+const SHELL = new Set((CFG.precache || []).map((u) => { try { return new URL(u, self.location).href; } catch { return ""; } }));
 const APP_PREFIX = `ms-${CFG.app}-`;
 const CDN_CACHE = "ms-cdn-v1";
 
@@ -132,7 +135,7 @@ async function serve(e, req, url, name) {
   if (isManifest(req, url)) return manifestFirst(e, cache, req, url);
   const hit = await lookup(cache, req);
   if (hit) {
-    if (shouldRevalidate(req.url)) e.waitUntil(revalidate(cache, req, url));
+    if (!frozen(req) && shouldRevalidate(req.url)) e.waitUntil(revalidate(cache, req));
     return hit;
   }
   try {
@@ -176,7 +179,10 @@ function timedFetch(req, url, ms, background) {
 }
 
 const revalidated = new Set();
-let announced = false;
+
+// A content-hashed worker's shell is one version, whole: it changes only when a new worker installs a new
+// cache. Refreshing its files one by one is how an old page met a new module.
+const frozen = (req) => HASHED && !LOCAL && (isNav(req) || SHELL.has(req.url));
 
 function shouldRevalidate(url) {
   if (revalidated.has(url)) return false;
@@ -189,28 +195,11 @@ function shouldRevalidate(url) {
   return true;
 }
 
-async function revalidate(cache, req, url) {
+async function revalidate(cache, req) {
   try {
-    const res = await timedFetch(req, url, REVAL_TIMEOUT, true);
-    if (!cacheable(res)) return;
-    const prev = await cache.match(req, { ignoreVary: true });
-    await cache.put(req, res.clone());
-    if (prev && url.origin === self.location.origin && differs(prev, res)) announce();
+    const res = await timedFetch(req, new URL(req.url), REVAL_TIMEOUT, true);
+    if (cacheable(res)) await cache.put(req, res);
   } catch { }
-}
-
-function differs(a, b) {
-  for (const h of ["etag", "last-modified", "content-length"]) {
-    const x = a.headers.get(h), y = b.headers.get(h);
-    if (x && y) return x !== y;
-  }
-  return false;
-}
-
-async function announce() {
-  if (announced) return;
-  announced = true;
-  for (const c of await self.clients.matchAll({ type: "window" })) c.postMessage({ type: "ms-update" });
 }
 
 self.addEventListener("install", (e) => e.waitUntil(precache()));
@@ -218,6 +207,8 @@ self.addEventListener("install", (e) => e.waitUntil(precache()));
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(self.location.hostname);
 
 async function precache() {
+  // Same content hash, same cache: a reinstall caused by sw-core.js alone has nothing to download.
+  if (HASHED && (await caches.has(APP_CACHE)) && (await (await caches.open(APP_CACHE)).match(new URL("./index.html", self.location).href))) return;
   const seen = new Set();
   await Promise.allSettled((CFG.precache || []).map((raw) => {
     if (LOCAL && /^https?:\/\//.test(raw)) return Promise.resolve();
@@ -287,7 +278,15 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
   await self.clients.claim();
 })()));
 
-self.addEventListener("message", (e) => { if (e.data === "ms-skip-waiting") self.skipWaiting(); });
+// The page asks at launch. With a second window of this app open the swap would hand that running page a
+// new shell under its feet, so the worker keeps waiting and the next launch asks again.
+self.addEventListener("message", (e) => {
+  if (e.data !== "ms-skip-waiting") return;
+  e.waitUntil((async () => {
+    const open = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (open.length <= 1) await self.skipWaiting();
+  })());
+});
 
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();

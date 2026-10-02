@@ -211,7 +211,7 @@ for (const dir of [RTSRC, RT_OVERLAY].filter(Boolean)) {
 const compatFails = [];
 for (const id of ids) {
   try { await buildAppCompat({ srcDir: `${APPS}/${id}`, outDir: `${OUT}/${id}`, rtDir: RT_ABS, sharedSources }); }
-  catch (e) { compatFails.push(`${id}: ${String(e.message).split("\n")[0]}`); }
+  catch (e) { compatFails.push(`${id}: ${String(e.message)}`); }
 }
 if (compatFails.length) throw new Error(`compat build failed for ${compatFails.length}/${ids.length} app(s):\n  ${compatFails.join("\n  ")}`);
 console.log(`compat: bundled JS + precompiled CSS for ${ids.length} apps (Safari 16.1 floor)`);
@@ -226,6 +226,64 @@ for (const id of ids) {
   try { await Deno.stat(`${OUT}/${id}/og.png`); } catch { throw new Error(`${id}: og.png missing`); }
 }
 console.log(`link previews: og.png + meta block for ${ids.length} apps`);
+
+// ── every deployed worker is stamped with WHAT IT SHIPS ────────────────────────────────────────────────
+// The source stub lists source modules and is versioned by that list's shape; the built page loads app.js.
+// So here the precache becomes the built shell, and `version` a content hash of this app's INPUTS: its own
+// files and the runtime modules it imports. Never of app.js — the deploy stamp is inside it, and the
+// minifier names variables by character frequency, so a new stamp can reshuffle the whole bundle (1 app in
+// 88 between two builds of the same tree). Bump SHELL_EPOCH when the build itself changes what it emits.
+const SHELL_EPOCH = 1;
+{
+  const under = async (dir, rel = "") => {
+    const out = [];
+    for await (const e of Deno.readDir(`${dir}/${rel}`)) {
+      const p = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory) out.push(...await under(dir, p)); else if (e.isFile) out.push(p);
+    }
+    return out.sort();
+  };
+  const local = (u) => !/^(https?:|data:|#|\/\/)/.test(u);
+  const enc = new TextEncoder();
+  const OUTPUT = (f) => f === "sw.js" || f === "og.png" || f === "app.js" || f === "app.css" || f.startsWith("icons/");
+  let changedShape = 0;
+  for (const id of ids) {
+    const dir = `${OUT}/${id}`;
+    const sw = await Deno.readTextFile(`${dir}/sw.js`);
+    const m = /precache:\s*\[([\s\S]*?)\]/.exec(sw);
+    if (!m) throw new Error(`${id}: sw.js has no precache list to stamp`);
+    const html = await Deno.readTextFile(`${dir}/index.html`);
+    const listed = [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+    const refs = [...html.matchAll(/<(?:script|link)\b[^>]*>/g)].map((t) => t[0])
+      .filter((t) => !/rel=["'](?:preconnect|dns-prefetch|canonical|alternate)["']/.test(t))
+      .map((t) => /(?:src|href)=["']([^"']+)["']/.exec(t)?.[1]).filter(Boolean);
+    const want = [...new Set([
+      "./", "./index.html", "./app.js", "./app.css",
+      ...listed.filter((u) => local(u) && !/\.m?js$/.test(u)),
+      ...refs.filter(local).map((u) => (u.startsWith(".") ? u : `./${u}`)),
+      ...refs.filter((u) => u.startsWith("https://")),
+    ])];
+    const shell = [];
+    for (const u of want) if (!local(u) || u === "./" || (await has(`${dir}/${u}`))) shell.push(u);
+    for (const need of ["./index.html", "./app.js", "./app.css"]) if (!shell.includes(need)) throw new Error(`${id}: ${need} is not in the build — the worker would precache a shell that cannot boot`);
+
+    const parts = [enc.encode(`epoch ${SHELL_EPOCH}\n${listed.filter((u) => !local(u)).sort().join("\n")}`)];
+    const add = async (name, path) => parts.push(enc.encode(`\n${name}\n`), await Deno.readFile(path));
+    for (const f of (await under(dir)).filter((f) => !OUTPUT(f))) await add(f, `${dir}/${f}`);
+    for (const u of listed.filter((u) => u.startsWith("../_rt/") && u !== "../_rt/build.js").sort()) if (await has(`${dir}/${u}`)) await add(u, `${dir}/${u}`);
+    const all = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let at = 0; for (const p of parts) { all.set(p, at); at += p.length; }
+    const version = [...new Uint8Array(await crypto.subtle.digest("SHA-256", all))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12);
+
+    const stamped = sw
+      .replace(/version: "[^"]*",\n/, `version: ${JSON.stringify(version)},\n  hashed: true,\n`)
+      .replace(/precache:\s*\[[\s\S]*?\]/, `precache: [\n${shell.map((u) => `    ${JSON.stringify(u)},\n`).join("")}  ]`);
+    if (!stamped.includes("hashed: true") || !stamped.includes(`"./app.js"`)) throw new Error(`${id}: could not stamp sw.js`);
+    await Deno.writeTextFile(`${dir}/sw.js`, stamped);
+    changedShape++;
+  }
+  console.log(`workers: ${changedShape} stamped with a content hash and the built shell`);
+}
 
 await Deno.writeTextFile(`${OUT}/sw-custom.js`, `self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil((async () => {

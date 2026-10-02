@@ -24,19 +24,20 @@ const swEvent = (request) => {
   return e;
 };
 
-function loadSwCore(app = "rave", { origin = "https://damanoreshkan-beep.github.io", cached = {}, fetch, connection, onLine = true } = {}) {
+function loadSwCore(app = "rave", { origin = "https://damanoreshkan-beep.github.io", cached = {}, fetch, connection, onLine = true, ms = {}, windows = [], have = [] } = {}) {
   const src = Deno.readTextFileSync(new URL("packages/runtime/sw-core.js", pkgRoot(import.meta.url, 3)));
   const events = {};
   const cache = new FakeCache(cached);
   const calls = [];
   const self = {
-    MS: { app, version: "abc123", precache: [] },
+    MS: { app, version: "abc123", precache: [], ...ms },
     location: new URL(`${origin}/microspec/${app}/sw.js`),
     addEventListener: (k, fn) => { events[k] = fn; },
     navigator: { onLine, connection },
-    clients: { matchAll: () => Promise.resolve([]), claim: () => Promise.resolve() },
+    clients: { matchAll: () => Promise.resolve(windows), claim: () => Promise.resolve() },
+    skipWaiting: () => { self.skipped = (self.skipped || 0) + 1; return Promise.resolve(); },
   };
-  const caches = { open: () => Promise.resolve(cache), keys: () => Promise.resolve([]), delete: () => Promise.resolve(true) };
+  const caches = { open: () => Promise.resolve(cache), keys: () => Promise.resolve([]), delete: () => Promise.resolve(true), has: (k) => Promise.resolve(have.includes(k)) };
   const doFetch = (input, init) => { calls.push(typeof input === "string" ? input : input.url); return (fetch || (() => Promise.reject(new TypeError("offline"))))(input, init); };
   new Function("self", "caches", "fetch", src)(self, caches, doFetch);
   const fire = async (request) => { const e = swEvent(request); events.fetch(e); const res = e.responded ? await e.responded : null; await Promise.allSettled(e.waits); return res; };
@@ -178,4 +179,57 @@ Deno.test("sw: a media Range request is passed straight through — cache.put re
   const { fire } = loadSwCore("rave", { cached: { [url]: new Response("cached", { status: 200 }) } });
   const req = swReq(url, { headers: new Headers({ range: "bytes=0-1" }) });
   assertEquals(await fire(req), null, "respondWith must not be called at all");
+});
+
+const HOST = "https://dreamstudio.example";
+const hashedCore = (extra = {}) => loadSwCore("moto", {
+  origin: HOST, ms: { hashed: true, precache: ["./", "./index.html", "./app.js"] },
+  fetch: () => Promise.resolve(new Response("fresh", { status: 200, headers: { etag: "new" } })), ...extra,
+});
+
+Deno.test("sw: a content-hashed shell is one version, whole — its files are never refreshed one by one", async () => {
+  const app = `${HOST}/microspec/moto/app.js`, root = `${HOST}/microspec/moto/`;
+  const { fire, calls, cache } = hashedCore({ cached: { [app]: new Response("v1", { status: 200, headers: { etag: "old" } }), [root]: new Response("<html>v1</html>", { status: 200 }) } });
+  assertEquals(await (await fire(swReq(app))).text(), "v1");
+  assertEquals(await (await fire(swReq(root, { mode: "navigate", destination: "document" }))).text(), "<html>v1</html>");
+  assertEquals(calls.length, 0, "no background fetch: a new shell arrives only as a new worker with a new cache");
+  assertEquals((await cache.match(app)).headers.get("etag"), "old");
+});
+
+Deno.test("sw: what is NOT the shell still refreshes behind the response — and nobody is told", async () => {
+  const data = `${HOST}/microspec/moto/assets/track.json`;
+  const told = [];
+  const { fire, calls, cache } = hashedCore({ cached: { [data]: new Response("old", { status: 200, headers: { etag: "old" } }) }, windows: [{ postMessage: (m) => told.push(m) }] });
+  assertEquals(await (await fire(swReq(data))).text(), "old");
+  assertEquals(calls.length, 1);
+  assertEquals(await (await cache.match(data)).text(), "fresh");
+  assertEquals(told, [], "a changed validator is not an update — the old rule prompted every app after every deploy");
+});
+
+Deno.test("sw: an unhashed stub (dev, the gate) keeps refreshing everything, so an edit shows on the next load", async () => {
+  const view = "https://damanoreshkan-beep.github.io/microspec/rave/view.js";
+  const { fire, calls } = loadSwCore("rave", { ms: { precache: ["./view.js"] }, cached: { [view]: new Response("cached", { status: 200 }) }, fetch: () => Promise.resolve(new Response("fresh", { status: 200 })) });
+  await fire(swReq(view));
+  assertEquals(calls.length, 1);
+});
+
+Deno.test("sw: the swap is taken only while one window of the app is open", async () => {
+  const ask = async (windows) => {
+    const sw = hashedCore({ windows });
+    const e = { data: "ms-skip-waiting", waits: [], waitUntil(p) { this.waits.push(p); } };
+    sw.events.message(e);
+    await Promise.all(e.waits);
+    return sw.self.skipped || 0;
+  };
+  assertEquals(await ask([{}]), 1, "the page that asked is the only one: swap");
+  assertEquals(await ask([{}, {}]), 0, "a second window is running the old shell: keep waiting");
+});
+
+Deno.test("sw: a reinstall caused by sw-core.js alone downloads nothing when this version's cache is whole", async () => {
+  const index = `${HOST}/microspec/moto/index.html`;
+  const sw = hashedCore({ have: ["ms-moto-abc123"], cached: { [index]: new Response("<html>", { status: 200 }) } });
+  const e = { waits: [], waitUntil(p) { this.waits.push(p); } };
+  sw.events.install(e);
+  await Promise.all(e.waits);
+  assertEquals(sw.calls.length, 0);
 });

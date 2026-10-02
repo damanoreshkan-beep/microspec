@@ -24,6 +24,10 @@
  *   says what the person gets; how it is built belongs in RESEARCH.md.
  * - **catalog** — `apps/store/apps.json` agrees with the tree on icon, shots, titles and taglines (run
  *   `manifest` after changing any of them).
+ * - **changelog** — `apps/store/changelog.json`, when the store keeps one: newest first; every entry has a
+ *   dated id, an existing app and a sentence per locale that passes the same word rules (at most 200
+ *   characters); and every app added since the changelog began is announced in it. The entries are what a
+ *   person is told after an update, so they say what changed for them and nothing about how.
  *
  * ## Exit codes
  * - `0` — every card is complete, or there is no store.
@@ -45,5 +49,12 @@ export function taglineProblems(text: any): string[];
  * @returns true when the card is current
  */
 export function sameCard(listed: any, fresh: any): boolean;
+/**
+ * What is wrong with the store's changelog.
+ * @param entries the parsed `changelog.json` — newest first, `{ id, date, app, uk, en }`
+ * @param apps the catalog entries (`{ id, added? }`); the store itself counts as an app
+ * @returns the problems, empty when every entry is fit to be shown
+ */
+export function changelogProblems(entries: any, apps: any): string[];
 /** Words that describe how an app is built instead of what a person gets from it. */
 export const JARGON: RegExp;

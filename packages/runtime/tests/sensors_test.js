@@ -1,6 +1,6 @@
 import { assertEquals, assertAlmostEquals } from "jsr:@std/assert@1";
 import { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
-import { hapticFor, lookHeadingDeg, screenHeadingDeg, heldHeadingDeg, camControls } from "../sensors.js";
+import { hapticFor, lookHeadingDeg, screenHeadingDeg, heldHeadingDeg, camControls, motion, motionSample } from "../sensors.js";
 
 const fakeTrack = (caps, { settings = {}, reject = () => false } = {}) => {
   const calls = [];
@@ -153,4 +153,17 @@ Deno.test("hapticFor — destructive hits harder; apps can opt out or up", () =>
   assertEquals(hapticFor(el('<button id=x data-haptic="bump">clear</button>', "#x")), "bump");
   assertEquals(hapticFor(el('<button id=x data-haptic="off">silent</button>', "#x")), null, "an element that fires its own must be able to stay silent");
   assertEquals(hapticFor(el('<button id=x data-haptic="ok">saved</button>', "#x")), "ok");
+});
+
+Deno.test("motionSample — spec axes (alpha→x, beta→y, gamma→z), null for a missing or partial vector", () => {
+  const s = motionSample({ rotationRate: { alpha: 1, beta: 2, gamma: 3 }, accelerationIncludingGravity: { x: 0, y: 0, z: 9.8 }, timeStamp: 42 });
+  assertEquals(s, { rot: [1, 2, 3], acc: [0, 0, 9.8], t: 42 });
+  assertEquals(motionSample({ rotationRate: { alpha: 1, beta: null, gamma: 3 }, accelerationIncludingGravity: null }), { rot: null, acc: null, t: 0 });
+  assertEquals(motionSample({ rotationRate: { alpha: NaN, beta: 0, gamma: 0 } }).rot, null);
+});
+
+Deno.test("motion — a no-op where the hardware is not", async () => {
+  assertEquals(motion.supported, false);
+  assertEquals(await motion.request(), false);
+  assertEquals(typeof motion.start(() => { throw new Error("must not fire"); }), "function");
 });

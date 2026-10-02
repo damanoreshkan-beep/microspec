@@ -35,6 +35,10 @@
  * - {@link heldHeadingDeg} — `(alpha, beta, gamma, screenAngle = 0) → deg`: the hand-held compass reading at any pitch, screen-top while flat, camera axis while upright, smoothstep-crossfaded between; never null while β/γ are numbers.
  * - {@link tilt} — `supported`, `needsPermission`, `request()` (the same gesture-gated permission as compass); `start(onTilt) → stop fn`, `onTilt({ beta, gamma })` screen-orientation aware, no true-north, no geolocation.
  *
+ * **Motion**
+ * - {@link motion} — `supported`, `needsPermission`, `request() → Promise<boolean>` (from a tap); `start(onSample) → stop fn`, ~60 Hz gyroscope + accelerometer in the DEVICE frame, which does not turn with the screen.
+ * - {@link motionSample} — `(event) → { rot: [x, y, z] deg/s | null, acc: [x, y, z] m/s² incl. gravity | null, t }`; pure. The SIGN of `acc` differs by platform (the spec and Android report +9.8 on the axis pointing up at rest, iOS −9.8) — derive "up" from the pose, never from the sign.
+ *
  * **Media**
  * - {@link camera} — `supported`; `async start(videoEl, onErr, { facingMode = "environment", constraints = null }) → stop fn` that stops every track and survives being called before the open resolves; `controls(videoEl)` → the running track's {@link camControls}.
  * - {@link camControls} — `(track) → { caps: { torch, zoom, focus }, torch(on), zoom(z), focusAt(x, y) }`, pure over `getCapabilities` / `applyConstraints`.
@@ -295,6 +299,40 @@ export const tilt = {
     };
     window.addEventListener("deviceorientation", handler, true);
     return () => window.removeEventListener("deviceorientation", handler, true);
+  },
+};
+
+const finite3 = (o, a, b, c) => {
+  const v = [o?.[a], o?.[b], o?.[c]];
+  return v.every((n) => typeof n === "number" && isFinite(n)) ? v : null;
+};
+/**
+ * One devicemotion event as device-frame vectors: x right, y to the top of the device, z out of the screen.
+ * @param e a DeviceMotionEvent (or anything shaped like one)
+ * @returns `{ rot, acc, t }` — `rot` [x, y, z] deg/s (spec: alpha → x, beta → y, gamma → z), `acc` [x, y, z]
+ *   m/s² including gravity, either null when the device did not report it; `t` the event timestamp, ms
+ */
+export function motionSample(e) {
+  return {
+    rot: finite3(e?.rotationRate, "alpha", "beta", "gamma"),
+    acc: finite3(e?.accelerationIncludingGravity, "x", "y", "z"),
+    t: typeof e?.timeStamp === "number" ? e.timeStamp : 0,
+  };
+}
+
+/** Raw gyroscope + accelerometer samples in the DEVICE frame — `request()` from a tap (the iOS motion prompt), `start(onSample)` → stop fn, `onSample(motionSample)`. */
+export const motion = {
+  supported: typeof window !== "undefined" && typeof DeviceMotionEvent !== "undefined",
+  needsPermission: typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function",
+  async request() {
+    if (this.needsPermission) { try { return (await DeviceMotionEvent.requestPermission()) === "granted"; } catch { return false; } }
+    return this.supported;
+  },
+  start(onSample) {
+    if (!this.supported) return () => {};
+    const handler = (e) => onSample(motionSample(e));
+    window.addEventListener("devicemotion", handler, true);
+    return () => window.removeEventListener("devicemotion", handler, true);
   },
 };
 

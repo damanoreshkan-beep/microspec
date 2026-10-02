@@ -219,8 +219,9 @@ triggers is invisible to it.
 
 ### Sensor apps — seed the mock, and mark what it renders
 
-`/_rt/sensors.js` gives `haptic · geo · compass · wakeLock` — that is the whole list today; motion/mic/camera
-do not exist yet and adding one is a deliberate runtime extension. The reading capabilities feed you finished
+`/_rt/sensors.js` gives `haptic · geo · wakeLock · compass · tilt · motion · camera · mic`; adding another is
+a deliberate runtime extension. `motion` is the raw gyroscope + accelerometer in the device frame (its
+gravity sign differs between iOS and Android — derive "up" from the pose). The reading capabilities feed you finished
 answers: `compass.start(cb)` reports **true** north (it watches position and
 applies the World Magnetic Model itself — never add declination in an app), `geo.watch` reports the full
 spec fix `{lat,lng,accuracy,altitude,altitudeAccuracy,heading,speed,t}` where `accuracy` is a **95%**

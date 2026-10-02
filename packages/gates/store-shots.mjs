@@ -25,6 +25,8 @@
 
 import { serveLocal, bootBrowser, makeHelpers, gotoAndSettle } from "./browser-lib.mjs";
 import { APPS } from "../../tools/graph.mjs";
+import { importShots } from "../../tools/art/shots-import.mjs";
+import { buildManifest } from "../../deploy/manifest.mjs";
 
 const DEV = { width: 384, height: 832, dpr: 2, mobile: true };
 const ids = Deno.args.filter((a) => !a.startsWith("--"));
@@ -56,7 +58,10 @@ try {
 } finally { await browser.close(); }
 if (failed) Deno.exit(1);
 
-const run = async (rel, ...args) => (await new Deno.Command("deno", { args: ["run", "-A", new URL(rel, import.meta.url).href, ...args], stdout: "inherit", stderr: "inherit" }).output()).success;
-if (!(await run("../../tools/art/shots-import.mjs", tmp, `--out=${Deno.cwd()}/${APPS}/store/assets`))) Deno.exit(1);
-if (!(await run("../../deploy/manifest.mjs"))) Deno.exit(1);
+// Imported, never spawned: a child started from this file's URL lands in the npm realm of a product's
+// node_modules, where shots-import's `npm:` imports are refused.
+const { n, bytes } = await importShots(tmp, `${Deno.cwd()}/${APPS}/store/assets`);
 await Deno.remove(tmp, { recursive: true });
+const apps = await buildManifest();
+await Deno.writeTextFile(`${APPS}/store/apps.json`, JSON.stringify(apps, null, 2) + "\n");
+console.log(`store-shots: ${n} pictures (${(bytes / 1024).toFixed(0)} KB) → ${APPS}/store/assets, catalog rewritten (${apps.length} apps)`);

@@ -68,34 +68,9 @@ import { loadMaterials, applyMaterial } from "./material.js";
 import { installTelemetry } from "./telemetry.js";
 import { installUsage } from "./usage.js";
 import { initTelegram, inTelegram } from "./tma.js";
+import { installUpdates } from "./update.js";
 
 installSealedFetch();
-
-function registerWorker(app) {
-  if (!("serviceWorker" in navigator)) return;
-  const S = app.S;
-  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
-    const offer = () => S.update.set(true);
-    if (reg.waiting && navigator.serviceWorker.controller) offer();
-    reg.addEventListener("updatefound", () => {
-      const w = reg.installing;
-      if (!w) return;
-      w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) offer(); });
-    });
-    navigator.serviceWorker.addEventListener("message", (e) => { if (e.data?.type === "ms-update") offer(); });
-    let asked = false;
-    app.applyUpdate = () => {
-      asked = true;
-      if (reg.waiting) reg.waiting.postMessage("ms-skip-waiting");
-      else location.reload();
-    };
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (!asked) return;
-      asked = false;
-      location.reload();
-    });
-  }).catch(() => {});
-}
 
 /**
  * Boot the app: validate the spec, create the store, mount the UI and start loading (or streaming) data.
@@ -123,7 +98,7 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
-  try { if (new URLSearchParams(location.search).get("update") === "1") S.update.set(true); } catch { }
+  try { const u = gate && new URLSearchParams(location.search).get("update"); if (u) S.update.set({ text: u }); } catch { }
   loadMaterials().then((list) => {
     S.materials.set(list);
     if (list.length) applyMaterial(S.material.get() || list[0].id, list);
@@ -197,7 +172,7 @@ export function start(spec, arg2) {
 
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
-  registerWorker(app);
+  installUpdates(app);
 
   const hold = typeof location !== "undefined" && location.search.includes("__hold");
   if (opts.stream) {

@@ -121,6 +121,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
   const closure = [...buildClosure(`${dir}/index.html`, codeOnly)].filter((f) => rd(f) != null).sort();
   for (const f of closure) {
     if (f.startsWith(RT)) urls.add(`/_rt/${f.slice(RT.length)}`);
+    else if (f.startsWith("rt/")) urls.add(`/_rt/${f.slice(3)}`);
     else if (f.startsWith(`${dir}/`) && f !== `${dir}/index.html`) urls.add(`./${f.slice(dir.length + 1)}`);
   }
 

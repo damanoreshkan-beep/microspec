@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { taglineProblems, sameCard } from "../../../deploy/listing.mjs";
+import { taglineProblems, sameCard, changelogProblems } from "../../../deploy/listing.mjs";
 
 Deno.test("listing: a description for a person passes", () => {
   assertEquals(taglineProblems("Погода зараз і прогноз"), []);
@@ -32,4 +32,26 @@ Deno.test("listing: a card is current whatever order the filesystem listed the l
   assertEquals(sameCard(a, { ...b, shots: ["ride"] }), false, "a missing screenshot is a stale card");
   assertEquals(sameCard(a, { ...b, taglines: { uk: "Б", en: "changed" } }), false);
   assertEquals(sameCard(undefined, a), false, "an app the catalog has never heard of");
+});
+
+Deno.test("listing: the changelog is dated, ordered, about real apps and written for people", () => {
+  const apps = [{ id: "moto", added: "2026-10-02" }, { id: "tide" }, { id: "old", added: "2026-09-01" }];
+  const ok = [
+    { id: "2026-10-03-tide-stations", date: "2026-10-03", app: "tide", uk: "З'явилися нові станції.", en: "New stations have arrived." },
+    { id: "2026-10-02-moto", date: "2026-10-02", app: "moto", uk: "Новий застосунок — спідометр для мотоцикла.", en: "New app — a motorcycle speedometer." },
+  ];
+  assertEquals(changelogProblems(ok, apps), []);
+  assertEquals(changelogProblems(ok.slice(0, 1), [{ id: "moto", added: "2026-10-04" }, { id: "tide" }]),
+    ['changelog: "moto" was added 2026-10-04 and nobody was told — write its entry']);
+  const bad = changelogProblems([
+    { id: "2026-10-02-x", date: "2026-10-02", app: "ghost", uk: "Тепер рендериться через WebGL.", en: "" },
+    { id: "2026-10-03-y", date: "2026-10-03", app: "tide", uk: "Ок, усе гаразд тепер.", en: "All good now, really." },
+    { id: "oops", date: "2026-10-01", app: "tide", uk: "а", en: "b" },
+  ], apps);
+  assertEquals(bad.some((b) => b.includes('unknown app "ghost"')), true);
+  assertEquals(bad.some((b) => b.includes("рендериться, WebGL")), true);
+  assertEquals(bad.some((b) => b.includes("no en text")), true);
+  assertEquals(bad.some((b) => b.includes("out of order")), true);
+  assertEquals(bad.some((b) => b.includes("id must be")), true);
+  assertEquals(changelogProblems(null, apps), ["changelog.json is not a list"]);
 });

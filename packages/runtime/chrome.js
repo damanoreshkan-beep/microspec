@@ -194,18 +194,13 @@ export function Toast() {
   }
   if (update && !key) {
     return html`<div data-toast class="pointer-events-none" style=${band}>
-      <div data-update role="status" class="pointer-events-auto sf-raised sf-e5 bg-base-100 rounded-[var(--ms-r)] p-4 flex flex-col gap-3 w-[calc(100vw-1.5rem)] max-w-sm ms-reveal">
-        <div class="flex items-center gap-3">
-          <div class="size-12 rounded-full grid place-items-center bg-primary/10 text-primary sf-lift2 shrink-0">${Icon(A.spec.profile?.icon || A.spec.icon || "lucide:sparkles", "text-2xl")}</div>
-          <div class="flex-1 min-w-0">
-            <div class="font-bold leading-tight">${sys("updateReady", loc)}</div>
-            <div class="text-xs text-muted mt-0.5">${sys("updateHint", loc)}</div>
-          </div>
+      <div data-update role="status" class="pointer-events-auto sf-raised sf-e5 bg-base-100 rounded-[var(--ms-r)] p-4 flex items-start gap-3 w-[calc(100vw-1.5rem)] max-w-sm ms-reveal">
+        <div class="size-10 rounded-full grid place-items-center bg-primary/10 text-primary sf-lift2 shrink-0">${Icon("lucide:sparkles", "text-xl")}</div>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold leading-tight">${sys("whatsNew", loc)}</div>
+          <div class="text-sm text-base-content/80 mt-1 leading-snug">${update.text}</div>
         </div>
-        <div class="flex gap-2">
-          <button data-update-dismiss class="btn btn-sm btn-ghost rounded-full px-4" onClick=${() => A.S.update.set(false)}>${sys("later", loc)}</button>
-          <button data-update-apply class="btn btn-sm btn-primary rounded-full flex-1 gap-1.5" onClick=${() => { A.S.update.set(false); A.applyUpdate?.(); }}>${Icon("lucide:rotate-cw", "text-base")}${sys("updateNow", loc)}</button>
-        </div>
+        <button data-update-dismiss aria-label=${sys("close", loc)} class="btn btn-sm btn-ghost btn-circle shrink-0" onClick=${() => A.S.update.set(null)}>${Icon("lucide:x", "text-lg")}</button>
       </div>
     </div>`;
   }

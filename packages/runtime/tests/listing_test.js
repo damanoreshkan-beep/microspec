@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { taglineProblems } from "../../../deploy/listing.mjs";
+import { taglineProblems, sameCard } from "../../../deploy/listing.mjs";
 
 Deno.test("listing: a description for a person passes", () => {
   assertEquals(taglineProblems("Погода зараз і прогноз"), []);
@@ -23,4 +23,13 @@ Deno.test("listing: the first sentence is the store subtitle, so it has a size",
   const long = "Слово ".repeat(20).trim();
   assertEquals(taglineProblems(long)[0], `first sentence is ${long.length} characters (12–90: the store shows it alone)`);
   assertEquals(taglineProblems("Перше речення нормальної довжини. " + "ще ".repeat(80))[0].includes("(max 240)"), true);
+});
+
+Deno.test("listing: a card is current whatever order the filesystem listed the locales in", () => {
+  const a = { icon: true, shots: ["ride", "log"], titles: { en: "Speedometer", uk: "Спідометр" }, taglines: { en: "A", uk: "Б" } };
+  const b = { icon: true, shots: ["ride", "log"], titles: { uk: "Спідометр", en: "Speedometer" }, taglines: { uk: "Б", en: "A" }, version: "1.9" };
+  assertEquals(sameCard(a, b), true);
+  assertEquals(sameCard(a, { ...b, shots: ["ride"] }), false, "a missing screenshot is a stale card");
+  assertEquals(sameCard(a, { ...b, taglines: { uk: "Б", en: "changed" } }), false);
+  assertEquals(sameCard(undefined, a), false, "an app the catalog has never heard of");
 });

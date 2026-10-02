@@ -37,5 +37,13 @@
  * @returns the problems, empty when the description is fit for a person
  */
 export function taglineProblems(text: any): string[];
+/**
+ * Whether a catalog entry shows what the tree would show: icon, screenshots, titles, descriptions.
+ * Locale ORDER is not compared — it follows directory order, which differs between filesystems.
+ * @param listed the entry from `apps/store/apps.json` (or undefined)
+ * @param fresh the entry `buildManifest` produces now
+ * @returns true when the card is current
+ */
+export function sameCard(listed: any, fresh: any): boolean;
 /** Words that describe how an app is built instead of what a person gets from it. */
 export const JARGON: RegExp;

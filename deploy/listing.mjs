@@ -56,6 +56,20 @@ export function taglineProblems(text) {
   return out;
 }
 
+const sorted = (o) => (o && typeof o === "object" && !Array.isArray(o) ? Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]])) : o);
+
+/**
+ * Whether a catalog entry shows what the tree would show: icon, screenshots, titles, descriptions.
+ * Locale ORDER is not compared — it follows directory order, which differs between filesystems.
+ * @param listed the entry from `apps/store/apps.json` (or undefined)
+ * @param fresh the entry `buildManifest` produces now
+ * @returns true when the card is current
+ */
+export function sameCard(listed, fresh) {
+  const key = (x) => JSON.stringify([!!x?.icon, x?.shots ?? [], sorted(x?.titles), sorted(x?.taglines)]);
+  return key(listed) === key(fresh);
+}
+
 if (import.meta.main) {
   if (!(await has(`${APPS}/store/spec.json`))) { console.log("  ✓ no store in this tree — no cards to check"); Deno.exit(0); }
   const apps = await buildManifest();
@@ -75,8 +89,7 @@ if (import.meta.main) {
     }
     for (const [loc, text] of Object.entries(a.taglines)) for (const p of taglineProblems(text)) say(`description (${loc}) ${p}`);
     if (!Object.keys(a.taglines).length) say("no description (profTagline)");
-    const c = listed.get(a.id), key = (x) => JSON.stringify([x?.icon, x?.shots, x?.titles, x?.taglines]);
-    if (key(c) !== key(a)) say("apps/store/apps.json is stale for this app — run manifest");
+    if (!sameCard(listed.get(a.id), a)) say("apps/store/apps.json is stale for this app — run manifest");
   }
   if (!bad.length) { console.log(`  ✓ ${apps.length} store cards complete: icon, screenshots, a description for people`); Deno.exit(0); }
   for (const b of bad) console.error(`  ✗ ${b}`);

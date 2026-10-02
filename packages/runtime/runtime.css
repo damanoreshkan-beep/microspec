@@ -126,13 +126,15 @@
    .ms-side — a stage stacked ABOVE its controls becomes a stage BESIDE them. A visualiser and a transport
    cannot share 200px vertically, and dropping either one is not adaptation, it is amputation: side by side
    both keep every control they had. Wrap the fit view in .ms-side; the Stage (data-stage-box) goes left.
+   --ms-side-stage is the stage's share: 38% suits a visualiser beside a transport; an instrument whose
+   stage IS the reading sets it wider on its own root (a clamp, so the controls keep a usable column).
 
    And the dock drops its labels rather than its targets: the glyph and the 44px hit area stay, the caption
    goes. Each dock button carries an aria-label (render.js) precisely so this is legal — hiding the only
    accessible name would trade a layout bug for a critical a11y one. */
 @media (max-height: 520px) and (min-width: 340px) {
   .ms-side { flex-direction: row; align-items: stretch; }
-  .ms-side > [data-stage-box] { flex: 0 0 38%; min-width: 0; }
+  .ms-side > [data-stage-box] { flex: 0 0 var(--ms-side-stage, 38%); min-width: 0; }
   .ms-side > .ms-side-main { flex: 1 1 auto; min-width: 0; justify-content: center; }
 }
 @media (max-height: 440px) {

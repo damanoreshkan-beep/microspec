@@ -45,7 +45,7 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js|view
    `deno run -A packages/gen/scaffold.mjs apps/<id>` (index.html + manifest + sw + icon.svg). Mode auto:
    `tool` if `view.js`, `stream` if `stream.js`, else `data`. Provide `brand.json` `{bg,fg}` + `brand.svg`
    (lucide **stroke** paths — the icon wraps them in `fill:none;stroke:fg`). After adding an app, rerun
-   `deno run -A deploy/manifest.mjs` → regenerates the launcher list `apps/home/apps.json`, **and**
+   `deno run -A deploy/manifest.mjs` → regenerates the launcher list `apps/store/apps.json`, **and**
    `deno run -A deploy/sw.mjs` → regenerates every app's service-worker precache manifest from the real
    import graph. Scaffold only writes a `sw.js` *placeholder*: the shell an app must cache to open offline
    isn't knowable until its imports exist. `deploy/sw.mjs --check` gates this in CI, and it is part of the
@@ -69,7 +69,21 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js|view
    key** referenced by the view (`T(t,"x")` in a locale that lacks `x`), or a blank render. It does NOT
    replace verify (axe/overflow/shots need Chromium) — run both: preflight first, then push.
 
-7. **Push → CI is the gate** (below). **Check the run-level conclusion**, not streamed per-job output.
+7. **Finish the store card — it is part of the app, not a follow-up.** The `listing` gate fails an app whose
+   card is incomplete, in a tree that has a store:
+   - **Icon** — a generated picture in the product's icon style, never the scaffold's glyph. Generate several
+     takes, measure them, LOOK, then `deno run -A jsr:@microspec/core/icon-import <id>=<take.png>` (writes
+     `icon.webp` + `icon.svg`). The prompt block, the generator and the geometry gate are the product's
+     (dreamstudio: `docs/research/luminous-icons.md`, `docs/research/mascot-tools/`).
+   - **Screenshots** — `deno run -A jsr:@microspec/core/store-shots <id>`: every non-profile tab at the
+     reference phone, dark and light, from the gate's fixtures; it rewrites the catalog too. Shoot after the
+     screen is final, and look at what it shot.
+   - **Description** (`profTagline`, every locale) — written for the person who will use the app, not for
+     its author. Say what they get; never how it is built (no "WebGL", "synthesised live", "on-device",
+     frequencies in MHz). The first sentence is 12–90 characters because the store shows it alone as the
+     subtitle; the whole thing is at most 240. State a hardware requirement in plain words.
+
+8. **Push → CI is the gate** (below). **Check the run-level conclusion**, not streamed per-job output.
 
 ## Tool apps — compose the SYSTEMIC runtime, don't rebuild
 

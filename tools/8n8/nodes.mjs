@@ -178,6 +178,12 @@ export const NODES = [
     why: "App-count claims in the docs, checked against the directory. Prose rots; this makes it fail.",
     run: () => ["deno", "run", "-A", at("deploy/counts.mjs"), "--check"],
   },
+  {
+    id: "listing", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-10-02",
+    why: "The store card is part of the app: an icon, a screenshot of every screen in both themes, and a " +
+      "description written for a person. Three things nobody owned, so every new app shipped without them.",
+    run: () => ["deno", "run", "-A", at("deploy/listing.mjs"), "--check"],
+  },
 
   {
     id: "manifest", kind: "script", phase: "ship", needs: ["scaffold"], scope: "farm", frozen: "2026-06-19",
@@ -195,7 +201,7 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("tools/clean.mjs")],
   },
   {
-    id: "push", kind: "script", phase: "ship", needs: ["validate", "preflight", "unit", "sw", "counts", "clean"],
+    id: "push", kind: "script", phase: "ship", needs: ["validate", "preflight", "unit", "sw", "counts", "listing", "clean"],
     scope: "farm", frozen: "2026-06-11",
     why: "git push origin main. Gated on the local gates by the DAG itself, not by a promise.",
     run: () => ["git", "push", "origin", "main"],
@@ -261,7 +267,7 @@ export function topo(nodes = NODES) {
 }
 
 export const FLOWS = {
-  gates: ["demo", "rtmap", "dts", "docart", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts"],
+  gates: ["demo", "rtmap", "dts", "docart", "realmlint", "validate", "noundef", "relimports", "preflight", "unit", "mcp", "pipeline", "caps", "kit", "shell", "sw", "readme", "counts", "listing"],
   author: ["research", "spec", "i18n", "view", "scaffold"],
   ship: ["clean", "push"],
   all: NODES.map((n) => n.id),

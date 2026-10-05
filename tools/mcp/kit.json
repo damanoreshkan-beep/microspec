@@ -338,7 +338,7 @@
     {
       "name": "Stage",
       "kind": "component",
-      "line": 566,
+      "line": 568,
       "headline": "Stage — where a visualiser lives",
       "doc": "A full-bleed `absolute inset-0` canvas centres its subject on the SCREEN, which is the wrong centre: the\nheader sits over the top of it and the transport island over the bottom, so the object reads as pushed\nup and off-balance on every phone. A visualiser belongs in the box that is actually visible — the flex\nvoid between the chrome — and then its own geometry centring is correct for free, at every breakpoint,\nwith no measuring and no magic numbers.\n\nUse it as the `flex-1 min-h-0` void of a fit view: header · <Stage> · controls. The canvas inside is\n`absolute inset-0` relative to THIS box, not the screen.",
       "signature": "Stage({ children, className = \"\" })",

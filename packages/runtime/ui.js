@@ -325,9 +325,10 @@ export function Transport({
   const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
   
   
+  
   const hero = size === "hero";
   const big = hero
-    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !text-base-content sf-raised sf-e3"
+    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 text-base-content sf-raised sf-e3"
     : size === "sm"
       ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
       : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";

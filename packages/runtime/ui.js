@@ -428,9 +428,11 @@ export function Transport({
   // in a narrow column on a full-width phone. Both are container-narrow and viewport-wide.
   // "hero" — for an app that IS its play button (outpost's core sits inside a stack of halo rings and is
   // the screen's subject, not a control in a row). In the kit, so that app never forks one.
+  // Plain text-base-content, no `!`: the utilities layer already beats .btn's colour, and the browser build
+  // (the gate, store-shots, `see`) never emits the important form — the hero's glyph was invisible there.
   const hero = size === "hero";
   const big = hero
-    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 !text-base-content sf-raised sf-e3"
+    ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 text-base-content sf-raised sf-e3"
     : size === "sm"
       ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
       : "w-[var(--ms-ctl)] h-[var(--ms-ctl)] @max-[300px]:w-11 @max-[300px]:h-11";

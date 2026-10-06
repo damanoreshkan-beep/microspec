@@ -11,7 +11,6 @@
  */
 import "./tests/apk_test.js";
 import "./tests/sealedfetch_test.js";
-import "./tests/cutout_test.js";
 import "./tests/tone_test.js";
 import "./tests/update_test.js";
 import "./tests/listing_test.js";

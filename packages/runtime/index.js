@@ -69,7 +69,6 @@ import { installTelemetry } from "./telemetry.js";
 import { installUsage } from "./usage.js";
 import { initTelegram, inTelegram } from "./tma.js";
 import { installUpdates } from "./update.js";
-import { armCutout } from "./cutout.js";
 
 installSealedFetch();
 
@@ -93,7 +92,18 @@ export function start(spec, arg2) {
   initTelegram();
   if (inTelegram()) import("./auth.js").then((a) => a.restore().then((s) => (s ? null : a.loginTelegram())).catch(() => {})).catch(() => {});
 
-  const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
+  // The status-bar colour must follow the theme, not a baked-in value: where the OS paints a status-bar band
+  // (Android standalone, iOS non-translucent), a stale black meta made that band a visible strip over a light
+  // app — matching it to the live base-100 is what makes the app read as edge-to-edge (viewport-fit=cover does
+  // the rest where the platform honours it). One tag, updated on every theme and tone change.
+  const syncBarColour = () => {
+    try {
+      const m = document.querySelector('meta[name="theme-color"]'); if (!m) return;
+      const c = getComputedStyle(document.documentElement).getPropertyValue("--color-base-100").trim();
+      if (c) m.setAttribute("content", c);
+    } catch { }
+  };
+  const applyTheme = (t) => { document.documentElement.setAttribute("data-theme", t); syncBarColour(); };
   const urlTheme = (() => {
     try { const q = new URLSearchParams(location.search).get("theme"); return q ? (q.includes("light") ? "signal-light" : "signal") : null; } catch { return null; }
   })();
@@ -108,8 +118,9 @@ export function start(spec, arg2) {
   loadMaterials().then((list) => {
     S.materials.set(list);
     if (list.length) applyMaterial(S.material.get() || list[0].id, list);
+    syncBarColour();
   });
-  S.material.listen((id) => applyMaterial(id, S.materials.get()));
+  S.material.listen((id) => { applyMaterial(id, S.materials.get()); syncBarColour(); });
 
   const applyLang = (l) => { try { document.documentElement.lang = l; } catch { } };
   applyLang(S.locale.get());
@@ -179,7 +190,6 @@ export function start(spec, arg2) {
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
   installUpdates(app);
-  armCutout();   // Samsung Internet only: the camera cutout is reachable through HTML fullscreen alone (cutout.js)
 
   const hold = typeof location !== "undefined" && location.search.includes("__hold");
   if (opts.stream) {

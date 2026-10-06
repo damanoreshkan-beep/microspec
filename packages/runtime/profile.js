@@ -24,7 +24,7 @@ const artOf = (k) => {
   try { const v = getComputedStyle(document.documentElement).getPropertyValue(`--ds-art-${k}`).trim(); return !!v && v !== "none"; }
   catch { return false; }
 };
-function ThemeWidget({ t, loc, theme, modeToggle, materials, current }) {
+function ThemeWidget({ t, loc, theme, modeToggle, materials, current, tone = "" }) {
   const applied = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
   const mode = (applied || theme) === "signal-light" ? "light" : "dark";
   const name = (m) => m?.name?.[loc] || m?.name?.en || m?.id || "";
@@ -47,6 +47,14 @@ function ThemeWidget({ t, loc, theme, modeToggle, materials, current }) {
         })}
       </div>` : null}
     </div>
+    <div id="p-tone" role="radiogroup" aria-label=${sys("tone", loc)} class="flex items-center gap-3">
+      ${[["", "toneNormal", mode === "dark" ? "linear-gradient(135deg,#ECEDEF 0 50%,#111114 50%)" : "linear-gradient(135deg,#15171A 0 50%,#FAFAFA 50%)"], ["noir", "toneNoir", "linear-gradient(135deg,#FFFFFF,#6E6E6E 55%,#000000)"], ["green", "toneGreen", "radial-gradient(circle at 40% 36%,#D6FFA6 0 18%,#8CFF26 20% 60%,#1E4A00 100%)"], ["amber", "toneAmber", "radial-gradient(circle at 40% 36%,#FFC28A 0 18%,#FF5900 20% 60%,#4A1A00 100%)"]].map(([id, k, bg]) => {
+        const on = tone === id;
+        return html`<button key=${id || "normal"} type="button" role="radio" aria-checked=${on} aria-label=${sys(k, loc)} data-tone-id=${id}
+          class=${`size-9 rounded-full shrink-0 transition ring-offset-2 ring-offset-base-100 ${on ? "ring-2 ring-primary scale-105" : "opacity-70"}`}
+          style=${`background:${bg}`} onClick=${() => A.S.tone.set(id)}></button>`;
+      })}
+    </div>
     ${materials.length > 1 ? html`<div class="flex gap-1 overflow-x-auto -mx-2 px-2 py-1 snap-x">
       ${materials.map((m) => {
         const on = m.id === current, sw = m.swatch?.[mode] || m.swatch?.dark;
@@ -65,6 +73,7 @@ function ThemeWidget({ t, loc, theme, modeToggle, materials, current }) {
 export function Profile({ tab }) {
   const t = useStore(A.S.t), theme = useStore(A.S.theme), loc = useStore(A.S.locale), fav = useStore(A.S.fav);
   const materials = useStore(A.S.materials), materialId = useStore(A.S.material);
+  const tone = useStore(A.S.tone);
   const material = materials.find((m) => m.id === materialId) || materials[0];
   const p = A.spec.profile || {};
   const account = p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
@@ -110,7 +119,7 @@ export function Profile({ tab }) {
         ${Icon("lucide:star", "text-[0.9em] opacity-80")}${n}</button>`)}</div>
     </div></div>` : null}
     ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
-    ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} />` : null}
+    ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} tone=${tone} />` : null}
     ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
     ${adminHref ? html`<a id="p-admin" href=${adminHref} class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("adminRow", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
     ${p.permissions?.length ? html`<button id="p-perms" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}

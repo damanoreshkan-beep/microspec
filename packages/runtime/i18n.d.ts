@@ -165,6 +165,14 @@ export const MEDIA: {
         en: string;
         uk: string;
     };
+    fill: {
+        en: string;
+        uk: string;
+    };
+    fit: {
+        en: string;
+        uk: string;
+    };
     seek: {
         en: string;
         uk: string;

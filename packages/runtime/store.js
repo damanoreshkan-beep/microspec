@@ -102,6 +102,7 @@ export function createApp(spec, dataLoad) {
     locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", "uk"),
     theme: persistentAtom(ns + "theme", spec.theme || "dim"),
     material: persistentAtom("ms:material", ""),
+    tone: persistentAtom("ms:tone", ""),           // "" | noir | green | amber — the screen's tone, one for the whole farm (tone.css)
     materials: atom([]),
     fav: persistentAtom(ns + "fav", {}, JSON_CODEC),
     amount: persistentAtom(ns + "amount", "100"),

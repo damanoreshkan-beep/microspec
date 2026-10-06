@@ -98,6 +98,11 @@ export function start(spec, arg2) {
   })();
   applyTheme(urlTheme || S.theme.get());
   S.theme.listen((t) => applyTheme(urlTheme || t));
+  // The screen's tone (noir / green / amber) is a farm-wide choice, applied as html[data-tone] — tone.css draws it.
+  const applyTone = (v) => { if (v) document.documentElement.setAttribute("data-tone", v); else document.documentElement.removeAttribute("data-tone"); };
+  const urlTone = (() => { try { return gate ? new URLSearchParams(location.search).get("tone") : null; } catch { return null; } })();
+  applyTone(urlTone || S.tone.get());
+  S.tone.listen((v) => applyTone(urlTone || v));
   try { const u = gate && new URLSearchParams(location.search).get("update"); if (u) S.update.set({ text: u }); } catch { }
   loadMaterials().then((list) => {
     S.materials.set(list);

@@ -906,3 +906,28 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 .ms-sweep { animation: ms-sweep 4s linear infinite; }
 @keyframes ms-sweep { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ms-sweep { animation: none; } }
+
+/* THE SCREEN'S TONE — html[data-tone], one choice for the whole farm (profile → Screen: Normal · Noir · Green · Amber).
+   The green and amber are the owner's Hyprland screen shaders (tactical-green / tactical-amber, 2026-10-06) done in
+   CSS: luma × TINT, a touch more contrast so text does not wash out, a vignette (0.6 for the NVG tunnel, 0.2 for
+   amber), sensor grain. Two fixed pseudo-elements over everything, never in the way of a finger:
+     ::after  — backdrop-filter grayscale → the page becomes luma; its background is the TINT, multiplied in
+     ::before — the vignette and the grain, multiplied over that
+   An overlay instead of `filter` on <html>: a filter on an ancestor turns every position:fixed child
+   (dock, sheets, the player) into a child of that box, and the chrome would scroll away with the page. */
+:root[data-tone="noir"]  { --tone-tint: #FFFFFF; --tone-vig: 0; }
+:root[data-tone="green"] { --tone-tint: #8CFF26; --tone-vig: .6; }
+:root[data-tone="amber"] { --tone-tint: #FF5900; --tone-vig: .2; }
+:root[data-tone]::after {
+  content: ""; position: fixed; inset: 0; z-index: 2147483000; pointer-events: none;
+  -webkit-backdrop-filter: grayscale(1) contrast(1.06) brightness(1.08); backdrop-filter: grayscale(1) contrast(1.06) brightness(1.08);
+  background: var(--tone-tint); mix-blend-mode: multiply;
+}
+:root[data-tone]::before {
+  content: ""; position: fixed; inset: 0; z-index: 2147483001; pointer-events: none; mix-blend-mode: multiply;
+  background:
+    radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,var(--tone-vig)) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='.5 0 0 0 .5 0 .5 0 0 .5 0 0 .5 0 .5 0 0 0 .12 0'/></filter><rect width='160' height='160' filter='url(%23g)'/></svg>");
+  background-size: auto, 160px 160px;
+}
+:root[data-tone="noir"]::before { background: none; }

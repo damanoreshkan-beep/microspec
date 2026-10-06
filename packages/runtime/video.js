@@ -82,8 +82,13 @@
  *   delegate lives on those controls; `Player` draws its own transport instead (play/pause, position,
  *   length, sound) and rotating now only rotates the video. `controlsList="nofullscreen"` and
  *   `disableRemotePlayback` are the belt and braces for a shell that shows controls anyway.
- * - There is no fullscreen button either: the overlay already covers the screen, so it only ever handed
- *   OUR surface to the browser's.
+ * - There is no SYSTEM fullscreen button: the overlay already covers the screen, so it only ever handed OUR
+ *   surface to the browser's. "Fill" (#player-fill) is ours instead: the picture covers the whole dialog
+ *   (object-cover) and the chrome floats over it — the owner's "на весь екран, масштабуй" (2026-10-06).
+ * - A HOLD is a loupe: press and keep still for 320 ms and the picture scales 2.4× around the finger — the
+ *   focus sits 12 % of the height ABOVE the fingertip so the thumb never covers what it magnifies — with a
+ *   bump; dragging while holding moves the lens; letting go puts the frame back with a tick. The hold ends
+ *   the gesture: no scrub, no tap, so the clip neither seeks nor pauses under a loupe.
  * - The picture is a transport: a horizontal drag scrubs (axis locked at 8px, so a vertical thumb-slide
  *   does nothing), a double tap on a side jumps ±10s, a single tap plays/pauses, and arrows/space do the
  *   same from a keyboard. Where a gesture LANDS is playback.js (`scrubTo`/`skipTo`/`scrubSpan`), under the
@@ -110,7 +115,7 @@ import { Fragment } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { media } from "./i18n.js";
 import { Pixels } from "./skeleton.js";
-import { wakeLock } from "./sensors.js";
+import { wakeLock, haptic } from "./sensors.js";
 import { resumeAt, recoverPlan, fmtClock, scrubTo, skipTo, fmtDelta } from "./playback.js";
 export { resumeAt, RESUME_MIN, RESUME_TAIL, recoverPlan, fmtClock, scrubSpan, scrubTo, skipTo, fmtDelta } from "./playback.js";
 
@@ -230,7 +235,16 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   }, [url, attempt]);
   const toggle = () => { const v = ref.current; if (!v) return; if (v.paused) v.play().catch(() => {}); else v.pause(); };
 
-  const drag = useRef({ on: false, x0: 0, y0: 0, axis: 0, from: 0, moved: 0, at: 0 });
+  const drag = useRef({ on: false, x0: 0, y0: 0, axis: 0, from: 0, moved: 0, at: 0, hold: false, timer: 0 });
+  const [fill, setFill] = useState(false);
+  const [loupe, setLoupe] = useState(null);                      // { x, y } — the lens origin in % of the picture
+  const LOUPE = 2.4, LOUPE_LIFT = 0.12, HOLD_MS = 320;
+  const lensAt = (e) => {
+    const box = ref.current?.getBoundingClientRect?.(); if (!box || !box.width || !box.height) return null;
+    const x = Math.max(0, Math.min(100, (e.clientX - box.left) / box.width * 100));
+    const y = Math.max(0, Math.min(100, (e.clientY - box.top - box.height * LOUPE_LIFT) / box.height * 100));
+    return { x, y };
+  };
   const [scrub, setScrub] = useState(null);
   const lastTap = useRef({ t: 0, x: 0 });
   const surfaceRef = useRef();
@@ -243,14 +257,22 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   const down = (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const v = ref.current;
-    drag.current = { on: true, x0: e.clientX, y0: e.clientY, axis: 0, from: v?.currentTime || 0, moved: 0, at: 0 };
+    clearTimeout(drag.current.timer);
+    const ev = { clientX: e.clientX, clientY: e.clientY };
+    drag.current = { on: true, x0: e.clientX, y0: e.clientY, axis: 0, from: v?.currentTime || 0, moved: 0, at: 0, hold: false, timer: 0 };
+    drag.current.timer = setTimeout(() => {
+      const d = drag.current; if (!d.on || d.axis) return;
+      d.hold = true; const at = lensAt(ev); if (at) { setLoupe(at); haptic.bump(); }
+    }, HOLD_MS);
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { }
   };
   const move = (e) => {
     const d = drag.current; if (!d.on) return;
+    if (d.hold) { const at = lensAt(e); if (at) setLoupe(at); return; }
     const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
     if (!d.axis) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      clearTimeout(d.timer);
       d.axis = Math.abs(dx) > Math.abs(dy) ? 1 : -1;
     }
     if (d.axis !== 1 || !len) return;
@@ -261,7 +283,8 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   };
   const up = () => {
     const d = drag.current; if (!d.on) return;
-    d.on = false;
+    d.on = false; clearTimeout(d.timer);
+    if (d.hold) { d.hold = false; d.at = Date.now(); setLoupe(null); haptic.tick(); seeking.current = false; setScrub(null); return; }
     if (d.axis === 1 && Math.abs(d.moved) > 8) {
       seekTo(scrubTo(d.from, d.moved, widthOf(), len));
       d.at = Date.now();
@@ -289,7 +312,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     clearTimeout(tapTimer.current);
     tapTimer.current = setTimeout(() => toggle(), 280);
   };
-  useEffect(() => () => clearTimeout(tapTimer.current), []);
+  useEffect(() => () => { clearTimeout(tapTimer.current); clearTimeout(drag.current.timer); }, []);
   useEffect(() => {
     const onKey = (e) => {
       if (e.defaultPrevented || /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || "")) return;
@@ -307,21 +330,22 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   const pip = async () => { try { const v = ref.current; document.pictureInPictureElement ? await document.exitPictureInPicture() : await v?.requestPictureInPicture(); } catch { } };
   const openBtn = html`<a href=${url} target="_blank" rel="noopener" class="btn btn-sm btn-outline text-white border-white/30 gap-2"><iconify-icon icon="lucide:external-link"></iconify-icon>${media("openExternal", locale)}</a>`;
   const retryBtn = html`<button id="player-retry" class="btn btn-sm btn-primary gap-2" onClick=${() => { setState("loading"); setAttempt((n) => n + 1); }}><iconify-icon icon="lucide:rotate-cw"></iconify-icon>${media("retry", locale)}</button>`;
-  return html`<div ref=${boxRef} role="dialog" aria-modal="true" aria-label=${title || media("player", locale)} class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:var(--ms-safe-top)">
-    <header class="flex items-center gap-1 px-2 py-1.5 text-white bg-black/70">
+  return html`<div ref=${boxRef} role="dialog" aria-modal="true" aria-label=${title || media("player", locale)} data-fill=${fill ? "" : null} data-loupe=${loupe ? "" : null} class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:var(--ms-safe-top)">
+    <header class=${`flex items-center gap-1 px-2 py-1.5 text-white bg-black/70 ${fill ? "absolute inset-x-0 top-0 z-10" : ""}`} style=${fill ? "margin-top:var(--ms-safe-top)" : ""}>
       <button id="player-back" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("back", locale)} onClick=${onClose}><iconify-icon icon="lucide:arrow-left" class="text-xl"></iconify-icon></button>
       <span class="flex-1 min-w-0 truncate font-medium">${title || ""}</span>
       ${state === "playing" && canPip ? html`<button id="player-pip" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("pip", locale)} onClick=${pip}><iconify-icon icon="lucide:picture-in-picture-2" class="text-lg"></iconify-icon></button>` : null}
       ${state !== "error" ? html`<a href=${url} target="_blank" rel="noopener" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("openExternal", locale)}><iconify-icon icon="lucide:external-link" class="text-lg"></iconify-icon></a>` : null}
     </header>
-    <div ref=${surfaceRef} class="flex-1 relative flex items-center justify-center overflow-hidden touch-pan-y select-none"
+    <div ref=${surfaceRef} class=${`flex items-center justify-center overflow-hidden touch-pan-y select-none ${fill ? "absolute inset-0" : "relative flex-1"}`}
       onPointerDown=${state === "playing" ? down : null} onPointerMove=${state === "playing" ? move : null}
       onPointerUp=${state === "playing" ? up : null} onPointerCancel=${state === "playing" ? up : null}
-      onClick=${state === "playing" ? surfaceTap : null}>
+      onClick=${state === "playing" ? surfaceTap : null} onContextMenu=${(e) => e.preventDefault()} style="-webkit-touch-callout:none">
       ${""}
       <video ref=${ref} autoplay playsinline disableremoteplayback controlslist="nodownload nofullscreen noremoteplayback"
         poster=${poster || ""}
-        class=${`w-full max-h-full bg-black pointer-events-none ${state === "playing" ? "" : "opacity-0"}`}></video>
+        class=${`bg-black pointer-events-none ${fill ? "w-full h-full object-cover" : "w-full max-h-full"} ${state === "playing" ? "" : "opacity-0"}`}
+        style=${loupe ? `transform:scale(${LOUPE});transform-origin:${loupe.x}% ${loupe.y}%;transition:transform .16s ease-out` : "transition:transform .16s ease-out"}></video>
       ${scrub ? html`<div id="player-scrub" class="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center pointer-events-none">
         <div class="px-4 py-2 rounded-2xl bg-black/70 text-white text-center">
           <div class="text-xl font-semibold tabular-nums">${fmtClock(scrub.to)}</div>
@@ -338,7 +362,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
         <div class="flex items-center gap-2 flex-wrap justify-center">${retryBtn}${openBtn}</div></div>` : null}
     </div>
     ${""}
-    ${state === "playing" ? html`<div id="player-bar" class="flex items-center gap-3 px-3 py-2 text-white bg-black/70" style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
+    ${state === "playing" ? html`<div id="player-bar" class=${`flex items-center gap-3 px-3 py-2 text-white bg-black/70 ${fill ? "absolute inset-x-0 bottom-0 z-10" : ""}`} style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
       <button id="player-play" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(playing ? "pause" : "play", locale)} onClick=${toggle}>
         <iconify-icon icon=${playing ? "lucide:pause" : "lucide:play"} class="text-lg"></iconify-icon></button>
       ${len > 0
@@ -353,6 +377,8 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
         : html`<span class="flex-1 text-xs font-semibold tracking-wide opacity-80">${media("live", locale)}</span>`}
       <button id="player-mute" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(muted ? "unmute" : "mute", locale)} onClick=${sound}>
         <iconify-icon icon=${muted ? "lucide:volume-x" : "lucide:volume-2"} class="text-lg"></iconify-icon></button>
+      <button id="player-fill" class="btn btn-ghost btn-sm btn-circle text-white" aria-pressed=${fill ? "true" : "false"} aria-label=${media(fill ? "fit" : "fill", locale)} onClick=${() => setFill((f) => !f)}>
+        <iconify-icon icon=${fill ? "lucide:minimize-2" : "lucide:maximize-2"} class="text-lg"></iconify-icon></button>
     </div>` : null}
   </div>`;
 }

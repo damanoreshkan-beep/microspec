@@ -23,6 +23,9 @@ A micro-app = `spec.json` (declarative UI) + `data.js` (`export async function l
 
 - `fav` is required for: a `source:"fav"` tab, and any `fav` / `!fav` predicate. Omit it and cards show no star.
 - Default locale is `uk`; the profile language switch is hardcoded to **uk / en**, so always supply both.
+- `share` (OPTIONAL, boolean) — the app appears in the OS share sheet: the manifest gets a GET `share_target`
+  at `./` with `sh_title` / `sh_text` / `sh_url`, and `takeShared(fn)` from `/_rt/share.js` hands the page what was
+  shared, once, with the parameters stripped from the address bar. For apps whose first act IS a link or text.
 - `minWidth` (OPTIONAL, integer, default **200**) — the narrowest viewport the app HONESTLY works at.
   200 is the watch floor and the right answer for anything made of text, which is nearly everything
   here. Declare a wider floor only when the app is *physically* unable to go narrower: `brick` is a

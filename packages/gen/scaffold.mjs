@@ -222,9 +222,13 @@ const icons = [
 ];
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
-  // display_override: Samsung Internet picked "standalone" for a plain display:fullscreen (forum 2024); the
-  // explicit chain is the one shape with a positive report (2026). Chrome reads it the same way.
-  display: "fullscreen", display_override: ["fullscreen", "standalone"], orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
+  // display: STANDALONE, not fullscreen — a fullscreen WebAPK is letterboxed by Chromium under the camera
+  // cutout on Samsung Internet (immersive + LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT = a dead black band, and a
+  // page has zero web lever over it; measured on an S25, 2026-10-06, and the same cure a real PWA shipped —
+  // whisper-money#1080). Standalone shows the system status bar instead, painted from theme-color (which the
+  // runtime keeps matched to the live theme), so the top is a clean bar in the app's colour, no black slab.
+  // True draw-under-the-cutout needs the Fullscreen API (rejected) or One UI's per-app "Camera cutout" toggle.
+  display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
   // spec.share — the OS share sheet lists the app; the page takes sh_* through /_rt/share.js takeShared()
   ...(spec.share ? { share_target: { action: "./", method: "GET", params: { title: "sh_title", text: "sh_text", url: "sh_url" } } } : {}),
 }, null, 2) + "\n";

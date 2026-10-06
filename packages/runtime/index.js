@@ -69,6 +69,7 @@ import { installTelemetry } from "./telemetry.js";
 import { installUsage } from "./usage.js";
 import { initTelegram, inTelegram } from "./tma.js";
 import { installUpdates } from "./update.js";
+import { armCutout } from "./cutout.js";
 
 installSealedFetch();
 
@@ -178,6 +179,7 @@ export function start(spec, arg2) {
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
   installUpdates(app);
+  armCutout();   // Samsung Internet only: the camera cutout is reachable through HTML fullscreen alone (cutout.js)
 
   const hold = typeof location !== "undefined" && location.search.includes("__hold");
   if (opts.stream) {

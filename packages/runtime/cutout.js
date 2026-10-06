@@ -1,0 +1,65 @@
+/* @ts-self-types="./cutout.d.ts" */
+/**
+ * # runtime/cutout.js — the whole screen on Samsung Internet, camera cutout included
+ *
+ * An installed app with `display: "fullscreen"` goes edge-to-edge in Chrome, but in Samsung Internet a black
+ * band stays where the camera is. Read in Chromium's source (DisplayCutoutController, the base of Samsung
+ * Internet 28–30): `viewport-fit=cover` is turned into Android's SHORT_EDGES cutout mode ONLY while the page is
+ * in HTML Fullscreen API state; a manifest-fullscreen web app gets an immersive window with the DEFAULT mode,
+ * which Android letterboxes. Chrome escapes because on Android 15 an app targeting SDK 35 reads DEFAULT as
+ * ALWAYS. So on Samsung Internet, and only there, the runtime asks for element fullscreen on the first touch
+ * and asks again after every exit — the one lever the web has for the cutout (research 2026-10-06,
+ * docs/research/samsung-cutout.md).
+ *
+ * ## Import
+ * ```js
+ * import { armCutout, wantsCutoutArm } from "/_rt/cutout.js";
+ * ```
+ *
+ * ## What it exports
+ * - {@link wantsCutoutArm} — `wantsCutoutArm(nav, doc, mm)` → true for an INSTALLED app in Samsung Internet
+ *   with the Fullscreen API available; pure, unit-tested.
+ * - {@link armCutout} — `armCutout()`: installs the one-touch listener (idempotent); returns a stop function.
+ *
+ * ## Invariants and pitfalls
+ * - Only Samsung Internet, only installed (standalone or fullscreen display mode), never in a tab, never under
+ *   the gate: Chrome needs nothing and a browser tab must keep its chrome.
+ * - The request rides a user gesture (`pointerup`/`click`, once); a refusal is silent and the arm stays.
+ * - The system Back leaves HTML fullscreen first; the next touch re-arms. `env(safe-area-inset-top)` becomes
+ *   the cutout's height inside fullscreen, so the header's `--ms-safe-top` keeps the title out from under it.
+ * - reel's own guard exits fullscreen only for a VIDEO/AUDIO element; the document's fullscreen is left alone.
+ * @module
+ */
+import { gate } from "./gate.js";
+
+/**
+ * Whether this page should ask for element fullscreen to reach under the cutout.
+ * @param nav `navigator`-like (`userAgent`)
+ * @param doc `document`-like (`fullscreenEnabled`)
+ * @param mm `matchMedia`-like, `(query) → { matches }`
+ * @returns true only for an installed app in Samsung Internet with the Fullscreen API
+ */
+export function wantsCutoutArm(nav, doc, mm) {
+  if (!/SamsungBrowser/i.test(String(nav?.userAgent || ""))) return false;
+  if (!doc?.fullscreenEnabled) return false;
+  try { return !!mm("(display-mode: standalone), (display-mode: fullscreen)")?.matches; } catch { return false; }
+}
+
+let armed = false;
+
+/**
+ * Asks for the document's fullscreen on the next touch, and again after every exit — Samsung Internet only.
+ * @returns a function that removes the listeners
+ */
+export function armCutout() {
+  if (armed || gate || typeof document === "undefined" || typeof navigator === "undefined") return () => {};
+  if (!wantsCutoutArm(navigator, document, (q) => matchMedia(q))) return () => {};
+  armed = true;
+  const ask = () => {
+    if (document.fullscreenElement) return;
+    try { document.documentElement.requestFullscreen({ navigationUI: "hide" }).catch(() => {}); } catch { }
+  };
+  document.addEventListener("pointerup", ask, { passive: true });
+  document.addEventListener("click", ask, { passive: true });
+  return () => { armed = false; document.removeEventListener("pointerup", ask); document.removeEventListener("click", ask); };
+}

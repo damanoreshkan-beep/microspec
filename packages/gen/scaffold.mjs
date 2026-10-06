@@ -222,7 +222,9 @@ const icons = [
 ];
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
-  display: "fullscreen", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
+  // display_override: Samsung Internet picked "standalone" for a plain display:fullscreen (forum 2024); the
+  // explicit chain is the one shape with a positive report (2026). Chrome reads it the same way.
+  display: "fullscreen", display_override: ["fullscreen", "standalone"], orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
   // spec.share — the OS share sheet lists the app; the page takes sh_* through /_rt/share.js takeShared()
   ...(spec.share ? { share_target: { action: "./", method: "GET", params: { title: "sh_title", text: "sh_text", url: "sh_url" } } } : {}),
 }, null, 2) + "\n";

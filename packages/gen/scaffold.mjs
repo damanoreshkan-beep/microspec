@@ -223,6 +223,8 @@ const icons = [
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
   display: "fullscreen", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
+  // spec.share — the OS share sheet lists the app; the page takes sh_* through /_rt/share.js takeShared()
+  ...(spec.share ? { share_target: { action: "./", method: "GET", params: { title: "sh_title", text: "sh_text", url: "sh_url" } } } : {}),
 }, null, 2) + "\n";
 
 const sw = `// PLACEHOLDER — run \`deno run -A deploy/sw.mjs\` to generate the real worker for this app.\n` +

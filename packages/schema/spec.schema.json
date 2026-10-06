@@ -44,6 +44,10 @@
       "items": { "type": "string", "minLength": 1 },
       "description": "STORE ONLY — the app ids shown as the large featured cards at the top of the launcher, in this order (tide, reel, … — the premium set). An id that is not in the catalogue is skipped, so the list can be edited freely."
     },
+    "share": {
+      "type": "boolean",
+      "description": "The app takes a link or text SHARED from another app (the OS share sheet): the manifest declares a GET share target at ./ with sh_title / sh_text / sh_url, and the page reads them once through /_rt/share.js takeShared(). Only for an app whose first act is a link or a piece of text — a downloader, a reader, a saver."
+    },
     "minWidth": {
       "type": "integer",
       "minimum": 200,

@@ -23,12 +23,14 @@ A micro-app = `spec.json` (declarative UI) + `data.js` (`export async function l
 
 - `fav` is required for: a `source:"fav"` tab, and any `fav` / `!fav` predicate. Omit it and cards show no star.
 - Default locale is `uk`; the profile language switch is hardcoded to **uk / en**, so always supply both.
-- `share` (OPTIONAL, `true` or `{ files: ["audio/*", ".mp3"] }`) — the app appears in the OS share sheet. `true`: a
-  GET `share_target` at `./` with `sh_title` / `sh_text` / `sh_url`. `{ files }`: a POST multipart target at
+- `share` (OPTIONAL, `true` or `{ files: ["audio/*"] }`) — the app appears in the OS share sheet. `true`: a GET
+  `share_target` at `./` with `sh_title` / `sh_text` / `sh_url`. `{ files }`: a POST multipart target at
   `./share-target` — the shared service worker parks the files in a cache and redirects to `./?sh_files=<n>` (Chrome
   on Android; iOS cannot share INTO a web app at all; the app must be installed, and a changed target needs a
-  reinstall). Either way `takeShared(fn)` from `/_rt/share.js` hands the page `{ title, text, url, files }` once,
-  with the parameters stripped from the address bar. For apps whose first act IS what was shared.
+  reinstall). **MIME types only** in `files`: the Web Share Target spec allows `.mp3`-style extensions, but Chrome
+  copies every entry into the WebAPK's `android:mimeType`, which takes `type/subtype` only — the package fails to
+  parse and the install hangs (measured on an S25, 2026-10-07). Either way `takeShared(fn)` from `/_rt/share.js`
+  hands the page `{ title, text, url, files }` once, with the parameters stripped from the address bar.
 - `minWidth` (OPTIONAL, integer, default **200**) — the narrowest viewport the app HONESTLY works at.
   200 is the watch floor and the right answer for anything made of text, which is nearly everything
   here. Declare a wider floor only when the app is *physically* unable to go narrower: `brick` is a

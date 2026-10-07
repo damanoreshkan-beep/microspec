@@ -52,7 +52,7 @@
           "additionalProperties": false,
           "required": ["files"],
           "properties": {
-            "files": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^([a-z]+/[a-z0-9.+*-]+|\\.[a-z0-9]{1,8})$" }, "description": "What the share sheet may hand in — MIME types (audio/*) AND extensions (.mp3); Chrome on Android lists the app for both forms but delivers reliably only when both are declared." }
+            "files": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z]+/[a-z0-9.+*-]+$" }, "description": "What the share sheet may hand in — MIME types ONLY (audio/*, image/png). The spec allows extensions (.mp3) too, but a WebAPK copies each entry into android:mimeType, which takes type/subtype only: the package fails to parse, Chrome hangs at install or falls back to a shortcut (measured on an S25, 2026-10-07)." }
           }
         }
       ],

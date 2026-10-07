@@ -101,7 +101,7 @@ export function validateSpec(spec) {
 
   if (spec.share != null && typeof spec.share !== "boolean") {
     need(spec.share && typeof spec.share === "object" && Array.isArray(spec.share.files) && spec.share.files.length >= 1, "spec.share", "must be true or { files: [...] }");
-    spec.share.files.forEach((f, i) => need(typeof f === "string" && /^([a-z]+\/[a-z0-9.+*-]+|\.[a-z0-9]{1,8})$/.test(f), `spec.share.files[${i}]`, "a MIME type (audio/*) or an extension with its dot (.mp3)"));
+    spec.share.files.forEach((f, i) => need(typeof f === "string" && /^[a-z]+\/[a-z0-9.+*-]+$/.test(f), `spec.share.files[${i}]`, "a MIME type only (audio/*) — an extension like .mp3 breaks the WebAPK install on Android"));
     need(Object.keys(spec.share).every((k) => k === "files"), "spec.share", "only `files` is allowed");
   }
 

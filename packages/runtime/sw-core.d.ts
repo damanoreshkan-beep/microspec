@@ -69,6 +69,8 @@
  *   is open; otherwise the worker waits for the next launch.
  * - Each URL is revalidated at most once per worker lifetime, and never when offline, `saveData`, or on (slow-)2g — so a weak
  *   link behaves like no link instead of worse than one. A cold miss races a 12 s timeout, then falls back to cache, then to `./`.
+ * - A POST to `./share-target` is a FILE share from the OS sheet (`spec.share.files`): the files go to the `ms-share` cache
+ *   under the scope and the browser is 303'd to `./?sh_files=<n>`; share.js collects them. Nothing else about POST is touched.
  * - Untouched on purpose: non-GET, `range` requests (206 is not cacheable — media streams itself), non-http(s) schemes, `/feed`
  *   and any third-party origin not in the pinned CDN list. Query-insensitive and scope-root lookup applies to NAVIGATIONS only —
  *   for a subresource `?id=5` and `?id=3` are different answers.

@@ -233,3 +233,29 @@ Deno.test("sw: a reinstall caused by sw-core.js alone downloads nothing when thi
   await Promise.all(e.waits);
   assertEquals(sw.calls.length, 0);
 });
+
+Deno.test("sw: a FILE share (POST ./share-target) is parked in the share cache and the browser is 303'd to ./?sh_files=n", async () => {
+  const parked = new Map();
+  const shareCache = { put: (k, r) => { parked.set(k, r); return Promise.resolve(); }, match: (k) => Promise.resolve(parked.get(k)), delete: (k) => Promise.resolve(parked.delete(k)) };
+  const src = Deno.readTextFileSync(new URL("packages/runtime/sw-core.js", pkgRoot(import.meta.url, 3)));
+  const events = {};
+  const self = { MS: { app: "fonoteka", version: "v", precache: [] }, location: new URL("https://dreamstudio.example/fonoteka/sw.js"), addEventListener: (k, fn) => { events[k] = fn; }, navigator: {}, clients: {} };
+  const caches = { open: (name) => Promise.resolve(name === "ms-share" ? shareCache : new FakeCache()), keys: () => Promise.resolve([]), delete: () => Promise.resolve(true), has: () => Promise.resolve(false) };
+  new Function("self", "caches", "fetch", src)(self, caches, () => Promise.reject(new TypeError("offline")));
+  const fd = new FormData();
+  fd.append("sh_files", new File([new Uint8Array([1, 2, 3])], "song.mp3", { type: "audio/mpeg" }));
+  fd.append("sh_title", "a song");
+  const req = new Request("https://dreamstudio.example/fonoteka/share-target", { method: "POST", body: fd });
+  const e = { request: req, waits: [], respondWith(p) { this.responded = p; }, waitUntil(p) { this.waits.push(p); } };
+  events.fetch(e);
+  const res = await e.responded;
+  assertEquals(res.status, 303);
+  assertEquals(res.headers.get("location"), "https://dreamstudio.example/fonoteka/?sh_files=1&sh_title=a+song");
+  const kept = parked.get("https://dreamstudio.example/fonoteka/share-target/0");
+  assert(kept, "the file is parked under the scope");
+  assertEquals(kept.headers.get("x-ms-name"), "song.mp3");
+  assertEquals([...new Uint8Array(await kept.arrayBuffer())], [1, 2, 3]);
+  const plain = { request: swReq("https://dreamstudio.example/fonoteka/view.js", { method: "POST" }), respondWith() { this.responded = true; }, waitUntil() {} };
+  events.fetch(plain);
+  assertEquals(plain.responded, undefined, "any other POST is still left alone");
+});

@@ -45,8 +45,18 @@
       "description": "STORE ONLY — the app ids shown as the large featured cards at the top of the launcher, in this order (tide, reel, … — the premium set). An id that is not in the catalogue is skipped, so the list can be edited freely."
     },
     "share": {
-      "type": "boolean",
-      "description": "The app takes a link or text SHARED from another app (the OS share sheet): the manifest declares a GET share target at ./ with sh_title / sh_text / sh_url, and the page reads them once through /_rt/share.js takeShared(). Only for an app whose first act is a link or a piece of text — a downloader, a reader, a saver."
+      "oneOf": [
+        { "type": "boolean" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["files"],
+          "properties": {
+            "files": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^([a-z]+/[a-z0-9.+*-]+|\\.[a-z0-9]{1,8})$" }, "description": "What the share sheet may hand in — MIME types (audio/*) AND extensions (.mp3); Chrome on Android lists the app for both forms but delivers reliably only when both are declared." }
+          }
+        }
+      ],
+      "description": "The app takes something SHARED from another app (the OS share sheet). `true`: a link or text — the manifest declares a GET share target at ./ with sh_title / sh_text / sh_url. `{ files: [...] }`: FILES too — a POST multipart share target at ./share-target that the shared service worker parks in a cache and redirects to ./?sh_files=<n>. Either way the page reads it once through /_rt/share.js takeShared() (`files` is an array of File). Only for an app whose first act is what was shared — a downloader, a reader, a saver, a player."
     },
     "minWidth": {
       "type": "integer",

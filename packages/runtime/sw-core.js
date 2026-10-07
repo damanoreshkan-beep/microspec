@@ -70,6 +70,8 @@
  *   is open; otherwise the worker waits for the next launch.
  * - Each URL is revalidated at most once per worker lifetime, and never when offline, `saveData`, or on (slow-)2g — so a weak
  *   link behaves like no link instead of worse than one. A cold miss races a 12 s timeout, then falls back to cache, then to `./`.
+ * - A POST to `./share-target` is a FILE share from the OS sheet (`spec.share.files`): the files go to the `ms-share` cache
+ *   under the scope and the browser is 303'd to `./?sh_files=<n>`; share.js collects them. Nothing else about POST is touched.
  * - Untouched on purpose: non-GET, `range` requests (206 is not cacheable — media streams itself), non-http(s) schemes, `/feed`
  *   and any third-party origin not in the pinned CDN list. Query-insensitive and scope-root lookup applies to NAVIGATIONS only —
  *   for a subresource `?id=5` and `?id=3` are different answers.
@@ -118,8 +120,30 @@ const cacheable = (res) => !!res && res.status === 200 && (res.type === "basic" 
 
 const isManifest = (req, url) => req.destination === "manifest" || /\/manifest\.json$/.test(url.pathname);
 
+// A FILE share (manifest share_target method POST, enctype multipart) is a navigation only a worker can read: the
+// browser POSTs the form to ./share-target, which exists nowhere on the server. The files are parked here under the
+// app's scope and the page is sent to ./?sh_files=<n> with a 303 (a refresh must never re-post); /_rt/share.js
+// collects them from the same cache and clears it. One cache for the origin, keyed by scope — never under APP_PREFIX,
+// which activate() sweeps.
+const SHARE_CACHE = "ms-share";
+async function shareIn(req) {
+  const scope = new URL("./", req.url);
+  const q = new URLSearchParams();
+  try {
+    const fd = await req.formData();
+    const files = fd.getAll("sh_files").filter((f) => f && typeof f === "object" && typeof f.size === "number" && f.size > 0);
+    const cache = await caches.open(SHARE_CACHE);
+    await Promise.all(files.map((f, i) => cache.put(`${scope.href}share-target/${i}`,
+      new Response(f, { headers: { "content-type": f.type || "application/octet-stream", "x-ms-name": encodeURIComponent(f.name || `shared-${i}`) } }))));
+    q.set("sh_files", String(files.length));
+    for (const k of ["sh_title", "sh_text", "sh_url"]) { const v = fd.get(k); if (typeof v === "string" && v) q.set(k, v); }
+  } catch { q.set("sh_files", "0"); }
+  return Response.redirect(`${scope.href}?${q}`, 303);
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
+  if (req.method === "POST" && /\/share-target$/.test(new URL(req.url).pathname)) { e.respondWith(shareIn(req)); return; }
   if (req.method !== "GET") return;
   if (req.headers.has("range")) return;
   let url;

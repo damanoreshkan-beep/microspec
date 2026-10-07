@@ -24,6 +24,8 @@
  *   off VPS_PROXY, the tunnel itself and the PLAIN routes pass through untouched.
  * - {@link sealedFrameUrl} — `async (url, ref) → "${VPS_PROXY}/frame?s=<envelope>"`: a plain GET an ELEMENT
  *   can load (`<video src>`, `<iframe src>`), with the destination sealed into `?s=`. The reply is not sealed.
+ * - {@link sealedUrl} — `async (route, fields) → "${VPS_PROXY}${route}?s=<envelope>"` with the SESSION inside, for
+ *   the library's raw upload and its `<audio src>` stream (fonoteka).
  * - {@link sealedClipUrl} — `async (url, page, format) → "${VPS_PROXY}/clip?s=<envelope>"` for the clip
  *   exporter; `format` is `"gif"` (default) or `"mp4"`. `fetch` it and read `.blob()`; the reply is not sealed.
  *
@@ -85,6 +87,15 @@ export function sealedFrameUrl(url: any, ref: any): Promise<string>;
  * @returns the proxy URL string
  */
 export function sealedClipUrl(url: any, page: any, format: any): Promise<string>;
+/**
+ * Build a plain GET/POST URL for a sealed-URL route that needs the SESSION — the library's upload (a raw file is
+ * not JSON, so it cannot ride the tunnel) and its stream (an `<audio src>` fetches itself, with its own Range).
+ * The envelope carries `s` (the sid) plus `fields`, and is valid for 6 h on the route it names.
+ * @param route the /feed sub-path, e.g. "/library/get"
+ * @param fields what the route needs — `{ id }` for a stream, `{ n: name }` for an upload
+ * @returns the proxy URL string
+ */
+export function sealedUrl(route: any, fields?: {}): Promise<string>;
 /**
  * Replace globalThis.fetch with the sealing wrapper; anything off VPS_PROXY and the PLAIN routes pass through untouched.
  * @param realFetch the underlying fetch to wrap (default: the global one)

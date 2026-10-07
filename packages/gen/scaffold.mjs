@@ -229,8 +229,12 @@ const manifest = JSON.stringify({
   // runtime keeps matched to the live theme), so the top is a clean bar in the app's colour, no black slab.
   // True draw-under-the-cutout needs the Fullscreen API (rejected) or One UI's per-app "Camera cutout" toggle.
   display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
-  // spec.share — the OS share sheet lists the app; the page takes sh_* through /_rt/share.js takeShared()
-  ...(spec.share ? { share_target: { action: "./", method: "GET", params: { title: "sh_title", text: "sh_text", url: "sh_url" } } } : {}),
+  // spec.share — the OS share sheet lists the app; the page takes sh_* through /_rt/share.js takeShared().
+  // Files need a POST multipart target (web-share-target Level 2): sw-core.js intercepts it, parks the files in a
+  // cache and 303s to ./?sh_files=<n>. Both MIME and extension in `accept`: Chrome lists for either, delivers for both.
+  ...(spec.share?.files
+    ? { share_target: { action: "./share-target", method: "POST", enctype: "multipart/form-data", params: { title: "sh_title", text: "sh_text", url: "sh_url", files: [{ name: "sh_files", accept: spec.share.files }] } } }
+    : spec.share ? { share_target: { action: "./", method: "GET", params: { title: "sh_title", text: "sh_text", url: "sh_url" } } } : {}),
 }, null, 2) + "\n";
 
 const sw = `// PLACEHOLDER — run \`deno run -A deploy/sw.mjs\` to generate the real worker for this app.\n` +

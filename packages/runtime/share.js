@@ -13,9 +13,10 @@
  * ```
  *
  * ## What it exports
- * - {@link takeShared} — `takeShared(fn)`: `fn({ title, text, url })` for the share that opened the page (if
+ * - {@link takeShared} — `takeShared(fn)`: `fn({ title, text, url, files })` for the share that opened the page (if
  *   any), and for every share the APK shell hands in later. Returns nothing; safe to call at module load.
  * - {@link firstLink} — `firstLink({ title, text, url })` → the first http(s) address in the three fields, or `""`.
+ * - {@link takeFiles} — `takeFiles(caches, scope, n)` → the File[] a file share parked; exported for the unit test.
  *
  * ## In practice
  * ```js
@@ -26,11 +27,38 @@
  * - The parameters are taken from `location` at import time and removed with `replaceState`; a share is
  *   delivered to every `takeShared` caller registered before or after — it is held until the first one.
  * - A share that carries no link is still delivered: the app decides what text means to it.
+ * - FILES (`spec.share.files`): the worker parks them in the `ms-share` cache under the scope and lands the page on
+ *   `./?sh_files=<n>`; they are collected here, delivered as `files: [File]`, and the cache entries are deleted —
+ *   a share is read once. The APK shell still hands in text only.
  * @module
  */
 import { shell } from "./shell.js";
 
-const KEYS = ["sh_title", "sh_text", "sh_url"];
+const KEYS = ["sh_title", "sh_text", "sh_url", "sh_files"];
+const SHARE_CACHE = "ms-share";   // mirrored in sw-core.js shareIn()
+
+/**
+ * Collect the files a file share parked in the share cache: `${scope}share-target/<i>` for i < n.
+ * @param cacheStorage the CacheStorage to read (`caches`)
+ * @param scope the app scope href the worker keyed them under
+ * @param n how many the worker parked
+ * @returns File[] in share order; entries that are missing are skipped, the rest are deleted after reading
+ */
+export async function takeFiles(cacheStorage, scope, n) {
+  const out = [];
+  try {
+    const cache = await cacheStorage.open(SHARE_CACHE);
+    for (let i = 0; i < Math.min(Number(n) || 0, 20); i++) {
+      const key = `${scope}share-target/${i}`;
+      const res = await cache.match(key);
+      if (!res) continue;
+      const name = decodeURIComponent(res.headers.get("x-ms-name") || `shared-${i}`);
+      out.push(new File([await res.blob()], name, { type: res.headers.get("content-type") || "" }));
+      await cache.delete(key);
+    }
+  } catch { /* no cache, no files */ }
+  return out;
+}
 const LINK = /https?:\/\/[^\s<>"']+/i;
 let held = null;
 const takers = [];
@@ -65,11 +93,13 @@ export function takeShared(fn) {
 if (typeof location !== "undefined") {
   const u = new URL(location.href);
   if (KEYS.some((k) => u.searchParams.has(k))) {
-    const s = { title: u.searchParams.get("sh_title") || "", text: u.searchParams.get("sh_text") || "", url: u.searchParams.get("sh_url") || "" };
+    const s = { title: u.searchParams.get("sh_title") || "", text: u.searchParams.get("sh_text") || "", url: u.searchParams.get("sh_url") || "", files: [] };
+    const n = Number(u.searchParams.get("sh_files") || 0);
     for (const k of KEYS) u.searchParams.delete(k);
     const q = u.searchParams.toString();
     try { history.replaceState(null, "", u.pathname + (q ? `?${q}` : "") + u.hash); } catch { }
-    deliver(s);
+    if (n > 0 && typeof caches !== "undefined") takeFiles(caches, new URL("./", location.href).href, n).then((files) => deliver({ ...s, files }));
+    else deliver(s);
   }
   if (shell.has("share.target")) {
     shell.call("share.target", { kinds: ["text"] }).catch(() => { });

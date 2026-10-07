@@ -9,8 +9,10 @@
  *
  * ## What it exports
  * - {@link installUpdates} — `installUpdates(app)`: registers `sw.js`, swaps a waiting worker in at launch
- *   (one guarded reload), re-checks hourly when the app comes back to the front, and after a swap puts the
- *   changelog note into `app.S.update` (`null | { text }`).
+ *   (one guarded reload) — or one that finishes installing within the first untouched seconds of this launch —
+ *   re-checks hourly when the app comes back to the front, and after a swap puts the changelog note into
+ *   `app.S.update` (`null | { text }`).
+ * - {@link takeNow} — `(state) → boolean`, the take-it-now rule; pure, unit-tested. {@link FRESH_MS} its window.
  * - {@link pickNote} — `(entries, appId, mark) → entry | null`; pure, unit-tested.
  * - {@link markFor} — `(entry) → "<date> <id>"`, what a device stores once it has shown an entry.
  *
@@ -26,6 +28,18 @@
 
 const HOUR = 3600000;
 const today = () => new Date().toISOString().slice(0, 10);
+/** How long after boot a worker that finished installing is still taken at once — the screen is new, nothing is half-done. */
+export const FRESH_MS = 20000;
+
+/**
+ * Whether a worker that finished installing DURING this launch is taken now rather than at the next one.
+ * Measured 2026-10-07: the launch-time check saw no `waiting` worker because the install was still running,
+ * so every deploy cost a second launch, and the owner read "the version never changes".
+ * @param s `{ had, touched, sinceBoot, swapped }` — a controller existed (not a first install), the screen has
+ *   not been touched yet, ms since boot, a swap happened within the last minute
+ * @returns true to ask the worker to take over now (one guarded reload follows)
+ */
+export const takeNow = (s) => !!s.had && !s.touched && !s.swapped && s.sinceBoot < FRESH_MS;
 
 /**
  * The changelog entry worth showing on this device, or null.
@@ -70,8 +84,11 @@ export function installUpdates(app) {
   if (swapped()) whatsNew(app, NOTE);
   if (!("serviceWorker" in navigator)) return;
 
-  const sw = navigator.serviceWorker, had = !!sw.controller;
-  let asked = 0;
+  const sw = navigator.serviceWorker, had = !!sw.controller, boot = Date.now();
+  let asked = 0, touched = false;
+  const touch = () => { touched = true; };
+  addEventListener("pointerdown", touch, { once: true, capture: true });
+  addEventListener("keydown", touch, { once: true, capture: true });
   sw.addEventListener("controllerchange", () => {
     if (!asked || Date.now() - asked > 15000) return;
     asked = 0;
@@ -80,6 +97,16 @@ export function installUpdates(app) {
   });
   sw.register("sw.js", { updateViaCache: "none" }).then((reg) => {
     if (had && reg.waiting && !swapped()) { asked = Date.now(); reg.waiting.postMessage("ms-skip-waiting"); }
+    // A worker the browser finds on THIS navigation is still installing when the line above runs; when it
+    // lands within the first seconds, before anyone touched the screen, take it now instead of next time.
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener("statechange", () => {
+        if (w.state !== "installed" || !takeNow({ had, touched, sinceBoot: Date.now() - boot, swapped: swapped() })) return;
+        asked = Date.now(); w.postMessage("ms-skip-waiting");
+      });
+    });
     let checked = Date.now();
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible" || Date.now() - checked < HOUR) return;

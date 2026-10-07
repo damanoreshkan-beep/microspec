@@ -137,3 +137,12 @@ Deno.test("validateSpec: browse rides on searchFetch (a shelf, not a search box)
   const err = assertThrows(() => validateSpec({ ...baseList(), tabs: [{ id: "f", type: "list", icon: "i", label: "hi", searchFetch: true, card: { layout: "feed", title: "name", body: "desc" } }] }), Error);
   assert(err.message.includes("searchFetch requires search"), err.message);
 });
+
+Deno.test("validateSpec: share is true or { files: [mime | .ext] } — anything else is refused", () => {
+  validateSpec({ ...baseList(), share: true });
+  validateSpec({ ...baseList(), share: { files: ["audio/*", ".mp3", ".m4a"] } });
+  assertThrows(() => validateSpec({ ...baseList(), share: { files: [] } }));
+  assertThrows(() => validateSpec({ ...baseList(), share: { files: ["mp3"] } }), undefined, undefined, "an extension needs its dot");
+  assertThrows(() => validateSpec({ ...baseList(), share: { kinds: ["audio"] } }));
+  assertThrows(() => validateSpec({ ...baseList(), share: "yes" }));
+});

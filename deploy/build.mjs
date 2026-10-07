@@ -134,7 +134,14 @@ async function gitCount(path) {
 }
 
 const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
-const CORE = "1." + (await gitCount("packages/runtime"));
+async function packageVersion() {
+  for (const f of ["../deno.json", "../package.json"]) {
+    try { const v = JSON.parse(await Deno.readTextFile(new URL(f, import.meta.url))).version; if (v) return String(v); } catch {  }
+  }
+  return "";
+}
+const runtimeCommits = await gitCount("packages/runtime");
+const CORE = runtimeCommits ? "1." + runtimeCommits : (await packageVersion()) || "1.0";
 for await (const e of Deno.readDir(RTSRC)) {
   const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp");
   if (!keep || !(await isFileAt(RTSRC, e))) continue;

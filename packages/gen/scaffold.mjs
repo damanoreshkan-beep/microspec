@@ -231,7 +231,7 @@ const manifest = JSON.stringify({
   display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
   // spec.share — the OS share sheet lists the app; the page takes sh_* through /_rt/share.js takeShared().
   // Files need a POST multipart target (web-share-target Level 2): sw-core.js intercepts it, parks the files in a
-  // cache and 303s to ./?sh_files=<n>. Both MIME and extension in `accept`: Chrome lists for either, delivers for both.
+  // cache and 303s to ./?sh_files=<n>. MIME types only in `accept` — an extension breaks the WebAPK install (validate.js).
   ...(spec.share?.files
     ? { share_target: { action: "./share-target", method: "POST", enctype: "multipart/form-data", params: { title: "sh_title", text: "sh_text", url: "sh_url", files: [{ name: "sh_files", accept: spec.share.files }] } } }
     : spec.share ? { share_target: { action: "./", method: "GET", params: { title: "sh_title", text: "sh_text", url: "sh_url" } } } : {}),

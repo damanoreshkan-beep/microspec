@@ -140,9 +140,10 @@ Deno.test("validateSpec: browse rides on searchFetch (a shelf, not a search box)
 
 Deno.test("validateSpec: share is true or { files: [mime | .ext] } — anything else is refused", () => {
   validateSpec({ ...baseList(), share: true });
-  validateSpec({ ...baseList(), share: { files: ["audio/*", ".mp3", ".m4a"] } });
+  validateSpec({ ...baseList(), share: { files: ["audio/*", "audio/mpeg"] } });
   assertThrows(() => validateSpec({ ...baseList(), share: { files: [] } }));
-  assertThrows(() => validateSpec({ ...baseList(), share: { files: ["mp3"] } }), undefined, undefined, "an extension needs its dot");
+  assertThrows(() => validateSpec({ ...baseList(), share: { files: ["audio/*", ".mp3"] } }), Error, "WebAPK", "an extension breaks the Android install — refused with the reason");
+  assertThrows(() => validateSpec({ ...baseList(), share: { files: ["mp3"] } }));
   assertThrows(() => validateSpec({ ...baseList(), share: { kinds: ["audio"] } }));
   assertThrows(() => validateSpec({ ...baseList(), share: "yes" }));
 });

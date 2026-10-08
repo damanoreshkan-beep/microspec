@@ -9,7 +9,12 @@ function mock({ gtxOut, aiOut }) {
   const real = globalThis.fetch;
   globalThis.fetch = (url) => {
     const u = String(url);
-    if (u.includes("/feed/ai")) { calls.ai++; return Promise.resolve(aiOut == null ? new Response("", { status: 502 }) : new Response(JSON.stringify({ text: aiOut }), { headers: { "content-type": "application/json" } })); }
+    // the AI is a task now (ai-core.js): the start answers an id, the stream answers the result or a fail, then EOF
+    if (u.endsWith("/feed/task")) { calls.ai++; return Promise.resolve(new Response(JSON.stringify({ id: "t1" }), { headers: { "content-type": "application/json" } })); }
+    if (u.includes("/feed/task/t1")) {
+      const ev = aiOut == null ? { t: "fail", status: 502, error: "no model" } : { t: "result", status: 200, body: { text: aiOut } };
+      return Promise.resolve(new Response(JSON.stringify([ev]), { headers: { "content-type": "application/json", "stream-next-offset": "0000000000000001", "stream-closed": "true" } }));
+    }
     calls.gtx++;
     if (gtxOut == null) return Promise.reject(new Error("blocked"));
     return Promise.resolve(new Response(gtx(gtxOut)));

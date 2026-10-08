@@ -1,9 +1,10 @@
 /**
  * # runtime/ai-core.js — the wire, the cache, the dedupe and one tick under every AI capability
  *
- * The shared machinery under every AI capability in the farm: POST /feed/ai on the edge, the key held on
- * the VPS, never in a page. This file owns four things and no domain knowledge at all — the wire (one fetch,
- * one response shape, the `truncated` and `ungrounded` flags the provider sends back), the cache (one
+ * The shared machinery under every AI capability in the farm: /feed/ai on the edge, run as a TASK (POST
+ * /feed/task, the answer read from the task's stream — a dead zone mid-answer costs a pause, not the answer),
+ * the key held on the VPS, never in a page. This file owns four things and no domain knowledge at all — the wire
+ * (one task, one response shape, the `truncated` and `ungrounded` flags the provider sends back), the cache (one
  * localStorage-backed dict per namespace and locale, read synchronously), the in-flight set (two components
  * warming the same key make one request) and `aiTick` (one atom for the whole runtime, bumped when any
  * cache gains an entry). On top of them sits `reading(ns, mode)`, the reason the file exists: every cached
@@ -84,7 +85,8 @@ export function cacheFor(ns: any, locale: any): any;
  */
 export function persist(ns: any, locale: any, obj: any): void;
 /**
- * The one wire call to the AI route; throws on a non-ok status.
+ * The one wire call to the AI route, as an edge task with no deadline; throws `Error("status N")` (with `.status`)
+ * on a refusal or a failed answer — a 401 also bumps `authWall`, as the tunnel used to.
  * @param text the input the server-side prompt works on
  * @param locale the language the answer should come back in
  * @param mode selects the server-side system prompt

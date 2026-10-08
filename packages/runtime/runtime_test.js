@@ -56,6 +56,7 @@ import "./tests/theme_test.js";
 import "./tests/material_test.js";
 import "./tests/tile_test.js";
 import "./tests/translate_test.js";
+import "./tests/aicore_test.js";
 import "./tests/transport_test.js";
 import "./tests/urlquery_test.js";
 import "./tests/usbsession_test.js";

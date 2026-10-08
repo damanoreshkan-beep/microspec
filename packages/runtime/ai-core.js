@@ -2,9 +2,10 @@
 /**
  * # runtime/ai-core.js — the wire, the cache, the dedupe and one tick under every AI capability
  *
- * The shared machinery under every AI capability in the farm: POST /feed/ai on the edge, the key held on
- * the VPS, never in a page. This file owns four things and no domain knowledge at all — the wire (one fetch,
- * one response shape, the `truncated` and `ungrounded` flags the provider sends back), the cache (one
+ * The shared machinery under every AI capability in the farm: /feed/ai on the edge, run as a TASK (POST
+ * /feed/task, the answer read from the task's stream — a dead zone mid-answer costs a pause, not the answer),
+ * the key held on the VPS, never in a page. This file owns four things and no domain knowledge at all — the wire
+ * (one task, one response shape, the `truncated` and `ungrounded` flags the provider sends back), the cache (one
  * localStorage-backed dict per namespace and locale, read synchronously), the in-flight set (two components
  * warming the same key make one request) and `aiTick` (one atom for the whole runtime, bumped when any
  * cache gains an entry). On top of them sits `reading(ns, mode)`, the reason the file exists: every cached
@@ -71,8 +72,8 @@
  */
 import { atom } from "nanostores";
 import { VPS_PROXY } from "./feed.js";
+import { authWall } from "./authwall.js";
 
-const AI = `${VPS_PROXY}/ai`;
 
 /** Atom bumped whenever any AI cache gains an entry; `useStore(aiTick)` re-renders the subscriber. */
 export const aiTick = atom(0);
@@ -107,7 +108,8 @@ export function persist(ns, locale, obj) {
 }
 
 /**
- * The one wire call to the AI route; throws on a non-ok status.
+ * The one wire call to the AI route, as an edge task with no deadline; throws `Error("status N")` (with `.status`)
+ * on a refusal or a failed answer — a 401 also bumps `authWall`, as the tunnel used to.
  * @param text the input the server-side prompt works on
  * @param locale the language the answer should come back in
  * @param mode selects the server-side system prompt
@@ -115,14 +117,54 @@ export function persist(ns, locale, obj) {
  * @returns `{ text, truncated, ungrounded }` — the trimmed answer plus the two "not worth caching" flags
  */
 export async function askAI(text, locale, mode, extra) {
-  const r = await fetch(AI, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ mode, text, locale, ...extra }),
-  });
-  if (!r.ok) throw new Error("status " + r.status);
-  const j = await r.json();
+  const j = await taskCall("/feed/ai", { mode, text, locale, ...extra });
   return { text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated), ungrounded: !!(j && j.ungrounded) };
+}
+
+// ── the wire: the AI call as a TASK (owner, 2026-10-08: «переведи і ШІ-запити теж») ─────────────────────────────
+// A model cascade answers after up to two minutes; one POST held for that long lost the answer to any dead zone and
+// the retry started the cascade over. Now the edge runs it as a task (edge jobtask.js DIRECT route): the start
+// carries a tap key (a re-sent start is the same task), and the answer is read from the task's Durable Stream by
+// long-poll (durablestreams.com §5.7 — "everything after offset N"), so a dropped poll costs a pause, never the
+// answer. A tiny reader of the protocol, not the 40 KB client: the AI only ever wants its one `result`.
+const AT = (ms) => new Promise((go) => {
+  const done = () => { clearTimeout(t); globalThis.removeEventListener?.("online", done); go(); };
+  const t = setTimeout(done, ms);
+  globalThis.addEventListener?.("online", done, { once: true });   // the network back ends the pause early
+});
+const pace = (n) => AT(Math.min(15_000, 1000 * 2 ** n));
+const failed = (status, why) => { if (status === 401) authWall.set(authWall.get() + 1); return Object.assign(new Error("status " + status), { status, why }); };
+const final = (s) => s >= 400 && s < 500 && s !== 408 && s !== 429;
+
+async function taskCall(route, body) {
+  const k = crypto.randomUUID().replaceAll("-", "").slice(0, 24);
+  let id = "";
+  for (let n = 0; !id; n++) {
+    try {
+      const r = await fetch(`${VPS_PROXY}/task`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ route, body, k }) });
+      if (r.ok) { id = String((await r.json())?.id || ""); if (id) break; }
+      else if (final(r.status)) throw failed(r.status);
+    } catch (e) { if (e?.status) throw e; }
+    await pace(n);
+  }
+  let offset = "-1", cursor = "";
+  for (let n = 0; ;) {
+    let r, events = null;
+    try {
+      r = await fetch(`${VPS_PROXY}/task/${id}?offset=${encodeURIComponent(offset)}&live=long-poll${cursor ? `&cursor=${cursor}` : ""}`);
+      if (r.status === 404) throw failed(404);
+      if (r.status === 200) events = await r.json();
+      else if (r.status !== 204) throw new Error("poll " + r.status);
+    } catch (e) { if (e?.status) throw e; await pace(n++); continue; }
+    n = 0;
+    for (const ev of events || []) {
+      if (ev.t === "result") return ev.body;
+      if (ev.t === "fail") throw failed(ev.status || 502, ev.error);
+    }
+    offset = r.headers.get("stream-next-offset") || offset;
+    cursor = r.headers.get("stream-cursor") || "";
+    if (r.headers.get("stream-closed") === "true") throw failed(502, "no result");
+  }
 }
 
 /**

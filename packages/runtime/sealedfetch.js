@@ -59,7 +59,10 @@
  *   not fetch); `/clip` replies are tens of megabytes and base64 inflates them by a third (24.4 MB GIF: 42.5 s
  *   sealed against 22.1 s plain, 2026-08-20); `/apk` carries a launcher-icon PNG that pushes the envelope past
  *   the tunnel's size ceiling (400 above ~3.5 KB); `/chat/stream` is text/event-stream and one envelope would
- *   buffer the whole answer — named to the sub-path so `/chats` stays sealed.
+ *   buffer the whole answer — named to the sub-path so `/chats` stays sealed. `/task/<id>` is a server-side
+ *   task's Durable Stream (long-poll/SSE, resumed by offset) and its files (Range, resumed by byte): an envelope
+ *   would buffer the stream and base64 the files, and the 122-bit id in the path is the only capability — no
+ *   user data rides the URL (remix measured 2026-10-08: 24.7 MB sealed for 18.2 MB of mp3, 110.7 s at 225 KB/s).
  * - Only a string JSON body is sealed. A non-string body, or a string that does not parse as JSON, passes
  *   through untouched rather than being guessed at.
  * - A transport failure must NOT fall back to the plaintext route — a silent downgrade would hand a middlebox
@@ -120,6 +123,7 @@ const PLAIN = [
   `${VPS_PROXY}/clip`,
   `${VPS_PROXY}/apk`,
   `${VPS_PROXY}/chat/stream`,
+  `${VPS_PROXY}/task/`,
 ];
 const TUNNEL = `${VPS_PROXY}/f`;
 

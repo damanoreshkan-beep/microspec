@@ -22,6 +22,21 @@ Deno.test("sealedfetch never adds keepalive the caller did not ask for", async (
   assertEquals((await tunnelInit({ events: [] }, undefined)).keepalive, false);
 });
 
+Deno.test("sealedfetch: a task's stream and files go plain — long-poll/SSE and Range cannot ride the tunnel", async () => {
+  const hits = [];
+  const restore = installSealedFetch(async (u, init) => { hits.push({ u: String(u), init }); return new Response("[]"); });
+  const id = "0123456789abcdef0123456789abcdef";
+  try {
+    await globalThis.fetch(`${VPS_PROXY}/task/${id}?offset=-1&live=long-poll`);
+    await globalThis.fetch(`${VPS_PROXY}/task/${id}/slowed`, { headers: { range: "bytes=100-" } });
+    await globalThis.fetch(`${VPS_PROXY}/music/task`, { method: "POST", body: JSON.stringify({ k: "x" }) }).catch(() => {});
+  } finally { restore(); }
+  assertEquals(hits[0].u, `${VPS_PROXY}/task/${id}?offset=-1&live=long-poll`);
+  assertEquals(hits[1].u, `${VPS_PROXY}/task/${id}/slowed`);
+  assertEquals(hits[1].init.headers.range, "bytes=100-", "the Range header reaches the network untouched");
+  assertEquals(hits[2].u, `${VPS_PROXY}/f`, "the POST that starts a task stays sealed (it carries the session)");
+});
+
 Deno.test("sealedUrl: the route with the envelope in ?s= — and a raw (non-JSON) body POST to it passes through to that URL untouched", async () => {
   const { sealedUrl } = await import("../sealedfetch.js");
   const url = await sealedUrl("/library/get", { id: "abc" });

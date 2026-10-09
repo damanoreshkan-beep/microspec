@@ -45,6 +45,8 @@ Deno.test("update: a return after AWAY_MS is a launch — minutes, not the hour 
   const src = await Deno.readTextFile(new URL("packages/runtime/update.js", pkgRoot(import.meta.url, 3)));
   assert(/hiddenAt && Date\.now\(\) - hiddenAt >= AWAY_MS/.test(src), "the resume path must treat a long absence as a launch");
   assert(/stale = true/.test(src), "a page left on the old shell by another window's swap must mark itself stale and reload");
+  const cc = src.slice(src.indexOf('addEventListener("controllerchange"'), src.indexOf("stale = true"));
+  assert(/if \(!had\) return;/.test(cc), "a first install's clients.claim is a controllerchange too — it must never mark the page stale");
 });
 
 Deno.test("update: refreshNow — offline it touches nothing; online it drops ONLY this app's shell caches, unregisters and navigates", async () => {

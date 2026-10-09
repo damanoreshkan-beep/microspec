@@ -120,6 +120,9 @@ export function installUpdates(app) {
       location.reload();
       return;
     }
+    // A FIRST install claims the page too (clients.claim) — that is not a new version, and reloading on it
+    // reloaded every freshly opened app the first time it was hidden (16 apps red in CI, 2026-10-09).
+    if (!had) return;
     // Another window (or a tab sharing the registration) took the new version: this page now runs the old
     // shell under the new worker. Reload it the moment nobody is looking — never under a playing song.
     stale = true;

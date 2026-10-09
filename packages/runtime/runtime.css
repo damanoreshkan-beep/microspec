@@ -727,6 +727,29 @@ nav[data-dock] button > span {
 }
 @media (prefers-reduced-motion: reduce) { .modal-box { transition-timing-function: ease-out; } }
 
+/* MOTION — the farm's curves and clock, ONE set (docs/research/motion.md). Every transition and animation
+   names a token, never a hand-written curve: a hand-written cubic-bezier is how five "ease-outs" end up five
+   different feels. The values are the design-engineering canon (Emil Kowalski's animation standards, which
+   the farm adopted 2026-10-09): built-in CSS easings are too weak to read as intentional.
+   - --ease-out     entering, exiting, the default — fast off the mark, long settle;
+   - --ease-in-out  moving or morphing ON screen (shape.js EASE_IN_OUT is this curve; a unit test pins both);
+   - --ease-drawer  a sheet or drawer, the iOS curve.
+   Never ease-in on UI — it spends the start, the exact moment the eye is watching.
+   The clock: press 120ms · a state 200ms · on-screen movement / a morph 320ms · a rare focal moment 560ms.
+   How often a thing happens decides whether it moves at all: tens of times a day = near-imperceptible,
+   100+ = not at all. */
+:root {
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out: cubic-bezier(.77, 0, .175, 1);
+  --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  --t-press: 120ms; --t-state: 200ms; --t-move: 320ms; --t-focal: 560ms;
+}
+/* .ms-press — the press is answered on pointer-DOWN: a 3% give, back on release. The individual `scale`
+   property, so it composes with any transform the element already carries. A transition, not a keyframe,
+   so a fast double tap retargets instead of restarting. Kept under reduced motion: it is feedback, not travel. */
+.ms-press { transition: scale var(--t-press) var(--ease-out); }
+.ms-press:active { scale: .97; }
+
 /* skeleton → content reveal: a fast, smooth fade-in when real content replaces a skeleton (/_rt/skeleton.js
    Reveal). Frozen to its final state during the design-check axe pass, so contrast is measured on real text. */
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
@@ -738,7 +761,7 @@ nav[data-dock] button > span {
    past the fold everything lands together). Remount the container (a fresh `key`) to play it — a filter
    switch, a search. The premium feel is the cascade, not the distance: 8px and ~200ms, never a slide. */
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
-.ms-stagger > * { animation: msRise .32s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
+.ms-stagger > * { animation: msRise .32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
 
 /* streamed text ARRIVES softly: each frame's new words fade in from a slight blur (persona). Inline spans, so
@@ -752,7 +775,7 @@ nav[data-dock] button > span {
    fixed descendant (an app's floating composer, a stage), which then SCROLL with the body. The animation
    ends, the transform is gone, fixed means fixed again. */
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
-.ms-detail-in { animation: msDetailIn .26s cubic-bezier(.2, .8, .2, 1); }
+.ms-detail-in { animation: msDetailIn .26s var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
 
 /* `truncate` without `min-w-0` is a no-op in a flex row, and it is the single most repeated layout bug in

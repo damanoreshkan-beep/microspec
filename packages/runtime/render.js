@@ -147,7 +147,7 @@ export function App() {
     ${tab.type === "list" && tab.segments ? html`<${SegmentBar} tab=${tab} />` : null}
     ${tab.type === "list" && tab.sort ? html`<${SortBar} tab=${tab} />` : null}
     ${tab.type === "list" && tab.toggles ? html`<${TogglesBar} tab=${tab} />` : null}
-    <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style=${fit ? null : "padding-bottom:calc(var(--dock-h) + 1.5rem)"}>
+    <main id="view" class="px-4 pt-4 max-w-xl mx-auto flex flex-col gap-3" style=${fit ? null : "padding-bottom:calc(var(--dock-h) + var(--island-h,0px) + 1.5rem)"}>
       <${TabView} tab=${tab} />
     </main>
     ${A.spec.detail ? html`<${DetailView} />` : null}

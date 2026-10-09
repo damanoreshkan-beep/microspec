@@ -358,11 +358,22 @@ nav[data-dock] button > span {
 @media (prefers-reduced-motion: reduce) { .modal-box { transition-timing-function: ease-out; } }
 
 
+:root {
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out: cubic-bezier(.77, 0, .175, 1);
+  --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  --t-press: 120ms; --t-state: 200ms; --t-move: 320ms; --t-focal: 560ms;
+}
+
+.ms-press { transition: scale var(--t-press) var(--ease-out); }
+.ms-press:active { scale: .97; }
+
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
+
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
-.ms-stagger > * { animation: msRise .32s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
+.ms-stagger > * { animation: msRise .32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
 
 
@@ -370,17 +381,17 @@ nav[data-dock] button > span {
 .ms-word-in { animation: msWordIn .42s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-word-in { animation: none; } }
 
-
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
-.ms-detail-in { animation: msDetailIn .26s cubic-bezier(.2, .8, .2, 1); }
+.ms-detail-in { animation: msDetailIn .26s var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
-
-
 .truncate { min-width: 0; }
+
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
 .overflow-x-auto { overscroll-behavior-x: contain; overscroll-behavior-y: auto; }
+
+
 @property --ms-sx-l { syntax: "<number>"; inherits: false; initial-value: 0; }
 @property --ms-sx-r { syntax: "<number>"; inherits: false; initial-value: 0; }
 .overflow-x-auto { scrollbar-width: none; }
@@ -395,6 +406,8 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   }
   @keyframes ms-strip-edges { from { --ms-sx-l: 0; --ms-sx-r: 1; } to { --ms-sx-l: 1; --ms-sx-r: 0; } }
 }
+
+
 @media (prefers-reduced-motion: reduce) {
   .animate-ping, .animate-pulse, .animate-spin, .animate-bounce { animation: none; }
 }
@@ -427,12 +440,16 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
   [data-shell-body].ms-side > .ms-side-main { flex: 0 0 auto; }
 }
+
+
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
 
 .ms-pad-key { border-radius: 12%; }
 
+
 .ms-menu { flex-wrap: wrap; justify-content: center; }
+
 
 
 

@@ -65,8 +65,8 @@
  * - A hashed worker's shell (its precache + navigations) is served from its own cache and never refreshed
  *   file by file; only a new worker brings new files, all at once. Everything else same-origin is
  *   stale-while-revalidate, silently. An unhashed stub (dev, the gate) refreshes everything, as before.
- * - The swap happens when the page asks at launch (`ms-skip-waiting`) and only while one window of the app
- *   is open; otherwise the worker waits for the next launch.
+ * - The swap happens when the page asks (`ms-skip-waiting`: at a launch, or the profile's "update now"),
+ *   whatever other windows exist — a client-count gate deadlocked on frozen pages and shared tabs.
  * - Each URL is revalidated at most once per worker lifetime, and never when offline, `saveData`, or on (slow-)2g — so a weak
  *   link behaves like no link instead of worse than one. A cold miss races a 12 s timeout, then falls back to cache, then to `./`.
  * - A POST to `./share-target` is a FILE share from the OS sheet (`spec.share.files`): the files go to the `ms-share` cache

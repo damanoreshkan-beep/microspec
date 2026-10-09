@@ -66,8 +66,8 @@
  * - A hashed worker's shell (its precache + navigations) is served from its own cache and never refreshed
  *   file by file; only a new worker brings new files, all at once. Everything else same-origin is
  *   stale-while-revalidate, silently. An unhashed stub (dev, the gate) refreshes everything, as before.
- * - The swap happens when the page asks at launch (`ms-skip-waiting`) and only while one window of the app
- *   is open; otherwise the worker waits for the next launch.
+ * - The swap happens when the page asks (`ms-skip-waiting`: at a launch, or the profile's "update now"),
+ *   whatever other windows exist — a client-count gate deadlocked on frozen pages and shared tabs.
  * - Each URL is revalidated at most once per worker lifetime, and never when offline, `saveData`, or on (slow-)2g — so a weak
  *   link behaves like no link instead of worse than one. A cold miss races a 12 s timeout, then falls back to cache, then to `./`.
  * - A POST to `./share-target` is a FILE share from the OS sheet (`spec.share.files`): the files go to the `ms-share` cache
@@ -302,14 +302,15 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
   await self.clients.claim();
 })()));
 
-// The page asks at launch. With a second window of this app open the swap would hand that running page a
-// new shell under its feet, so the worker keeps waiting and the next launch asks again.
+// The page asks (at a launch, or from the profile's "update now"); the worker takes over. There is NO
+// client-count gate any more: it used to wait while a second window of the app was open, but `matchAll`
+// also counts frozen pages and the same-origin Chrome tabs that share an installed app's registration
+// (w3c/ServiceWorker#1238), so on a phone that kept one such client alive the swap was refused at every
+// launch — fonoteka's installed app stayed on one build for 28 hours of launches (telemetry, 2026-10-08→09).
+// Workbox's messageSkipWaiting has no gate either. A page that did not ask learns of the swap from
+// `controllerchange` and reloads itself when nobody is looking (update.js).
 self.addEventListener("message", (e) => {
-  if (e.data !== "ms-skip-waiting") return;
-  e.waitUntil((async () => {
-    const open = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    if (open.length <= 1) await self.skipWaiting();
-  })());
+  if (e.data === "ms-skip-waiting") e.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("notificationclick", (e) => {

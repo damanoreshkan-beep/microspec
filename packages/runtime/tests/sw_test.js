@@ -213,7 +213,7 @@ Deno.test("sw: an unhashed stub (dev, the gate) keeps refreshing everything, so 
   assertEquals(calls.length, 1);
 });
 
-Deno.test("sw: the swap is taken only while one window of the app is open", async () => {
+Deno.test("sw: the swap is taken when asked, however many windows the browser reports — a frozen page or a shared tab must not block it", async () => {
   const ask = async (windows) => {
     const sw = hashedCore({ windows });
     const e = { data: "ms-skip-waiting", waits: [], waitUntil(p) { this.waits.push(p); } };
@@ -222,7 +222,8 @@ Deno.test("sw: the swap is taken only while one window of the app is open", asyn
     return sw.self.skipped || 0;
   };
   assertEquals(await ask([{}]), 1, "the page that asked is the only one: swap");
-  assertEquals(await ask([{}, {}]), 0, "a second window is running the old shell: keep waiting");
+  assertEquals(await ask([{}, {}]), 1, "matchAll also counts frozen pages and shared tabs — a count gate kept an installed app on one build for 28h");
+  assertEquals(await ask([{}, {}, {}]), 1);
 });
 
 Deno.test("sw: a reinstall caused by sw-core.js alone downloads nothing when this version's cache is whole", async () => {

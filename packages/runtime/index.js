@@ -69,6 +69,7 @@ import { installTelemetry } from "./telemetry.js";
 import { installUsage } from "./usage.js";
 import { initTelegram, inTelegram } from "./tma.js";
 import { installUpdates } from "./update.js";
+import { installGrow } from "./grow.js";
 
 installSealedFetch();
 
@@ -190,6 +191,7 @@ export function start(spec, arg2) {
   addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); S.installEvent.set(e); });
   addEventListener("appinstalled", () => { S.installEvent.set(null); S.installOpen.set(false); });
   installUpdates(app);
+  installGrow(document);
 
   const hold = typeof location !== "undefined" && location.search.includes("__hold");
   if (opts.stream) {

@@ -750,6 +750,30 @@ nav[data-dock] button > span {
 .ms-press { transition: scale var(--t-press) var(--ease-out); }
 .ms-press:active { scale: .97; }
 
+/* THE GOLDEN RULE OF TYPING (owner 2026-10-09): every text field is a textarea that is ONE line tall when
+   empty and grows with what is typed, to a ceiling, then scrolls — a one-line input hid everything past its
+   width. grow.js adds the one-line behaviour (`data-line`: Enter submits, a pasted break becomes a space) and
+   the fallback for an engine without field-sizing. Preflight refuses a text-like <input>. */
+textarea {
+  field-sizing: content;
+  resize: none;
+  min-block-size: 0;
+  max-block-size: 40dvh;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+/* daisy's .input is a FIXED-height box and its .textarea has a 5rem floor: on a growing field the control
+   height is only the MINIMUM — one line inside the comfortable 44px — and the box follows the text. */
+textarea.input, textarea.textarea {
+  height: auto;
+  min-height: var(--ms-ctl);
+  line-height: 1.5;
+  padding-block: calc((var(--ms-ctl) - 1.5em - 2px) / 2);
+  align-content: center;
+}
+textarea.input-sm, textarea.textarea-sm { min-height: 2rem; padding-block: calc((2rem - 1.5em - 2px) / 2); }
+textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc((3rem - 1.5em - 2px) / 2); }
+
 /* TRANSPORT `form` (ui.js) — the play button is a FORM in the ink colour (ink is the brand), its shape drawn
    by shape.js into the SVG behind the glyph; the seek bar is a FILAMENT — a hairline, the played part lit
    with a bloom, a node where the track is — under a transparent native range that does the work (touch,

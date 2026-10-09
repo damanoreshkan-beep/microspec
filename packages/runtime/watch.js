@@ -163,7 +163,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
     try {
       let p = params;
       if (!p && S.needs === "geo") { p = await place(); if (!p) { setErr(sys("watchNoPlace", loc)); setBusy(false); return; } }
-      await watchAdd(bands ? { source, params: p || {}, band, lang: loc } : { source, params: p || {}, op, value: Number(value), lang: loc });
+      await watchAdd(bands ? { source, params: p || {}, band, lang: loc } : { source, params: p || {}, op, value: Math.min(S.max ?? Infinity, Math.max(S.min ?? -Infinity, Number(value))), lang: loc });   // the textarea has no min/max: clamp here
       await load();
     } catch (e) {
       setErr(e?.reason === "too many" ? sys("watchTooMany", loc) : sys("watchFailed", loc));
@@ -211,8 +211,8 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
                 </div>
                 <label class="flex-1 min-w-0 flex items-center gap-1">
                   <span class="sr-only">${sys("watchRow", loc)}</span>
-                  <input data-watch-value type="number" inputmode="decimal" class="input input-sm input-bordered w-full tabular-nums"
-                    min=${S.min} max=${S.max} value=${value ?? S.dflt} onInput=${(e) => setValue(e.currentTarget.value)} />
+                  <textarea data-watch-value rows="1" data-line inputmode="decimal" aria-label=${sys("watchRow", loc)} class="input input-sm input-bordered w-full tabular-nums"
+                    value=${value ?? S.dflt} onInput=${(e) => setValue(e.currentTarget.value)}></textarea>
                   ${S.unit ? html`<span class="text-xs text-muted shrink-0">${S.unit}</span>` : null}
                 </label>`}
           <button type="button" data-watch-add aria-label=${sys("watchSave", loc)} class="btn btn-sm btn-primary rounded-full shrink-0" disabled=${busy} onClick=${save}>

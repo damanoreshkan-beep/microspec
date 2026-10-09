@@ -30,7 +30,7 @@
  * const sr = resolveSearch(norm());
  * const search = (e) => { e?.preventDefault?.(); const url = norm(), term = q.trim(); if (url && term) goto(buildSearchUrl(url, term)); };
  * ...
- * ${sr.searchable ? html`<input id="sheet-search" type="search" value=${q} onInput=${(e) => setQ(e.target.value)} />` : null}
+ * ${sr.searchable ? html`<textarea id="sheet-search" rows="1" data-line enterkeyhint="search" value=${q} onInput=${(e) => setQ(e.target.value)}></textarea>` : null}
  *
  * // A saved page row seeds its search box with the term the URL already carries:
  * const [q, setQ] = useState(resolveSearch(s.url).term || "");                // apps/reel/view.js

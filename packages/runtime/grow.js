@@ -1,0 +1,116 @@
+/* @ts-self-types="./grow.d.ts" */
+/**
+ * # runtime/grow.js — every text field is a textarea that starts at one line and grows
+ *
+ * The farm's golden rule for typing (owner 2026-10-09): no `<input type="text">` anywhere — a text field is a
+ * `<textarea rows="1">` that is one line tall when empty and grows with what is typed, up to a ceiling, then
+ * scrolls. On a phone a one-line input hides everything past its width; a growing field shows the whole
+ * thought. `runtime.css` does the growing with `field-sizing: content`; this module does the rest, once, for
+ * every page:
+ * - **one-line fields** (`data-line`: a search, a URL, a name): Enter submits the form instead of breaking the
+ *   line (Shift+Enter and an IME composition are left alone), and a pasted line break becomes a space — the
+ *   field still WRAPS and grows, it just never holds a newline; with `inputmode="decimal"` a comma becomes a
+ *   dot (the Ukrainian keyboard's decimal mark, which `Number()` cannot read);
+ * - **the fallback** for an engine without `field-sizing` (measured with `CSS.supports`): the field is fitted
+ *   to its content on input, on focus, and when it first appears.
+ *
+ * ## Import
+ * ```js
+ * import { installGrow } from "/_rt/grow.js";                    // the boot does this — an app never needs to
+ * import { oneLine, fitHeight } from "@microspec/core/runtime/grow.js";
+ * ```
+ *
+ * ## What it exports
+ * - {@link oneLine} — `oneLine(text)`: the text with every line break turned into one space (pure).
+ * - {@link decimalDot} — `decimalDot(text)`: commas as dots — what a one-line `inputmode="decimal"` field holds.
+ * - {@link fitHeight} — `fitHeight(el)`: sizes a textarea to its content (the fallback's one move).
+ * - {@link installGrow} — `installGrow(doc)`: the delegated listeners; idempotent; called by index.js.
+ *
+ * ## In practice
+ * ```js
+ * // a one-line search: Enter submits, the field wraps a long query instead of hiding it
+ * html`<form onSubmit=${go}><textarea rows="1" data-line enterkeyhint="search" class="textarea w-full" value=${q}
+ *   onInput=${(e) => setQ(e.currentTarget.value)} aria-label=${T(t, "search")} /></form>`;
+ * // a message: Enter breaks the line, the field grows with the paragraph
+ * html`<textarea rows="1" class="textarea w-full" value=${draft} onInput=${…} />`;
+ * ```
+ *
+ * ## How it fits
+ * Imports nothing. index.js calls `installGrow(document)` at boot; preflight refuses a text-like `<input>`
+ * in an app. Unit tests: `packages/runtime/tests/grow_test.js`.
+ *
+ * ## Invariants and pitfalls
+ * - A password stays `<input type="password">` — a textarea cannot mask.
+ * - The keyboard comes from `inputmode` / `enterkeyhint` / `autocomplete`, never from `type`.
+ * - The newline is replaced in the CAPTURE phase at the document, so the app's own `onInput` already reads the
+ *   cleaned value.
+ * @module
+ */
+
+/**
+ * Every line break as one space — what a one-line field holds after a paste.
+ * @param {string} text any text
+ * @returns {string}
+ */
+export const oneLine = (text) => String(text).replace(/\s*\r?\n\s*/g, " ");
+
+/**
+ * Size a textarea to its content (the fallback for an engine without `field-sizing: content`). Border-box:
+ * the height is the content's scroll height plus the borders.
+ * @param {{ style: { height: string }, scrollHeight: number, offsetHeight: number, clientHeight: number }} el a textarea
+ */
+export function fitHeight(el) {
+  el.style.height = "auto";
+  const borders = Math.max(0, el.offsetHeight - el.clientHeight);
+  el.style.height = `${el.scrollHeight + borders}px`;
+}
+
+const isArea = (el) => !!el && el.tagName === "TEXTAREA";
+
+/**
+ * A decimal field's comma as a dot — `<input type="number">` used to do this, a textarea does not, and the
+ * Ukrainian decimal keyboard types "1,5" (which `Number()` reads as NaN).
+ * @param {string} text the field's text
+ * @returns {string}
+ */
+export const decimalDot = (text) => String(text).replace(/,/g, ".");
+const decimal = (el, text) => (el.getAttribute?.("inputmode") === "decimal" ? decimalDot(text) : text);
+
+/**
+ * The delegated listeners for every textarea on the page: one-line behaviour for `data-line`, and the
+ * height fallback when the engine has no `field-sizing`. Idempotent per document.
+ * @param {any} doc the document
+ */
+export function installGrow(doc) {
+  if (!doc || doc.__msGrow) return;
+  doc.__msGrow = true;
+  const native = typeof CSS !== "undefined" && !!CSS.supports?.("field-sizing", "content");
+  doc.addEventListener("keydown", (e) => {
+    const el = e.target;
+    if (!isArea(el) || !el.hasAttribute("data-line") || e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    if (el.form?.requestSubmit) el.form.requestSubmit();
+  }, true);
+  doc.addEventListener("input", (e) => {
+    const el = e.target;
+    if (!isArea(el)) return;
+    const v = el.hasAttribute("data-line") ? decimal(el, oneLine(el.value)) : el.value;
+    if (v !== el.value) {
+      const at = el.selectionStart;
+      el.value = v;
+      try { el.setSelectionRange(at, at); } catch { /* a detached or hidden field */ }
+    }
+    if (!native) fitHeight(el);
+  }, true);
+  if (native) return;
+  doc.addEventListener("focusin", (e) => { if (isArea(e.target)) fitHeight(e.target); }, true);
+  // a field rendered with a value (an edit form, a restored draft) is fitted when it appears
+  if (typeof MutationObserver !== "undefined") {
+    new MutationObserver((list) => {
+      for (const m of list) for (const n of m.addedNodes) {
+        if (isArea(n)) fitHeight(n);
+        else if (n.querySelectorAll) for (const t of n.querySelectorAll("textarea")) fitHeight(t);
+      }
+    }).observe(doc.documentElement, { childList: true, subtree: true });
+  }
+}

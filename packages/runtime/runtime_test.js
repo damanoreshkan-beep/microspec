@@ -51,6 +51,7 @@ import "./tests/shell_test.js";
 import "./tests/sitelabel_test.js";
 import "./tests/spectrum_test.js";
 import "./tests/shape_test.js";
+import "./tests/grow_test.js";
 import "./tests/breath_test.js";
 import "./tests/sse_test.js";
 import "./tests/sw_test.js";

@@ -38,6 +38,7 @@
     "jsr:@std/path@^1.1.5": "1.1.5",
     "jsr:@std/streams@^1.1.1": "1.1.1",
     "jsr:@zip-js/zip-js@^2.7.52": "2.8.26",
+    "npm:@jsquash/avif@2.1.1": "2.1.1",
     "npm:@jsquash/png@3.0.1": "3.0.1",
     "npm:@jsquash/webp@1.4.0": "1.4.0",
     "npm:@nanostores/persistent@0.10.2": "0.10.2_nanostores@0.11.4",
@@ -181,6 +182,12 @@
     }
   },
   "npm": {
+    "@jsquash/avif@2.1.1": {
+      "integrity": "sha512-LMRxd0fMgfCLtobDh0/sFYJMMiRJTNYSEEWvRDKXlAeZ08t3gI5V+1thIT0XjXJ+SVG7Zug9B0XPyx0Ti5VRNA==",
+      "dependencies": [
+        "wasm-feature-detect"
+      ]
+    },
     "@jsquash/png@3.0.1": {
       "integrity": "sha512-Bnvv93Y5LL92cuk2r2gpV+9JKuDo2/w7bOODw1iPxk8VARknky0sS1tSDgMosUdhNb4CdMlcCm3TMzTaqa3zZw=="
     },

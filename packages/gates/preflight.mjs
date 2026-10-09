@@ -225,6 +225,15 @@ async function preflight(appdir) {
     }
   }
 
+  // THE GOLDEN RULE OF TYPING (owner 2026-10-09): a text field is a <textarea rows="1"> that grows (runtime.css
+  // field-sizing + grow.js). A password stays an <input> (a textarea cannot mask); every non-text type is fine.
+  for (const [file, text] of parts) for (const m of text.matchAll(/<input\b[^>]*>/gs)) {
+    if (/type=["']?(file|checkbox|radio|range|hidden|color|date|time|datetime-local|month|week|submit|button|reset|image|password)\b/.test(m[0]) || /password/.test(m[0])) continue;
+    const line = text.slice(0, m.index).split("\n").length;
+    if (/^\s*(\*|\/\/)/.test(text.split("\n")[line - 1])) continue;   // a doc comment showing the old shape
+    errs.push(`text <input> in ${file}:${line} — every text field is a <textarea rows="1"> that grows with what is typed (the farm's golden rule). A one-line one (search, URL, name, number) adds data-line (Enter submits, a pasted line break becomes a space); the keyboard comes from inputmode / enterkeyhint / autocomplete, never from type. Only a password stays an <input>.`);
+  }
+
   if (/lucide:play/.test(src) && /lucide:(pause|square)/.test(src)) {
     const toggles = /\?\s*"lucide:(pause|square)"\s*:\s*"lucide:play"|\?\s*"lucide:play"\s*:\s*"lucide:(pause|square)"/.test(src);
     if (toggles && !/\bTransport\b/.test(src)) {

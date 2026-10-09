@@ -228,7 +228,10 @@ const manifest = JSON.stringify({
   // whisper-money#1080). Standalone shows the system status bar instead, painted from theme-color (which the
   // runtime keeps matched to the live theme), so the top is a clean bar in the app's colour, no black slab.
   // True draw-under-the-cutout needs the Fullscreen API (rejected) or One UI's per-app "Camera cutout" toggle.
-  display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
+  // NO `orientation`: absent is the web's "default", which Chromium maps to SCREEN_ORIENTATION_USER — the phone's own
+  // auto-rotate setting decides. "any" mapped to FULL_SENSOR (every tag through 140.0.7339.0, verified in
+  // ScreenOrientationProviderImpl.java), which rotates even with auto-rotate OFF (owner's S25, 2026-10-09).
+  display: "standalone", theme_color: themeColor, background_color: bg, lang, icons,
   // spec.share — the OS share sheet lists the app; the page takes sh_* through /_rt/share.js takeShared().
   // Files need a POST multipart target (web-share-target Level 2): sw-core.js intercepts it, parks the files in a
   // cache and 303s to ./?sh_files=<n>. MIME types only in `accept` — an extension breaks the WebAPK install (validate.js).

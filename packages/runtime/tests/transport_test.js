@@ -75,3 +75,17 @@ Deno.test("Transport cannot leave its container — the cap is the widget's, not
   assert(root.includes("max-w-full"), `the transport must be capped by whatever holds it (its classes: ${root}) — its keys are shrink-0 and its row is justify-center, so an uncapped box spills out of BOTH sides of its island instead of demoting into the overflow sheet`);
   assert(root.includes("min-w-0"), "…and it must be allowed to shrink inside a flex row, or the cap never binds");
 });
+
+Deno.test("Transport form — the shapes load only on demand, the filament keeps the native range, both forms are organic", async () => {
+  const ui = await Deno.readTextFile(P("packages/runtime/ui.js"));
+  const tp = ui.slice(ui.indexOf("export function Transport("));
+  assert(!/^import[^\n]*shape\.js/m.test(ui), "ui.js is on every page — shape.js (50 KB of geometry) must be a dynamic import");
+  assert(/import\("\.\/shape\.js"\)/.test(tp), "the form transport must load the geometry itself");
+  const at = tp.indexOf("data-tp-filament"), fil = tp.slice(at, tp.indexOf("</div>", at));
+  for (const k of ['type="range"', "aria-label=", "data-tp-seek", "onChange=", "onInput="]) assert(fil.includes(k), `the filament lost ${k} — the native range is the control`);
+  const { ORGANIC } = await import("../shape.js");
+  const [, off, on] = /FORM_OFF = "(\w+)", FORM_ON = "(\w+)"/.exec(ui) ?? [];
+  assert(ORGANIC.includes(off) && ORGANIC.includes(on) && off !== on, `the play button's forms (${off}, ${on}) must be two different organic shapes`);
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
+  for (const c of [".tp-form", ".tp-filament", ".tp-fl-lit", ".tp-fl-node"]) assert(css.includes(c), `runtime.css lost ${c}`);
+});

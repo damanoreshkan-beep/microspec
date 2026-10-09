@@ -221,10 +221,10 @@
     {
       "name": "Transport",
       "kind": "component",
-      "line": 396,
+      "line": 399,
       "headline": "Transport — the widget",
-      "doc": "Every piece is opt-in: no `onNext` → no skip button; no `dur` → no seek bar; no `onRepeat` → no repeat\ncontrol. So a one-button ambient player and a full queue player are the same component, and a fix to the\nscrub interaction or the a11y labels lands in all of them at once.\n\nLocalisation: the runtime's SYS dictionary carries the transport strings (aPlay/aPause/aPrev/aNext/\naSeek/aRepeat…), so an app adopting this does not restate them — pass `locale`, not a dict.",
-      "signature": "Transport({ locale = \"en\", playing = false, onToggle, onPrev, onNext, pos = 0, dur = 0, onSeek, repeat, onRepeat, shuffle = false, onShuffle, title, subtitle, lead, trail, stopIcon = false, size = \"md\", disabled = false, className = \"\", actions = [], keep = 2, moreOpen, onMore, onMoreClose, onScrubStart, onScrub, onScrubEnd })",
+      "doc": "Every piece is opt-in: no `onNext` → no skip button; no `dur` → no seek bar; no `onRepeat` → no repeat\ncontrol. So a one-button ambient player and a full queue player are the same component, and a fix to the\nscrub interaction or the a11y labels lands in all of them at once.\n\nLocalisation: the runtime's SYS dictionary carries the transport strings (aPlay/aPause/aPrev/aNext/\naSeek/aRepeat…), so an app adopting this does not restate them — pass `locale`, not a dict.\n\nThe `form` play button's two shapes (shape.js names): paused invites, playing holds still.",
+      "signature": "Transport({ locale = \"en\", playing = false, onToggle, onPrev, onNext, pos = 0, dur = 0, onSeek, repeat, onRepeat, shuffle = false, onShuffle, title, subtitle, lead, trail, stopIcon = false, size = \"md\", disabled = false, className = \"\", actions = [], keep = 2, moreOpen, onMore, onMoreClose, onScrubStart, onScrub, onScrubEnd, form = false })",
       "props": [
         {
           "name": "locale",
@@ -332,13 +332,18 @@
         },
         {
           "name": "onScrubEnd"
+        },
+        {
+          "name": "form",
+          "default": "false",
+          "note": "FREE FORMS (2026-10-09, docs/research/motion.md) — opt-in while the farm moves over app by app: the play button becomes an organic shape that changes form with the state (a lively cookie to start, a calm soft square while it plays — the Material 3 Expressive move, ./shape.js), and the seek bar a FILAMENT: a hairline of light, the played part lit, a node where the track is, the native range on top of it."
         }
       ]
     },
     {
       "name": "Stage",
       "kind": "component",
-      "line": 568,
+      "line": 611,
       "headline": "Stage — where a visualiser lives",
       "doc": "A full-bleed `absolute inset-0` canvas centres its subject on the SCREEN, which is the wrong centre: the\nheader sits over the top of it and the transport island over the bottom, so the object reads as pushed\nup and off-balance on every phone. A visualiser belongs in the box that is actually visible — the flex\nvoid between the chrome — and then its own geometry centring is correct for free, at every breakpoint,\nwith no measuring and no magic numbers.\n\nUse it as the `flex-1 min-h-0` void of a fit view: header · <Stage> · controls. The canvas inside is\n`absolute inset-0` relative to THIS box, not the screen.",
       "signature": "Stage({ children, className = \"\" })",

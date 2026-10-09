@@ -90,7 +90,7 @@
  */
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useRef, useEffect, useState } from "preact/hooks";
+import { useRef, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { useSheetDrag } from "./gesture.js";
 import { sys } from "./i18n.js";
 import { REPEAT_ICON, clock } from "./player.js";
@@ -296,6 +296,8 @@ export const Row = ({ children, className = "" }) => html`<${Fragment}><div clas
 
 
 
+
+const FORM_OFF = "Cookie7Sided", FORM_ON = "Cookie4Sided";
 /**
  * The ONE play control. Every part is opt-in by handler: `onToggle` (play/pause), `onPrev`/`onNext`,
  * `onSeek` with `pos`/`dur` (the seek bar), `onRepeat`/`onShuffle`, `title`/`subtitle`, `actions` (the
@@ -321,13 +323,35 @@ export function Transport({
   keep = 2,                                            
   moreOpen, onMore, onMoreClose,                        
   onScrubStart, onScrub, onScrubEnd,
+  
+  form = false,
 }) {
   const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+  
+  const playPath = useRef(), playForm = useRef(), playingNow = useRef(playing);
+  playingNow.current = playing;
+  useLayoutEffect(() => {
+    if (!form) return;
+    let alive = true;
+    import("./shape.js").then(({ shaper }) => {
+      if (!alive) return;
+      playForm.current = shaper(playingNow.current ? FORM_ON : FORM_OFF, (d) => playPath.current?.setAttribute("d", d));
+    });
+    return () => { alive = false; playForm.current?.stop(); playForm.current = null; };
+  }, [form]);
+  useLayoutEffect(() => { playForm.current?.to(playing ? FORM_ON : FORM_OFF); }, [playing]);
+  
+  
+  
+  
+  
   
   
   
   const hero = size === "hero";
-  const big = hero
+  const big = form
+    ? "tp-form w-[4.25rem] h-[4.25rem] @max-[300px]:w-14 @max-[300px]:h-14"
+    : hero
     ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 text-base-content sf-raised sf-e3"
     : size === "sm"
       ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
@@ -345,7 +369,24 @@ export function Transport({
       <span class="justify-self-end">${trail || null}</span>
     </div>` : null;
 
-  const scrub = onSeek ? html`
+  const p = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
+  const scrub = onSeek && form ? html`
+    <div class="flex flex-col">
+      <div data-tp-filament class="tp-filament">
+        <i class="tp-fl-line"></i><i class="tp-fl-lit" style=${`scale:${p} 1`}></i>
+        ${dur ? html`<i class="tp-fl-node" style=${`left:${p * 100}%`}></i>` : null}
+        <input type="range" aria-label=${sys("aSeek", locale)} aria-valuetext=${`${clock(pos)} / ${clock(dur)}`}
+          min="0" max=${max} step="250" value=${Math.min(pos, max)} data-haptic="off" data-tp-seek
+          disabled=${disabled || !dur}
+          onPointerdown=${() => onScrubStart?.()}
+          onInput=${(e) => onScrub?.(Number(e.target.value))}
+          onChange=${(e) => { onScrubEnd?.(); onSeek(Number(e.target.value)); }} />
+      </div>
+      ${
+        dur ? html`<div class="-mt-2 flex justify-between font-mono text-xs tabular-nums text-base-content/70">
+        <span data-time>${clock(pos)}</span><span>${clock(dur)}</span>
+      </div>` : null}
+    </div>` : onSeek ? html`
     <div class="flex flex-col gap-1">
       <input type="range" class="range range-primary range-xs w-full sf-track" aria-label=${sys("aSeek", locale)}
         min="0" max=${max} step="250" value=${Math.min(pos, max)} data-haptic="off" data-tp-seek
@@ -404,9 +445,10 @@ export function Transport({
           <button id="prev" class=${`btn btn-ghost btn-circle ${side} ${narrowHide}`} aria-label=${sys("aPrev", locale)}
             disabled=${disabled} onClick=${onPrev}>${Icon("lucide:skip-back", "text-xl")}</button>` : null}
         <button id="play" data-playing=${playing} disabled=${disabled}
-          class=${`btn btn-primary btn-circle ${big} sf-e3`}
+          class=${form ? `ms-press shrink-0 ${big}` : `btn btn-primary btn-circle ${big} sf-e3`}
           aria-label=${sys(playing ? (stopIcon ? "aStop" : "aPause") : "aPlay", locale)} onClick=${onToggle}>
-          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero ? "text-3xl" : "text-2xl")}
+          ${form ? html`<svg aria-hidden="true" viewBox="0 0 1 1"><path ref=${playPath} d="M.5 0A.5 .5 0 1 1 .5 1A.5 .5 0 1 1 .5 0Z" /></svg>` : null}
+          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero || form ? "text-3xl" : "text-2xl")}
         </button>
         ${onNext ? html`
           <button id="next" class=${`btn btn-ghost btn-circle ${side} ${narrowHide}`} aria-label=${sys("aNext", locale)}

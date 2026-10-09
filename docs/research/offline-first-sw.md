@@ -106,8 +106,10 @@ must exist because scope is derived from the SW script's path and GitHub Pages c
    prompt). The build stamps each deployed `sw.js` with a content hash of the app's inputs — its own files
    and the runtime modules it imports — and rewrites the precache to the built shell (`app.js`, `app.css`).
    So `sw.js` changes only when this app does; the browser installs the new worker in the background; the
-   page asks it to take over right after the next page load (`update.js`), with one guarded reload, and only
-   while one window of the app is open. A hashed shell is never refreshed file by file.
+   page asks it to take over right after the next page load (`update.js`), with one guarded reload. A hashed
+   shell is never refreshed file by file. (2026-10-09: the "only while one window is open" gate is GONE —
+   `matchAll` counts frozen pages and shared tabs, and an installed app stayed on one build for 28 hours of
+   launches. A launch now also means a return after 15 minutes away, and the profile has "update now".)
    What it replaced, measured: "a cached file's ETag differs" was the trigger, and a deploy rewrites every
    file's mtime — so every app offered an update after every deploy (ten in one day), and twice when the
    user accepted before every file had been re-checked. Hashing the built `app.js` instead of the inputs

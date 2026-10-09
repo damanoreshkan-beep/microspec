@@ -222,7 +222,7 @@ const icons = [
 ];
 const manifest = JSON.stringify({
   name: title, short_name: title, description: tagline, start_url: "./", scope: "./",
-  display: "standalone", orientation: "any", theme_color: themeColor, background_color: bg, lang, icons,
+  display: "standalone", theme_color: themeColor, background_color: bg, lang, icons,
   ...(spec.share?.files
     ? { share_target: { action: "./share-target", method: "POST", enctype: "multipart/form-data", params: { title: "sh_title", text: "sh_text", url: "sh_url", files: [{ name: "sh_files", accept: spec.share.files }] } } }
     : spec.share ? { share_target: { action: "./", method: "GET", params: { title: "sh_title", text: "sh_text", url: "sh_url" } } } : {}),

@@ -179,6 +179,15 @@ a standing assumption, not a per-task ask.)
 - **No emoji, ever** — they're OS-specific colour clip-art, cheap and unthemeable. Use a crafted vector (iconify
   `lucide:*`/`mdi:*`, a runtime SVG like `/_rt/zodiac.js` `Sign`) or, where a component can't render (a native
   `<option>`, a data string), plain words. Preflight enforces it (`\p{Emoji_Presentation}`).
+- **Motion by token, energy by design** (2026-10-09, `docs/research/motion.md`): every transition names
+  `--ease-out` / `--ease-in-out` / `--ease-drawer` and a `--t-*` duration; how often a thing happens decides
+  whether it moves (100+/day: never; tens/day: near-imperceptible); motion is one-shot and the screen at rest
+  draws zero frames; the one continuous effect allowed is data-driven, compositor-only, and stops when its
+  source stops or the page hides. Score it on a shot AND on a question: "what is drawing right now, and why?"
+- **Free forms, not boxes:** a thing that has an identity (a song, a station, a person) gets its own organic
+  form (`shape.js` `shapeOf(id)`), filled with the theme's texture and edged with the rim of light; a state
+  change may change the form (`shaper`). A screen of nested rounded rectangles is the 2024 baseline — judge
+  whether a box was the right answer, not just whether its radius is concentric.
 
 ### A LIVE STAGE: atmosphere that is the data, and the three ways it goes wrong
 

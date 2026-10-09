@@ -25,7 +25,7 @@
  * **Nodes**
  * - {@link Sheet} — `Sheet({ id, open, onClose, title, subtitle, icon, locale, size = "md", tone = "glass", children })`: the ONE bottom sheet — a native `<dialog>` with drag-to-dismiss grip, title row + close button, backdrop, and the farm's only sanctioned nested scroll (88dvh cap).
  * - {@link Segmented} — `Segmented({ items, value, onChange, variant = "solid", size = "md", scroll = false, attr = "data-seg", label, tone = "inset" })`: the ONE tab / option strip; items carry `id`, `label`, optional `icon`, `dot`, `meta`, `busy`, `title`. A fitted strip demotes to glyphs when the rail is narrower than its measured need.
- * - {@link Island} — `Island({ children, className, tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest })`: the floating glass panel (the dock's material); `pinned` clears the measured chrome (`--dock-h` / `--hdr-h`); `tone` "glass" | "dark" (over media) | "frost" (over a stage).
+ * - {@link Island} — `Island({ children, className, tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest })`: the floating glass panel (the dock's material); `pinned` clears the measured chrome (`--dock-h` / `--hdr-h`), and a bottom one publishes its own height as `--island-h` so the body and the toast clear it; `tone` "glass" | "dark" (over media) | "frost" (over a stage).
  * - {@link Panel} — `Panel({ title, children, className, ...rest })`: the solid in-flow surface — the page extruded (`sf-raised sf-e2`), no border, optional mono micro-label.
  * - {@link Slider} — `Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.02, attr = "data-macro" })`: a labelled range whose caption is the accessible name; the value is deliberately not printed.
  * - {@link Transport} — `Transport({ locale, playing, onToggle, onPrev, onNext, pos, dur, onSeek, repeat, onRepeat, shuffle, onShuffle, title, subtitle, lead, trail, stopIcon, size, disabled, className, actions, keep = 2, moreOpen, onMore, onMoreClose, onScrubStart, onScrub, onScrubEnd })`: the ONE play control; every part opt-in by handler, sizes "md" | "sm" | "hero", actions demoted into a history-backed overflow sheet.
@@ -300,11 +300,24 @@ export function Segmented({ items, value, onChange, variant = "solid", size = "m
  * @returns the island element (wrapped in a positioner when pinned)
  */
 export function Island({ children, className = "", tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest }) {
+  // THE CONTROL ISLAND publishes its height. The farm's screen is three zones (owner 2026-10-09): a header
+  // that is the title alone, a body of content, and ONE control island in the thumb's reach above the dock.
+  // A body that scrolls under a fixed island needs to know how tall it is — every app used to pad by hand —
+  // so the bottom island measures itself into `--island-h`, and <main> and the toast band clear it.
+  const box = useRef();
+  const bottom = pinned && at !== "top";
+  useLayoutEffect(() => {
+    if (!bottom || !box.current || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement.style, el = box.current;
+    const ro = new ResizeObserver(() => root.setProperty("--island-h", `${Math.ceil(el.getBoundingClientRect().height + 8)}px`));
+    ro.observe(el);
+    return () => { ro.disconnect(); root.removeProperty("--island-h"); };
+  }, [bottom]);
   if (pinned) {
     const pos = at === "top"
       ? "top:calc(var(--hdr-h) + var(--ms-safe-top) + 0.25rem)"
       : "bottom:calc(var(--dock-h) + env(safe-area-inset-bottom) + 0.5rem)";
-    return html`<div class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style=${pos}>
+    return html`<div ref=${box} class="fixed inset-x-0 z-20 flex justify-center px-3 pointer-events-none" style=${pos}>
       <${Island} className=${`pointer-events-auto ${className}`} tag=${tag} tone=${tone} ...${rest}>${children}<//>
     </div>`;
   }

@@ -182,7 +182,7 @@ export function Dock() {
 
 export function Toast() {
   const key = useStore(A.S.toast), undo = useStore(A.S.undo), t = useStore(A.S.t), loc = useStore(A.S.locale), update = useStore(A.S.update);
-  const band = "position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + 0.75rem)";
+  const band = "position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;justify-content:center;padding-bottom:calc(var(--dock-h) + var(--island-h,0px) + 0.75rem)";   // above the control island, never on it
   if (undo) {
     const label = undo.label ? `«${undo.label}» ` : "";
     return html`<div data-toast class="pointer-events-none" style=${band}>

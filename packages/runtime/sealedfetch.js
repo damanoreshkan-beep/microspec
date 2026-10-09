@@ -63,6 +63,9 @@
  *   task's Durable Stream (long-poll/SSE, resumed by offset) and its files (Range, resumed by byte): an envelope
  *   would buffer the stream and base64 the files, and the 122-bit id in the path is the only capability — no
  *   user data rides the URL (remix measured 2026-10-08: 24.7 MB sealed for 18.2 MB of mp3, 110.7 s at 225 KB/s).
+ *   `/library/get` is a sealed URL already (the session rides its own `?s=`): an `<audio src>` loads it, and a song
+ *   kept on the phone for offline play is pulled whole by script with Range — one envelope would buffer and
+ *   base64 a song of up to 16 MB (fonoteka, 2026-10-09).
  * - Only a string JSON body is sealed. A non-string body, or a string that does not parse as JSON, passes
  *   through untouched rather than being guessed at.
  * - A transport failure must NOT fall back to the plaintext route — a silent downgrade would hand a middlebox
@@ -124,6 +127,7 @@ const PLAIN = [
   `${VPS_PROXY}/apk`,
   `${VPS_PROXY}/chat/stream`,
   `${VPS_PROXY}/task/`,
+  `${VPS_PROXY}/library/get`,
 ];
 const TUNNEL = `${VPS_PROXY}/f`;
 

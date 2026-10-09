@@ -37,6 +37,20 @@ Deno.test("sealedfetch: a task's stream and files go plain — long-poll/SSE and
   assertEquals(hits[2].u, `${VPS_PROXY}/f`, "the POST that starts a task stays sealed (it carries the session)");
 });
 
+Deno.test("sealedfetch: a library song is fetched plain on its sealed URL — Range intact; the shelf's JSON stays sealed", async () => {
+  const { sealedUrl } = await import("../sealedfetch.js");
+  const hits = [];
+  const restore = installSealedFetch(async (u, init) => { hits.push({ u: String(u), init }); return new Response("{}"); });
+  const song = await sealedUrl("/library/get", { id: "abcdef0123456789" });
+  try {
+    await globalThis.fetch(song, { headers: { range: "bytes=4000000-" } });
+    await globalThis.fetch(`${VPS_PROXY}/library/list`, { method: "POST", body: "{}" }).catch(() => {});
+  } finally { restore(); }
+  assertEquals(hits[0].u, song);
+  assertEquals(hits[0].init.headers.range, "bytes=4000000-");
+  assertEquals(hits[1].u, `${VPS_PROXY}/f`, "list carries the session in the tunnel");
+});
+
 Deno.test("sealedUrl: the route with the envelope in ?s= — and a raw (non-JSON) body POST to it passes through to that URL untouched", async () => {
   const { sealedUrl } = await import("../sealedfetch.js");
   const url = await sealedUrl("/library/get", { id: "abc" });

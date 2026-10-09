@@ -107,7 +107,7 @@
 // live in ONE place. Add a height breakpoint in theme.css and every app in the farm compacts correctly.
 import { html } from "htm/preact";
 import { Fragment } from "preact";
-import { useRef, useEffect, useState } from "preact/hooks";
+import { useRef, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { useSheetDrag } from "./gesture.js";
 import { sys } from "./i18n.js";
 import { REPEAT_ICON, clock } from "./player.js";
@@ -386,6 +386,9 @@ export const Row = ({ children, className = "" }) => html`<${Fragment}><div clas
 //
 // Localisation: the runtime's SYS dictionary carries the transport strings (aPlay/aPause/aPrev/aNext/
 // aSeek/aRepeat…), so an app adopting this does not restate them — pass `locale`, not a dict.
+//
+// The `form` play button's two shapes (shape.js names): paused invites, playing holds still.
+const FORM_OFF = "Cookie7Sided", FORM_ON = "Cookie4Sided";
 /**
  * The ONE play control. Every part is opt-in by handler: `onToggle` (play/pause), `onPrev`/`onNext`,
  * `onSeek` with `pos`/`dur` (the seek bar), `onRepeat`/`onShuffle`, `title`/`subtitle`, `actions` (the
@@ -419,8 +422,28 @@ export function Transport({
   // → end + onSeek (committed). Apps need all three: the position readout must follow the thumb, but the
   // engine must only be told once, on release.
   onScrubStart, onScrub, onScrubEnd,
+  // FREE FORMS (2026-10-09, docs/research/motion.md) — opt-in while the farm moves over app by app: the play
+  // button becomes an organic shape that changes form with the state (a lively cookie to start, a calm soft
+  // square while it plays — the Material 3 Expressive move, ./shape.js), and the seek bar a FILAMENT: a
+  // hairline of light, the played part lit, a node where the track is, the native range on top of it.
+  form = false,
 }) {
   const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
+  // The shape geometry is loaded only by a transport that asks for it — ui.js is on every page, the 50 KB of
+  // Material shapes is not. Until it lands the button shows a circle (the static `d` below; Preact never
+  // rewrites a prop whose value did not change, so the shaper's frames are not undone by a re-render).
+  const playPath = useRef(), playForm = useRef(), playingNow = useRef(playing);
+  playingNow.current = playing;
+  useLayoutEffect(() => {
+    if (!form) return;
+    let alive = true;
+    import("./shape.js").then(({ shaper }) => {
+      if (!alive) return;
+      playForm.current = shaper(playingNow.current ? FORM_ON : FORM_OFF, (d) => playPath.current?.setAttribute("d", d));
+    });
+    return () => { alive = false; playForm.current?.stop(); playForm.current = null; };
+  }, [form]);
+  useLayoutEffect(() => { playForm.current?.to(playing ? FORM_ON : FORM_OFF); }, [playing]);
   // A transport is a ROW, so unlike the rest of the kit it answers to WIDTH as well as height — and it must
   // answer to the width IT has, not the window's. CONTAINER queries, never viewport ones: the watch gate
   // narrows #view to 200px while the window stays 384px (so a min-[380px] rule still matched and the row
@@ -431,7 +454,9 @@ export function Transport({
   // Plain text-base-content, no `!`: the utilities layer already beats .btn's colour, and the browser build
   // (the gate, store-shots, `see`) never emits the important form — the hero's glyph was invisible there.
   const hero = size === "hero";
-  const big = hero
+  const big = form
+    ? "tp-form w-[4.25rem] h-[4.25rem] @max-[300px]:w-14 @max-[300px]:h-14"
+    : hero
     ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 text-base-content sf-raised sf-e3"
     : size === "sm"
       ? "w-12 h-12 @max-[300px]:w-11 @max-[300px]:h-11"
@@ -449,7 +474,24 @@ export function Transport({
       <span class="justify-self-end">${trail || null}</span>
     </div>` : null;
 
-  const scrub = onSeek ? html`
+  const p = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
+  const scrub = onSeek && form ? html`
+    <div class="flex flex-col">
+      <div data-tp-filament class="tp-filament">
+        <i class="tp-fl-line"></i><i class="tp-fl-lit" style=${`scale:${p} 1`}></i>
+        ${dur ? html`<i class="tp-fl-node" style=${`left:${p * 100}%`}></i>` : null}
+        <input type="range" aria-label=${sys("aSeek", locale)} aria-valuetext=${`${clock(pos)} / ${clock(dur)}`}
+          min="0" max=${max} step="250" value=${Math.min(pos, max)} data-haptic="off" data-tp-seek
+          disabled=${disabled || !dur}
+          onPointerdown=${() => onScrubStart?.()}
+          onInput=${(e) => onScrub?.(Number(e.target.value))}
+          onChange=${(e) => { onScrubEnd?.(); onSeek(Number(e.target.value)); }} />
+      </div>
+      ${/* no track, no clock: "0:00 · 0:00" under an idle filament is noise, not information */
+        dur ? html`<div class="-mt-2 flex justify-between font-mono text-xs tabular-nums text-base-content/70">
+        <span data-time>${clock(pos)}</span><span>${clock(dur)}</span>
+      </div>` : null}
+    </div>` : onSeek ? html`
     <div class="flex flex-col gap-1">
       <input type="range" class="range range-primary range-xs w-full sf-track" aria-label=${sys("aSeek", locale)}
         min="0" max=${max} step="250" value=${Math.min(pos, max)} data-haptic="off" data-tp-seek
@@ -514,9 +556,10 @@ export function Transport({
           <button id="prev" class=${`btn btn-ghost btn-circle ${side} ${narrowHide}`} aria-label=${sys("aPrev", locale)}
             disabled=${disabled} onClick=${onPrev}>${Icon("lucide:skip-back", "text-xl")}</button>` : null}
         <button id="play" data-playing=${playing} disabled=${disabled}
-          class=${`btn btn-primary btn-circle ${big} sf-e3`}
+          class=${form ? `ms-press shrink-0 ${big}` : `btn btn-primary btn-circle ${big} sf-e3`}
           aria-label=${sys(playing ? (stopIcon ? "aStop" : "aPause") : "aPlay", locale)} onClick=${onToggle}>
-          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero ? "text-3xl" : "text-2xl")}
+          ${form ? html`<svg aria-hidden="true" viewBox="0 0 1 1"><path ref=${playPath} d="M.5 0A.5 .5 0 1 1 .5 1A.5 .5 0 1 1 .5 0Z" /></svg>` : null}
+          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero || form ? "text-3xl" : "text-2xl")}
         </button>
         ${onNext ? html`
           <button id="next" class=${`btn btn-ghost btn-circle ${side} ${narrowHide}`} aria-label=${sys("aNext", locale)}

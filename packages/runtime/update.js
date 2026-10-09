@@ -117,6 +117,7 @@ export function installUpdates(app) {
       location.reload();
       return;
     }
+    if (!had) return;
     stale = true;
     if (document.visibilityState === "hidden" && !playing()) location.reload();
   });

@@ -10,6 +10,7 @@
  * @module
  */
 import "./tests/apk_test.js";
+import "./tests/feed_test.js";
 import "./tests/sealedfetch_test.js";
 import "./tests/tone_test.js";
 import "./tests/update_test.js";

@@ -120,6 +120,8 @@ export const SYS = {
   whatsNew: { en: "What's new", uk: "Що нового" },
   refresh: { en: "Get the newest version and clear this app's cache", uk: "Оновити до найновішої версії й скинути кеш застосунку" },
   refreshOffline: { en: "No network — nothing was changed", uk: "Немає мережі — нічого не змінено" },
+  privacy: { en: "Privacy", uk: "Приватність" },
+  terms: { en: "Terms", uk: "Умови" },
   refreshed: { en: "Newest version loaded", uk: "Завантажено найновішу версію" },
   tone: { en: "Screen", uk: "Екран" },
   toneNormal: { en: "Normal", uk: "Звичайний" },

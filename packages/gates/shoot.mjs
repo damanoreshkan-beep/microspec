@@ -2,7 +2,7 @@ const args = Deno.args;
 const flag = (n, d) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] ?? d) : d; };
 const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale", "--query"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
 const apps = args.filter((a) => !a.startsWith("--") && !isFlagVal(a));
-const base = flag("--base", "https://dreamstudio.mooo.com/").replace(/\/?$/, "/");
+const base = flag("--base", "https://mriia.si/").replace(/\/?$/, "/");
 const out = flag("--out", "packages/gates/shots");
 const seed = args.includes("--seed");
 const mock = args.includes("--mock");

@@ -64,7 +64,7 @@
 const isLocal = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 
 /** The farm's origins, the canonical one first — the same set microspec-edge allows (util.js ALLOW_ORIGIN). */
-export const FARM_ORIGINS = ["https://dreamstudio.mooo.com", "https://mriia.si"];
+export const FARM_ORIGINS = ["https://mriia.si", "https://dreamstudio.mooo.com"];
 
 /**
  * The backend a page talks to: its OWN origin's `/feed` when the page is served from the farm (same origin —

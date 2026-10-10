@@ -134,7 +134,7 @@ async function gitCount(path) {
 }
 
 const BUILD_SHA = (Deno.env.get("GITHUB_SHA") || "dev").slice(0, 7);
-// In the core's own tree CORE counts the runtime's commits; in a PRODUCT tree (dreamstudio) that directory
+// In the core's own tree CORE counts the runtime's commits; in a PRODUCT tree (Mriia) that directory
 // does not exist and the count is 0 — every app footer read "core 1.0" (2026-10-07). There the honest number
 // is the installed package's version, read from this package's own manifest.
 async function packageVersion() {

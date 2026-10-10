@@ -138,7 +138,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const mine = (state?.rules || []).filter((r) => r.source === source);
 
   if (!tg) {
-    const deep = `https://t.me/dreamstudio_x_bot?startapp=${encodeURIComponent(app || "")}`;
+    const deep = `https://t.me/mriia_si_bot?startapp=${encodeURIComponent(app || "")}`;
     const viaTelegram = async () => {
       setBusy(true); setErr("");
       try { await loginTelegramWeb(); }

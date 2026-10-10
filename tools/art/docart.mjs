@@ -114,7 +114,7 @@ const hero = () => {
   const w = 960, h = 360, cx = 210, cy = 180, rnd = seeded("hero");
   const runtime = Object.keys(manifest.exports).filter((k) => k.startsWith("./runtime/")).length;
   const tools = Object.keys(manifest.exports).filter((k) => !k.startsWith("./runtime/") && k !== ".").length;
-  let s = head("hero", w, h, "@microspec/core — the appless core of DreamStudio");
+  let s = head("hero", w, h, "@microspec/core — the appless core of Mriia");
   s += fireflies("hero", w, h, 44);
   for (let i = 0; i < 6; i++) {
     const r = 72 + i * 12, col = i % 3 === 2 ? C.cyan : C.amber, cls = i % 2 ? "spin-r" : "spin";
@@ -128,7 +128,7 @@ const hero = () => {
   s += `<circle cx="${cx}" cy="${cy}" r="30" fill="${C.amber}" opacity=".14" filter="url(#bloom)" class="breathe"/>`;
   s += `<text x="420" y="150" font-size="30" font-weight="700" letter-spacing="-.01em">@microspec/core</text>`;
   s += `<path d="M 420 168 H 760" stroke="url(#pair)" stroke-width="1.2" stroke-opacity=".9"/>`;
-  s += `<text x="420" y="196" class="m" font-size="12">${esc("THE APPLESS CORE OF DREAMSTUDIO")}</text>`;
+  s += `<text x="420" y="196" class="m" font-size="12">${esc("THE APPLESS CORE OF MRIIA")}</text>`;
   const rows = [`runtime · ${runtime} systemic modules, zero-build, served as /_rt`, "schema · the spec contract, machine-checked (ajv)", "gates · Deno first, then a real Chromium + axe", `gen + tools · ${tools} entrypoints, one pipeline registry (8n8)`];
   rows.forEach((t, i) => { s += node(428, 226 + i * 26, { lit: i === 0, delay: i }); s += label(446, 230 + i * 26, t, { anchor: "start" }); });
   return s + tail;
@@ -162,7 +162,7 @@ const build = () => {
   s += fireflies("build", w, h, 18);
   const st = [
     ["apps/<id>", "spec · view · i18n"], ["/_rt", "the runtime files"], ["build", "bundle · tailwind scan · sw precache"],
-    ["dist/", "one static tree"], ["dist-eye", "real Chromium, every app"], ["rsync", "sudo rsync over ssh"], ["live", "dreamstudio.mooo.com"],
+    ["dist/", "one static tree"], ["dist-eye", "real Chromium, every app"], ["rsync", "sudo rsync over ssh"], ["live", "mriia.si"],
   ];
   const xs = st.map((_, i) => 80 + i * 133), y = 130;
   for (let i = 1; i < st.length; i++) s += filament(xs[i - 1], y, xs[i], y, { lit: i === 3 || i === 5, w: 1.3, bend: 0.3 });

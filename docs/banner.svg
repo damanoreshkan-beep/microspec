@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260" role="img" aria-label="microspec — the core of DreamStudio: AI-authored micro-PWAs that pass the gates">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260" role="img" aria-label="microspec — the core of Mriia: AI-authored micro-PWAs that pass the gates">
   <defs>
     <linearGradient id="neon" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#F2B84B"/>
@@ -33,7 +33,7 @@
 
   <!-- wordmark -->
   <text x="450" y="120" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-weight="800" font-size="92" letter-spacing="-3" fill="url(#neon)">microspec</text>
-  <text x="450" y="164" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-weight="600" font-size="19" letter-spacing="0.5" fill="#F2EEE6">the core of DreamStudio — AI-authored micro-PWAs; a broken one can't reach the site</text>
+  <text x="450" y="164" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-weight="600" font-size="19" letter-spacing="0.5" fill="#F2EEE6">the core of Mriia — AI-authored micro-PWAs; a broken one can't reach the site</text>
 
   <!-- the pipeline: author -> gate -> ship, a pulse of light travelling the track -->
   <g transform="translate(0,214)" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-weight="600" font-size="13" fill="#A39E94">

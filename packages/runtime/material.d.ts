@@ -8,7 +8,7 @@
  * {@link applyMaterial} switches the page to a material by rewriting the ONE stylesheet link every page
  * carries (`/_rt/theme.css` → `/_rt/theme-<id>.css`) and stamping `html[data-material]`. The chosen id
  * persists farm-wide (`ms:material`, deliberately NOT namespaced by app — a material is the person's, not
- * the app's). Spec: DreamStudio `docs/research/themes.md`.
+ * the app's). Spec: Mriia `docs/research/themes.md`.
  *
  * ![The module's map](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-material.svg)
  *
@@ -71,7 +71,7 @@ export function applyMaterial(id: any, materials: any, doc?: any): any;
  * {@link applyMaterial} switches the page to a material by rewriting the ONE stylesheet link every page
  * carries (`/_rt/theme.css` → `/_rt/theme-<id>.css`) and stamping `html[data-material]`. The chosen id
  * persists farm-wide (`ms:material`, deliberately NOT namespaced by app — a material is the person's, not
- * the app's). Spec: DreamStudio `docs/research/themes.md`.
+ * the app's). Spec: Mriia `docs/research/themes.md`.
  *
  * ![The module's map](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/module-material.svg)
  *

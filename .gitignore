@@ -19,7 +19,7 @@ proxy/
 AGENTS.md
 .serena/
 # 8n8 run stamps — a green-gates record is about THIS machine and THIS tree, never shared — and the
-# generated demo app the gates run (.8n8/demo, tools/demo.mjs); the product's apps live in DreamStudio
+# generated demo app the gates run (.8n8/demo, tools/demo.mjs); the product's apps live in Mriia
 .8n8/
 
 # sibling repos checked out inside this tree

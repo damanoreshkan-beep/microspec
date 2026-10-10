@@ -56,7 +56,7 @@
   /* THE PAIR OF MARKS — two hues every component reads for fills, rings, glows and the bloom; never text.
      Farm-wide, never per app (spec.accent survives only as an icon-generator input). Both are hexes, not
      var(--color-*), so getComputedStyle("--app-accent") (render.js) reads a real colour. NEUTRAL defaults —
-     a brand sets its own pair (DreamStudio: amber + cyan) in its rt/theme.css. */
+     a brand sets its own pair (Mriia: amber + cyan) in its rt/theme.css. */
   --app-accent: #4F8CFF;
   --app-accent-2: #3FC8A8;
   --app-tint: color-mix(in oklch, var(--app-accent) 16%, transparent);
@@ -660,7 +660,7 @@ nav[data-dock] button[aria-current="page"] { box-shadow: var(--sf-drop); }
    removes the groove rather than deepening it. The trough is for surfaces we own. */
 
 /* Conventions that ride on top of DaisyUI, farm-wide. The mono role is a TOKEN: a brand names its family
-   (DreamStudio: Geist Mono, loaded per app in the head); the neutral default is the platform's own mono. */
+   (Mriia: Geist Mono, loaded per app in the head); the neutral default is the platform's own mono. */
 :root { --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace; }
 body { letter-spacing: -0.006em; }
 

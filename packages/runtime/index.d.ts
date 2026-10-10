@@ -1,5 +1,5 @@
 /**
- * # @microspec/core — the appless core of DreamStudio
+ * # @microspec/core — the appless core of Mriia
  *
  * ![The portal: a ring of woven light, the four parts of the core beside it](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/hero.svg)
  *
@@ -7,7 +7,7 @@
  * VERIFIED, zero-build runtime. This package is that runtime and everything that verifies it: the systemic
  * modules an app's page imports as `/_rt/<name>.js`, the spec schema, the gates (Deno first, then a real
  * Chromium with axe), the generators, and the tools that run all of it as one pipeline registry (8n8).
- * It carries NO apps — the product, DreamStudio, does, and pins this package.
+ * It carries NO apps — the product, Mriia (mriia.si), does, and pins this package.
  *
  * ## Two channels, one version
  *

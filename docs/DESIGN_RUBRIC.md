@@ -125,7 +125,7 @@ a standing assumption, not a per-task ask.)
 - **Ink is the brand:** primary IS base-content — warm white `#F2EEE6` on black / warm near-black `#141210`
   on paper; colour is for *meaning* (success/warning/error) plus the farm's ONE PAIR OF LIGHT — amber
   (`secondary`, `--app-accent`) and cyan (`accent`, `--app-accent-2`). The brand is the PRODUCT's theme
-  module, DreamStudio `rt/theme.css` (+ its sprites); the core's `runtime.css` carries only the structure
+  module, Mriia's `rt/theme.css` (+ its sprites); the core's `runtime.css` carries only the structure
   and a neutral default (`docs/research/theme-split.md`).
 - **The material is LUMINOUS — light IS the structure** (`docs/research/luminous-icons.md`, 2026-08-31; this
   replaced the neumorphic pair, which replaced clay). The page is TRUE BLACK, and depth is never a shadow:

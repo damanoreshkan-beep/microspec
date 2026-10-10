@@ -22,16 +22,24 @@ function AccountSlot({ github, loc }) {
 // The version line, and beside it the one control a person needs when it shows an old build: "update now"
 // (update.js refreshNow — the newest worker, this app's shell caches dropped, the person's data kept).
 // Disabled while it works; the page then navigates, so there is no in-between state to draw.
+// Under it, as small, the farm's privacy policy and terms (served by the store, on the page's own origin):
+// Google's brand verification wants them one tap from the app, and every app's profile is that tap.
+const LEGAL = [["privacy", "/store/privacy.html"], ["terms", "/store/terms.html"]];
 function VersionRow({ loc }) {
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setBusy(true);
     if ((await refreshNow(A.spec.id)) === "offline") { setBusy(false); A.toast(sys("refreshOffline", loc)); }
   };
-  return html`<div class="flex items-center justify-center gap-1 pt-1">
-    <span data-version class="text-[11px] text-base-content/70 tabular-nums">v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}</span>
-    <button id="p-refresh" type="button" disabled=${busy} aria-label=${sys("refresh", loc)} title=${sys("refresh", loc)} onClick=${go}
-      class="btn btn-ghost btn-circle w-[var(--ms-ctl)] h-[var(--ms-ctl)] min-h-0 text-base-content/70">${Icon("lucide:refresh-cw", "text-base")}</button>
+  return html`<div class="flex flex-col items-center pt-1">
+    <div class="flex items-center justify-center gap-1">
+      <span data-version class="text-[11px] text-base-content/70 tabular-nums">v${appVersion(A.spec)} · core ${CORE}${BUILD && BUILD !== "dev" ? ` · ${BUILD}` : ""}</span>
+      <button id="p-refresh" type="button" disabled=${busy} aria-label=${sys("refresh", loc)} title=${sys("refresh", loc)} onClick=${go}
+        class="btn btn-ghost btn-circle w-[var(--ms-ctl)] h-[var(--ms-ctl)] min-h-0 text-base-content/70">${Icon("lucide:refresh-cw", "text-base")}</button>
+    </div>
+    <nav data-legal class="flex items-center gap-2 text-[11px] text-base-content/70">
+      ${LEGAL.map(([k, href], i) => html`${i ? html`<span aria-hidden="true">·</span>` : null}<a key=${k} href=${loc === "en" ? `${href}#en` : href} target="_blank" rel="noopener" class="link link-hover py-2">${sys(k, loc)}</a>`)}
+    </nav>
   </div>`;
 }
 

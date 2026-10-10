@@ -102,11 +102,24 @@ export function startParam(w) {
   } catch { return ""; }
 }
 
+/**
+ * Where a start param sends the launcher, or "" to stay. The launcher is the root AND the store: the built root
+ * is a static stub that forwards to /store/ before any runtime loads (deploy/build.mjs), so the store is where
+ * a `startapp=<id>` link actually lands — routing only at "/" left every deep link on the store (2026-10-10).
+ * Never routes to the store itself, so it cannot loop.
+ * @param pathname the page's `location.pathname`
+ * @param sp the guarded start param (see {@link startParam})
+ * @returns the target path, e.g. "/muzak/", or ""
+ */
+export function startTarget(pathname, sp) {
+  const launcher = /^\/(store\/)?(index\.html)?$/.test(pathname || "");
+  return sp && sp !== "store" && launcher ? `/${sp}/` : "";
+}
+
 function routeStartApp(w) {
   try {
-    const sp = startParam(w);
-    const atRoot = location.pathname === "/" || location.pathname === "/index.html";
-    if (sp && atRoot) location.replace("/" + sp + "/");
+    const to = startTarget(location.pathname, startParam(w));
+    if (to) location.replace(to + (location.hash || ""));   // the hash carries tgWebAppData for the target's SDK
   } catch { }
 }
 

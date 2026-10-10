@@ -22,7 +22,8 @@
  * - {@link fetchJson} — `fetchJson(url, { array = false, timeout = 10000 })`: the one-liner every data.js repeated — `viaProxy` with the matching shape validator, then `JSON.parse`.
  * - {@link isJsonArray} / {@link isJsonObject} — validators for `viaProxy`: the trimmed text starts with `[` / `{`, so an HTML error page never reaches the parser.
  * - {@link pool} — `pool(items, n, fn)`: bounded-concurrency map, at most `n` of `fn` in flight; resolves when all are done.
- * - {@link VPS_PROXY} — `https://dreamstudio.mooo.com/feed`, the last hop; not an open proxy, it forwards only to hosts in microspec-edge's ALLOW list.
+ * - {@link VPS_PROXY} — the page's own farm origin + `/feed` (`feedBase(location.origin)`), the last hop; not an open proxy, it forwards only to hosts in microspec-edge's ALLOW list.
+ * - {@link FARM_ORIGINS} / {@link feedBase} — the farm's origins (canonical first) and the `/feed` base a page on a given origin talks to.
  * - {@link SEALED_KEY} — the backend's pinned long-term public key (base64url), consumed by sealedfetch.js.
  *
  * ## In practice
@@ -89,8 +90,18 @@ export function fetchJson(url: any, { array, timeout }?: {
  * @returns resolves when every item has been processed
  */
 export function pool(items: any, n: any, fn: any): Promise<void>;
+/** The farm's origins, the canonical one first — the same set microspec-edge allows (util.js ALLOW_ORIGIN). */
+export const FARM_ORIGINS: string[];
+/**
+ * The backend a page talks to: its OWN origin's `/feed` when the page is served from the farm (same origin —
+ * no CORS preflight, and the move to mriia.si on 2026-10-10 needs no second code path), else the canonical one
+ * (localhost dev, a test, any other embedder).
+ * @param origin the page's `location.origin`, or "" outside a browser
+ * @returns the `/feed` base URL, without a trailing slash
+ */
+export function feedBase(origin: any): string;
 /** Our hardened, host-allowlisted CORS proxy (microspec-edge on the VPS) — the last hop of the proxy chain. */
-export const VPS_PROXY: "https://dreamstudio.mooo.com/feed";
+export const VPS_PROXY: string;
 /** The backend's pinned long-term public key (base64url), used by sealedfetch.js to seal calls to VPS_PROXY. */
 export const SEALED_KEY: "BLP-06vCYzSiakKos1Sk7Yqzneb0MrbBjozH3EQ_YRgvzqc_0hcZeeFXoDzMhHlXL3awFtjOMFg08dzcKUmbNOM";
 /** Validator for `viaProxy`: true when the response text looks like a JSON array (not an HTML error page). */

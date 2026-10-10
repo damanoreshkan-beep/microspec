@@ -51,7 +51,7 @@ export async function renderOgCard({ brand, paths, title, tagline, master = null
 <ellipse cx="276" cy="330" rx="300" ry="270" fill="url(#bloom)"/>
 ${tile}
 <text x="528" y="${tagLines.length > 1 ? 262 : 292}" font-family="Geist" font-weight="700" font-size="${titleSize}" fill="${INK}">${esc(title)}</text>
-<text x="530" y="${tagLines.length > 1 ? 318 : 352}" font-family="Geist Mono" font-weight="500" font-size="28" fill="${AMBER}" letter-spacing="2">${SITE_NAME.toUpperCase()}</text>
+<text x="530" y="${tagLines.length > 1 ? 318 : 352}" font-family="Geist Mono" font-weight="500" font-size="28" fill="${AMBER}" letter-spacing="2">${new URL(SITE).host.toUpperCase()}</text>
 ${tagLines.map((l, i) => `<text x="528" y="${(tagLines.length > 1 ? 386 : 424) + i * 44}" font-family="Geist" font-weight="700" font-size="${tagSize}" fill="${MUTED}">${esc(l)}</text>`).join("\n")}
 <rect x="0.5" y="0.5" width="${OG_W - 1}" height="${OG_H - 1}" fill="none" stroke="${RIM}" stroke-width="1"/>
 </svg>`;

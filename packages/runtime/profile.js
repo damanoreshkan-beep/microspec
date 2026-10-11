@@ -95,6 +95,42 @@ function ThemeWidget({ t, loc, theme, modeToggle, materials, current, tone = "" 
   </div></div>`;
 }
 
+// THE PROFILE as one system screen (owner 2026-10-11: «перероби також екран акаунту системно, редизайн також окремо
+// продуманий, міняй все місцями, сучасно у нашому стилі»). It used to be a column of look-alike cards; now it reads
+// in four bands, each one surface: WHO you are (the account hero, then its sign-ins), WHAT this app is (its form, its
+// line, and its four ways out — install, APK, share, Telegram — as round keys), HOW it looks (material, day/night,
+// tone), and the SETTINGS as one grouped list. Every id the farm's tests and the shell use is kept.
+// The app's own form (core shape.js) loads with the tab, not at boot; until it lands the tile shows its glyph alone.
+function useShape() {
+  const [m, setM] = useState(null);
+  useEffect(() => { let live = true; import("./shape.js").then((x) => { if (live) setM(x); }).catch(() => {}); return () => { live = false; }; }, []);
+  return m;
+}
+function FormGlyph({ shape, seed, cls, children }) {
+  const name = shape ? shape.shapeOf(seed) : null;
+  return html`<div data-form=${name} class=${`pf-form relative shrink-0 grid place-items-center ${cls}`}>
+    ${name ? html`<svg aria-hidden="true" viewBox="0 0 1 1" class="absolute inset-0 w-full h-full"><path d=${shape.pathOf(name)} /></svg>` : null}
+    <span class="relative grid place-items-center">${children}</span>
+  </div>`;
+}
+// one round key of the app card: a form, a glyph, a two-line label; a link when it leaves the app
+function ActKey({ a, shape }) {
+  const inner = html`<${FormGlyph} shape=${shape} seed=${a.id} cls="w-14 h-14 text-primary">${a.mark ? html`<${a.mark} />` : Icon(a.icon, "text-2xl")}<//>
+    <span class="text-[0.72rem] leading-tight text-center line-clamp-2 text-base-content/85">${a.label}</span>`;
+  const cls = "flex flex-col items-center gap-1.5 min-w-0 ms-press";
+  return a.href
+    ? html`<a id=${a.id} href=${a.href} target="_blank" rel="noopener" class=${cls}>${inner}</a>`
+    : html`<button id=${a.id} type="button" class=${cls} onClick=${a.onClick}>${inner}</button>`;
+}
+// a row of the settings list; `end` is what sits at its right (a control, a count or an arrow)
+const SetRow = ({ id, icon, label, end, onClick, href, tone = "" }) => {
+  const body = html`${Icon(icon, `text-xl shrink-0 ${tone}`)}<span class="flex-1 min-w-0 truncate font-medium text-left">${label}</span>${end}`;
+  const cls = "flex items-center gap-3 px-4 min-h-[3.25rem] w-full";
+  return href ? html`<a id=${id} href=${href} target="_blank" rel="noopener" class=${`${cls} ms-press`}>${body}</a>`
+    : onClick ? html`<button id=${id} type="button" class=${`${cls} ms-press`} onClick=${onClick}>${body}</button>`
+    : html`<div id=${id} class=${cls}>${body}</div>`;
+};
+
 export function Profile({ tab }) {
   const t = useStore(A.S.t), theme = useStore(A.S.theme), loc = useStore(A.S.locale), fav = useStore(A.S.fav);
   const materials = useStore(A.S.materials), materialId = useStore(A.S.material);
@@ -124,15 +160,34 @@ export function Profile({ tab }) {
     }
     try { await navigator.clipboard.writeText(url); A.toast(sys("shareCopied", loc)); } catch { }
   };
-  return html`<div class="flex flex-col gap-3 pt-1">
+  const shape = useShape();
+  const acts = [
+    install ? { id: "p-install", icon: p.icon || "lucide:box", label: T(t, "install"), onClick: () => A.S.installOpen.set(true) } : null,
+    { id: "p-apk", mark: AndroidMark, label: sys("apkRow", loc), onClick: () => A.S.screen.set("apk") },
+    { id: "p-share", icon: "lucide:share-2", label: sys("share", loc), onClick: shareApp },
+    !inTelegram() ? { id: "p-tg", icon: "lucide:send", label: sys("openTelegram", loc), href: `https://t.me/mriia_si_bot?startapp=${A.spec.id}` } : null,
+  ].filter(Boolean);
+  const arrow = Icon("lucide:arrow-up-right", "opacity-60 shrink-0"), chevron = Icon("lucide:chevron-right", "opacity-60 shrink-0");
+  const rows = [
+    p.lang ? html`<${SetRow} icon="lucide:languages" label=${T(t, "profLang")} end=${html`<div class="flex gap-1 p-1 rounded-full sf-inset shrink-0" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button key=${c} type="button" data-loc=${c} aria-pressed=${loc === c}
+      class=${`h-8 min-w-11 px-3 rounded-full text-sm font-semibold transition ${loc === c ? "sf-lift2 bg-base-100" : "opacity-55"}`} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div>`} />` : null,
+    savedTab ? html`<${SetRow} icon="lucide:bookmark" label=${T(t, savedTab.titleKey || savedTab.label)} onClick=${() => A.S.tab.set(savedTab.id)} end=${html`<span class="badge badge-primary">${Object.keys(fav).length}</span>`} />` : null,
+    p.permissions?.length ? html`<${SetRow} id="p-perms" icon="lucide:shield-check" label=${permLabels(loc).row} onClick=${() => A.S.screen.set("perms")} end=${chevron} />` : null,
+    adminHref ? html`<${SetRow} id="p-admin" icon="lucide:shield" tone="text-primary" label=${sys("adminRow", loc)} href=${adminHref} end=${arrow} />` : null,
+    p.source ? html`<${SetRow} icon=${p.source.icon || "lucide:database"} label=${T(t, p.source.label)} href=${p.source.url} end=${arrow} />` : null,
+  ].filter(Boolean);
+  return html`<div class="flex flex-col gap-[var(--ms-gap)] pt-1">
     ${account ? html`<${AccountSlot} github=${account === "github" ? "primary" : "quiet"} loc=${loc} />` : null}
-    <div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-5 items-center text-center gap-1">${Icon(p.icon || "lucide:box", "text-4xl text-primary")}<div class="font-bold text-lg mt-1">${T(t, "title")}</div><div class="text-sm text-muted">${T(t, "profTagline")}</div></div></div>
-    <div class="grid grid-cols-2 gap-3">
-      ${install ? html`<button id="p-install" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.installOpen.set(true)}><div class="card-body p-4 gap-3 items-start"><div class="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center">${Icon(p.icon || "lucide:box", "text-2xl")}</div><span class="font-medium text-sm leading-tight text-left">${T(t, "install")}</span></div></button>` : null}
-      <button id="p-apk" class=${`card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition ${install ? "" : "col-span-2"}`} onClick=${() => A.S.screen.set("apk")}><div class="card-body p-4 gap-3 items-start"><div class="size-11 rounded-xl grid place-items-center" style="background:rgba(52,168,83,.14)"><${AndroidMark} /></div><span class="font-medium text-sm leading-tight text-left">${sys("apkRow", loc)}</span></div></button>
-    </div>
-    <button id="p-share" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${shareApp}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:share-2", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("share", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></button>
-    ${!inTelegram() ? html`<a id="p-tg" href=${`https://t.me/mriia_si_bot?startapp=${A.spec.id}`} target="_blank" rel="noopener" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:send", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("openTelegram", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
+    <section data-app-card aria-label=${T(t, "title")} class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-4">
+      <div class="flex items-center gap-3.5">
+        <${FormGlyph} shape=${shape} seed=${A.spec.id} cls="w-16 h-16 text-primary pf-hero">${Icon(p.icon || "lucide:box", "text-3xl")}<//>
+        <div class="min-w-0 flex-1">
+          <div class="font-bold text-lg leading-tight truncate">${T(t, "title")}</div>
+          <div class="text-sm text-base-content/70 leading-snug line-clamp-3 mt-0.5">${T(t, "profTagline")}</div>
+        </div>
+      </div>
+      <div class=${`grid gap-1 pt-3 border-t border-base-content/10 ${acts.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>${acts.map((a) => html`<${ActKey} key=${a.id} a=${a} shape=${shape} />`)}</div>
+    </div></section>
     ${inTelegram() ? html`<div id="p-support" class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-3">
       <div class="flex items-center gap-3">
         <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:heart", "text-2xl")}</div>
@@ -143,12 +198,8 @@ export function Profile({ tab }) {
         onClick=${async () => { const s = await payStars(n); if (s === "paid") { celebrate(); A.toast(sys("supportThanks", loc)); } else if (s === "error" || s === "failed") A.toast(sys("supportFailed", loc)); }}>
         ${Icon("lucide:star", "text-[0.9em] opacity-80")}${n}</button>`)}</div>
     </div></div>` : null}
-    ${savedTab ? html`<button class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.tab.set(savedTab.id)}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:bookmark", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${T(t, savedTab.titleKey || savedTab.label)}</span><span class="badge badge-primary">${Object.keys(fav).length}</span></div></button>` : null}
     ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} tone=${tone} />` : null}
-    ${p.lang ? html`<div class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:languages", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, "profLang")}</span><div class="join" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button class=${`btn btn-sm join-item ${loc === c ? "btn-active btn-primary" : ""}`} data-loc=${c} key=${c} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div></div></div>` : null}
-    ${adminHref ? html`<a id="p-admin" href=${adminHref} class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield", "text-xl text-primary")}<span class="flex-1 min-w-0 truncate font-medium text-left">${sys("adminRow", loc)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
-    ${p.permissions?.length ? html`<button id="p-perms" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition" onClick=${() => A.S.screen.set("perms")}><div class="card-body p-4 flex-row items-center gap-3">${Icon("lucide:shield-check", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium text-left">${permLabels(loc).row}</span>${Icon("lucide:chevron-right", "opacity-60")}</div></button>` : null}
-    ${p.source ? html`<a href=${p.source.url} target="_blank" rel="noopener" class="card sf-raised sf-e2 rounded-[var(--ms-r)] active:scale-[.99] transition"><div class="card-body p-4 flex-row items-center gap-3">${Icon(p.source.icon || "lucide:database", "text-xl")}<span class="flex-1 min-w-0 truncate font-medium">${T(t, p.source.label)}</span>${Icon("lucide:arrow-up-right", "opacity-60")}</div></a>` : null}
+    ${rows.length ? html`<div data-settings class="card sf-raised sf-e2 rounded-[var(--ms-r)] overflow-hidden flex flex-col divide-y divide-base-content/10">${rows}</div>` : null}
     <${VersionRow} loc=${loc} />
   </div>`;
 }

@@ -69,6 +69,29 @@ import { VPS_PROXY } from "./feed.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
+// THE PORTRAIT — the person inside their OWN organic form (core shape.js, seeded by the account, so it is the same
+// form on every phone and in every app), the theme's material behind it and a rim of light around it: the profile
+// tab's one hero (owner 2026-10-11: «перероби також екран акаунту системно … сучасно у нашому стилі»). shape.js
+// loads with the card; until it lands the portrait is a plain disc, so nothing waits on it.
+const SIZE = 88;
+function Portrait({ sess }) {
+  const [shape, setShape] = useState(null);
+  useEffect(() => { let live = true; import("./shape.js").then((m) => { if (live) setShape(m); }).catch(() => {}); return () => { live = false; }; }, []);
+  const name = shape ? shape.shapeOf(String(sess.account || sess.user?.id || sess.user?.login || "me"), FORMS(shape)) : null;
+  const clip = name ? `clip-path:path("${shape.scalePath(shape.pathOf(name), SIZE)}")` : "border-radius:9999px";
+  const initial = (sess.user?.name || sess.user?.login || "?").trim().charAt(0).toUpperCase();
+  return html`<div data-portrait data-form=${name} class="ac-portrait relative shrink-0" style=${`width:${SIZE}px;height:${SIZE}px`}>
+    <div class="ac-fill absolute inset-0" style=${clip}>
+      ${sess.user?.avatar
+        ? html`<img src=${sess.user.avatar} alt="" referrerpolicy="no-referrer" class="w-full h-full object-cover" />`
+        : html`<div aria-hidden="true" class="w-full h-full grid place-items-center text-3xl font-bold text-base-content/85">${initial}</div>`}
+    </div>
+    ${name ? html`<svg aria-hidden="true" viewBox="0 0 1 1" class="ac-rim absolute inset-0 w-full h-full overflow-visible"><path d=${shape.pathOf(name)} /></svg>` : null}
+  </div>`;
+}
+// the forms that cut deepest into a centred face are left out, as persona's portraits do
+const FORMS = (shape) => shape.ORGANIC.filter((n) => !["Flower", "PuffyDiamond", "Puffy"].includes(n));
+
 /**
  * @param github  "quiet" (default) | "primary" — passed through to SignIn
  * @param loc     UI locale
@@ -78,20 +101,15 @@ export function Account({ github = "quiet", loc, onChange }) {
   const sess = useStore(session);
   useEffect(() => { restore(); }, []);
   const provider = sess?.provider === "google" ? "Google" : sess?.provider === "telegram" ? "Telegram" : "GitHub";
-  const initial = (sess?.user?.name || sess?.user?.login || "?").trim().charAt(0).toUpperCase();
   return html`<div data-account class="card sf-raised sf-e2 rounded-[var(--ms-r)]">
     ${sess
-      ? html`<div class="card-body p-4 flex-row items-center gap-3">
-          ${sess.user?.avatar
-            ? html`<img src=${sess.user.avatar} alt="" referrerpolicy="no-referrer" class="w-12 h-12 rounded-full object-cover shrink-0 sf-inset" />`
-            : html`<div aria-hidden="true" class="w-12 h-12 rounded-full shrink-0 sf-inset grid place-items-center text-lg font-bold text-base-content/80">${initial}</div>`}
-          <div class="flex-1 min-w-0">
-            <div data-account-name class="font-bold truncate">${sess.user?.name || sess.user?.login}</div>
-            <div class="text-sm text-base-content/70 truncate">${sess.user?.login}</div>
-            <div class="font-mono uppercase tracking-wide text-[length:var(--ms-label)] text-base-content/70 mt-0.5">${sys("accountVia", loc)} ${provider}</div>
-          </div>
-          <button data-signout type="button" aria-label=${sys("signOut", loc)} class="btn btn-ghost btn-sm btn-circle shrink-0"
+      ? html`<div class="card-body p-5 pt-6 items-center text-center gap-1 relative">
+          <button data-signout type="button" aria-label=${sys("signOut", loc)} class="btn btn-ghost btn-circle w-[var(--ms-ctl)] h-[var(--ms-ctl)] min-h-0 absolute top-2 right-2 text-base-content/70"
             onClick=${async () => { await logout(); onChange?.(null); }}>${Icon("lucide:log-out", "text-xl")}</button>
+          <${Portrait} sess=${sess} />
+          <div data-account-name class="font-bold text-xl leading-tight truncate max-w-full mt-3">${sess.user?.name || sess.user?.login}</div>
+          ${sess.user?.login && sess.user.login !== sess.user?.name ? html`<div class="text-sm text-base-content/70 truncate max-w-full">${sess.user.login}</div>` : null}
+          <div class="font-mono uppercase tracking-wide text-[length:var(--ms-label)] text-base-content/70 mt-1">${sys("accountVia", loc)} ${provider}</div>
         </div>`
       : html`<div class="card-body p-4 items-center text-center gap-3">
           <div class="text-sm text-base-content/70">${sys("signedOut", loc)}</div>

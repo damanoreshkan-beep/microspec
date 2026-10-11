@@ -802,6 +802,16 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
 .ms-form-mark path { fill: color-mix(in oklch, var(--color-primary) 13%, transparent);
   stroke: color-mix(in oklch, var(--color-primary) 42%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 
+/* the profile (profile.js / account.js): the app's tile and its round keys are forms tinted with the primary; the
+   person's portrait sits in its own form on the theme's material, a rim of light around it (fonoteka's orb, small) */
+.pf-form > svg path { fill: color-mix(in oklch, var(--color-primary) 11%, transparent);
+  stroke: color-mix(in oklch, var(--color-primary) 30%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pf-hero > svg path { fill: color-mix(in oklch, var(--color-primary) 16%, transparent); }
+.ac-fill { background: var(--ds-fill, var(--ds-scatter, none)) center / 140% auto no-repeat, var(--color-base-200); }
+.ac-rim path { fill: none; stroke: color-mix(in oklch, var(--app-accent) 80%, white); stroke-width: 1.5; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 6px var(--lm-bloom-hi)); }
+[data-theme="signal-light"] .ac-rim path { stroke: var(--color-secondary); filter: none; }
+
 /* skeleton → content reveal: a fast, smooth fade-in when real content replaces a skeleton (/_rt/skeleton.js
    Reveal). Frozen to its final state during the design-check axe pass, so contrast is measured on real text. */
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }

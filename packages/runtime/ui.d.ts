@@ -27,6 +27,7 @@
  * - {@link Island} — `Island({ children, className, tag = "div", pinned = false, at = "bottom", tone = "glass", ...rest })`: the floating glass panel (the dock's material); `pinned` clears the measured chrome (`--dock-h` / `--hdr-h`), and a bottom one publishes its own height as `--island-h` so the body and the toast clear it; `tone` "glass" | "dark" (over media) | "frost" (over a stage).
  * - {@link Panel} — `Panel({ title, children, className, ...rest })`: the solid in-flow surface — the page extruded (`sf-raised sf-e2`), no border, optional mono micro-label.
  * - {@link Slider} — `Slider({ id, label, value, onInput, min = 0, max = 1, step = 0.02, attr = "data-macro" })`: a labelled range whose caption is the accessible name; the value is deliberately not printed.
+ * - {@link MiniPlayer} — `MiniPlayer({ show, title, glyph, playing, onToggle, pos, dur, onSeek, onScrub, onOpen, openLabel, locale })`: the playing track as a pill above the dock once the full player is out of view; its fill is the song's time and a drag across it seeks.
  * - {@link Transport} — `Transport({ locale, playing, onToggle, onPrev, onNext, pos, dur, onSeek, repeat, onRepeat, shuffle, onShuffle, title, subtitle, lead, trail, stopIcon, size, disabled, className, actions, keep = 2, moreOpen, onMore, onMoreClose, onScrubStart, onScrub, onScrubEnd })`: the ONE play control; every part opt-in by handler, sizes "md" | "sm" | "hero", actions demoted into a history-backed overflow sheet.
  *
  * **Layout**
@@ -217,6 +218,33 @@ export function Transport({ locale, playing, onToggle, onPrev, onNext, pos, dur,
 export function Stage({ children, className }: {
     children: any;
     className?: string;
+}): any;
+/**
+ * The MINI PLAYER — the playing track as a pill above the dock, for when the full player has scrolled out of view
+ * (fonoteka's island, made system by the owner 2026-10-11: «острівець міні зроби заливкою анімованою трек часу
+ * пісні і перемотка, щоб не скролити до верху … цей віджет міні острівець дуже кльовий, можна би винести зробити
+ * системним»). Its FILL is the song's time — a tint that grows across the pill, eased between the clock's ticks on
+ * the compositor; a DRAG anywhere across the pill seeks (a range input under the two keys, so it is a slider to a
+ * keyboard and a screen reader too). The track's glyph on the left takes you back to the full player; play/pause
+ * on the right. Shown and hidden by one attribute and one transition; inert while hidden.
+ * @param props `show` whether it is up; `title` the track's name; `glyph` a node (the track's form); `playing`;
+ *   `onToggle`; `pos` / `dur` in ms; `onSeek(ms)` on release and `onScrub(ms)` while dragging (omit both → no seek);
+ *   `onOpen` back to the full player; `openLabel` its accessible name; `locale`
+ * @returns the `data-mini` element
+ */
+export function MiniPlayer({ show, title, glyph, playing, onToggle, pos, dur, onSeek, onScrub, onOpen, openLabel, locale }: {
+    show: any;
+    title?: string;
+    glyph?: any;
+    playing?: boolean;
+    onToggle: any;
+    pos?: number;
+    dur?: number;
+    onSeek: any;
+    onScrub: any;
+    onOpen: any;
+    openLabel?: string;
+    locale: any;
 }): any;
 /** The frost recipe (class list): a 60% base-100 wash, xl blur, a 10% hairline and one soft cast — glass over a stage. */
 export const FROST: "bg-base-100/60 backdrop-blur-xl border border-base-content/10 sf-frost text-base-content";

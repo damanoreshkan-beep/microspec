@@ -404,23 +404,26 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
 .tp-filament:has(> input:focus-visible) > .tp-fl-node { outline: 2px solid var(--color-base-content); outline-offset: 3px; }
 [data-theme="signal-light"] .tp-fl-lit, [data-theme="signal-light"] .tp-fl-node { background: var(--color-secondary); box-shadow: none; }
 
+.ms-form-mark path { fill: color-mix(in oklch, var(--color-primary) 13%, transparent);
+  stroke: color-mix(in oklch, var(--color-primary) 42%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
-
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .ms-stagger > * { animation: msRise .32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
+
+
 @keyframes msWordIn { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }
 .ms-word-in { animation: msWordIn .42s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-word-in { animation: none; } }
 
-
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 .ms-detail-in { animation: msDetailIn .26s var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
-
 
 .truncate { min-width: 0; }
 
@@ -480,17 +483,17 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
   [data-shell-body].ms-side > .ms-side-main { flex: 0 0 auto; }
 }
-
-
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
 .ms-pad-key { border-radius: 12%; }
+
 .ms-menu { flex-wrap: wrap; justify-content: center; }
 
 
 .ms-sweep { animation: ms-sweep 4s linear infinite; }
 @keyframes ms-sweep { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ms-sweep { animation: none; } }
+
 :root[data-tone="noir"]  { --tone-tint: #FFFFFF; --tone-vig: 0; }
 :root[data-tone="green"] { --tone-tint: #8CFF26; --tone-vig: .6; }
 :root[data-tone="amber"] { --tone-tint: #FF5900; --tone-vig: .2; }

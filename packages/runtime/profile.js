@@ -170,7 +170,7 @@ export function Profile({ tab }) {
   const arrow = Icon("lucide:arrow-up-right", "opacity-60 shrink-0"), chevron = Icon("lucide:chevron-right", "opacity-60 shrink-0");
   const rows = [
     p.lang ? html`<${SetRow} icon="lucide:languages" label=${T(t, "profLang")} end=${html`<div class="flex gap-1 p-1 rounded-full sf-inset shrink-0" id="p-lang">${[["uk", "UA"], ["en", "EN"]].map(([c, l]) => html`<button key=${c} type="button" data-loc=${c} aria-pressed=${loc === c}
-      class=${`h-8 min-w-11 px-3 rounded-full text-sm font-semibold transition ${loc === c ? "sf-lift2 bg-base-100" : "opacity-55"}`} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div>`} />` : null,
+      class=${`h-8 min-w-11 px-3 rounded-full text-sm font-semibold transition ${loc === c ? "sf-lift2 bg-base-100" : "text-base-content/70"}`} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div>`} />` : null,
     savedTab ? html`<${SetRow} icon="lucide:bookmark" label=${T(t, savedTab.titleKey || savedTab.label)} onClick=${() => A.S.tab.set(savedTab.id)} end=${html`<span class="badge badge-primary">${Object.keys(fav).length}</span>`} />` : null,
     p.permissions?.length ? html`<${SetRow} id="p-perms" icon="lucide:shield-check" label=${permLabels(loc).row} onClick=${() => A.S.screen.set("perms")} end=${chevron} />` : null,
     adminHref ? html`<${SetRow} id="p-admin" icon="lucide:shield" tone="text-primary" label=${sys("adminRow", loc)} href=${adminHref} end=${arrow} />` : null,

@@ -18,6 +18,7 @@
  * @module
  */
 import { VPS_PROXY } from "./feed.js";
+import { shell } from "./shell.js";
 
 /** True when this page was opened as a Telegram Mini App (the launch marker is in the URL, available at once). */
 export function inTelegram() {
@@ -121,6 +122,33 @@ function routeStartApp(w) {
     const to = startTarget(location.pathname, startParam(w));
     if (to) location.replace(to + (location.hash || ""));   // the hash carries tgWebAppData for the target's SDK
   } catch { }
+}
+
+/**
+ * Where a page that must leave for a real browser goes, per surface. Google's sign-in refuses an embedded WebView
+ * (`disallowed_useragent`), and both Telegram's Mini App and our APK are one — so an OAuth hop opens OUTSIDE:
+ * Telegram through its own `openLink` (the system browser), the APK through an `intent://` URL its shell routes
+ * to Android's ACTION_VIEW (the same door signin.js opens), a browser or installed PWA by plain navigation.
+ * @param url an absolute https URL
+ * @param where "telegram" | "apk" | "page"
+ * @returns the href to navigate to, or the url itself for Telegram (which takes it through openLink)
+ */
+export function outsideHref(url, where) {
+  return where === "apk" ? `intent://${String(url).replace(/^https?:\/\//, "")}#Intent;scheme=https;action=android.intent.action.VIEW;end` : String(url);
+}
+
+/**
+ * Open `url` where it can actually run (see {@link outsideHref}). Returns which door it took, so a screen that
+ * stays behind (Telegram, the APK) knows to re-read its state when the person comes back.
+ * @param url an absolute https URL
+ * @returns "telegram" | "apk" | "page"
+ */
+export function openOutside(url) {
+  const w = inTelegram() ? tg() : null;
+  if (w && w.openLink) { w.openLink(outsideHref(url, "telegram")); return "telegram"; }
+  if (shell.present) { location.href = outsideHref(url, "apk"); return "apk"; }
+  location.assign(outsideHref(url, "page"));
+  return "page";
 }
 
 /**

@@ -807,6 +807,9 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
 .pf-form > svg path { fill: color-mix(in oklch, var(--color-primary) 11%, transparent);
   stroke: color-mix(in oklch, var(--color-primary) 30%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .pf-hero > svg path { fill: color-mix(in oklch, var(--color-primary) 16%, transparent); }
+/* the settings list's hairlines, in CSS: a Tailwind divide/opacity utility on runtime markup is not generated
+   everywhere (measured: a solid 1px ink line on paper) */
+.pf-list > * + * { border-top: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent); }
 .ac-fill { background: var(--ds-fill, var(--ds-scatter, none)) center / 140% auto no-repeat, var(--color-base-200); }
 .ac-rim path { fill: none; stroke: color-mix(in oklch, var(--app-accent) 80%, white); stroke-width: 1.5; vector-effect: non-scaling-stroke;
   filter: drop-shadow(0 0 6px var(--lm-bloom-hi)); }

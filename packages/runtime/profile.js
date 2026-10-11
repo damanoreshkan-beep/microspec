@@ -199,7 +199,7 @@ export function Profile({ tab }) {
         ${Icon("lucide:star", "text-[0.9em] opacity-80")}${n}</button>`)}</div>
     </div></div>` : null}
     ${p.theme || materials.length > 1 ? html`<${ThemeWidget} t=${t} loc=${loc} theme=${theme} modeToggle=${!!p.theme} materials=${materials} current=${material?.id} tone=${tone} />` : null}
-    ${rows.length ? html`<div data-settings class="card sf-raised sf-e2 rounded-[var(--ms-r)] overflow-hidden flex flex-col divide-y divide-base-content/10">${rows}</div>` : null}
+    ${rows.length ? html`<div data-settings class="card sf-raised sf-e2 rounded-[var(--ms-r)] overflow-hidden flex flex-col pf-list">${rows}</div>` : null}
     <${VersionRow} loc=${loc} />
   </div>`;
 }

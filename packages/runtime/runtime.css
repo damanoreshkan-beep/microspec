@@ -408,29 +408,36 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
   stroke: color-mix(in oklch, var(--color-primary) 42%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 
 
+.pf-form > svg path { fill: color-mix(in oklch, var(--color-primary) 11%, transparent);
+  stroke: color-mix(in oklch, var(--color-primary) 30%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pf-hero > svg path { fill: color-mix(in oklch, var(--color-primary) 16%, transparent); }
+.ac-fill { background: var(--ds-fill, var(--ds-scatter, none)) center / 140% auto no-repeat, var(--color-base-200); }
+.ac-rim path { fill: none; stroke: color-mix(in oklch, var(--app-accent) 80%, white); stroke-width: 1.5; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 6px var(--lm-bloom-hi)); }
+[data-theme="signal-light"] .ac-rim path { stroke: var(--color-secondary); filter: none; }
+
+
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
-
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .ms-stagger > * { animation: msRise .32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
 
-
 @keyframes msWordIn { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }
 .ms-word-in { animation: msWordIn .42s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-word-in { animation: none; } }
-
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 .ms-detail-in { animation: msDetailIn .26s var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
-
 .truncate { min-width: 0; }
+
 
 body { -webkit-tap-highlight-color: transparent; }
 button, a, summary, [role="button"], label, input, select, textarea { touch-action: manipulation; }
 .overflow-y-auto, .overflow-auto, .modal-box, dialog { overscroll-behavior: contain; }
 .overflow-x-auto { overscroll-behavior-x: contain; overscroll-behavior-y: auto; }
+
 @property --ms-sx-l { syntax: "<number>"; inherits: false; initial-value: 0; }
 @property --ms-sx-r { syntax: "<number>"; inherits: false; initial-value: 0; }
 .overflow-x-auto { scrollbar-width: none; }
@@ -476,23 +483,23 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   padding: max(0.3rem, 2.5%);
   border-radius: var(--sh-r-in, var(--ms-r-in));
 }
-
-
 @media (max-height: 520px) and (min-width: 301px) {
   .ms-shell { max-width: 46rem; }
   [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
   [data-shell-body].ms-side > .ms-side-main { flex: 0 0 auto; }
 }
+
+
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
 .ms-pad-key { border-radius: 12%; }
-
 .ms-menu { flex-wrap: wrap; justify-content: center; }
 
 
 .ms-sweep { animation: ms-sweep 4s linear infinite; }
 @keyframes ms-sweep { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ms-sweep { animation: none; } }
+
 
 :root[data-tone="noir"]  { --tone-tint: #FFFFFF; --tone-vig: 0; }
 :root[data-tone="green"] { --tone-tint: #8CFF26; --tone-vig: .6; }

@@ -102,8 +102,10 @@ Every tab has: `id`, `type`, `icon` (lucide, for dock), `label` (i18n key, dock 
 | `trailing` | right value |
 | `unit` | OPTIONAL literal suffix; if set, `trailing` is number-formatted + `" "+unit` |
 | `trend` | OPTIONAL item field with a signed % change; shown green (up) / red (down) under `trailing` |
+| `form` | OPTIONAL item field naming the row's object (e.g. the ticker): `lead` then sits on that object's own organic form (shape.js `shapeOf`) — the same value, the same form on every phone |
 
-Row has **no badges/subtitle/body/more**. Star (if `fav`) is automatic.
+Row has **no badges/subtitle/body/more**. Star (if `fav`) is automatic. `form` also works on `table`: a small
+form opens each row, keyed by the field; a falsy value (e.g. `whale: false`) draws none, so it can mark a kind.
 
 **`feed`** — rich card (jobs, articles). Slots:
 

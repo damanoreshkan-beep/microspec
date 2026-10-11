@@ -1030,6 +1030,11 @@
                 "minLength": 1,
                 "description": "row layout — item field shown in the bold left column."
               },
+              "form": {
+                "type": "string",
+                "minLength": 1,
+                "description": "row / table layout (OPTIONAL) — item field that names the row's object; the row then carries that object's own organic form (core shape.js shapeOf), the same value → the same form on every phone. Row: the lead sits on the form. Table: a small form opens the row; a falsy value draws none."
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,

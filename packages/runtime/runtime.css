@@ -797,6 +797,11 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
 .tp-filament:has(> input:focus-visible) > .tp-fl-node { outline: 2px solid var(--color-base-content); outline-offset: 3px; }
 [data-theme="signal-light"] .tp-fl-lit, [data-theme="signal-light"] .tp-fl-node { background: var(--color-secondary); box-shadow: none; }
 
+/* a list row's own form (list.js FormMark, spec `card.form`): a quiet tint of the app's primary with a hairline
+   edge, so the lead text on it keeps its contrast on dark and on paper; static, never animated */
+.ms-form-mark path { fill: color-mix(in oklch, var(--color-primary) 13%, transparent);
+  stroke: color-mix(in oklch, var(--color-primary) 42%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
 /* skeleton → content reveal: a fast, smooth fade-in when real content replaces a skeleton (/_rt/skeleton.js
    Reveal). Frozen to its final state during the design-check axe pass, so contrast is measured on real text. */
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }

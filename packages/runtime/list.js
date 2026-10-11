@@ -2,6 +2,7 @@ import { Fragment } from "preact";
 import { useRef, useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
+import { atom } from "nanostores";
 import { T, ago, whenLabel, sinceLabel } from "./i18n.js";
 import { warm, trTick } from "./translate.js";
 import { Scramble, useReveal } from "./skeleton.js";
@@ -9,6 +10,36 @@ import { warmMeta, metaTick } from "./enrich.js";
 import { A, Icon, field, fieldNode, safeHref, debouncedLoad, Empty, Skeleton } from "./render-ctx.js";
 
 const searchText = (it) => Object.values(it).map((v) => Array.isArray(v) ? v.join(" ") : v).join(" ").toLowerCase();
+
+// A ROW'S OWN FORM (spec `card.form` on row / table; owner 2026-10-11: «давай ядро — форми в рядках»). The field
+// names the row's object — a ticker, a currency, a kind — and that value always gets the same organic form (shape.js
+// shapeOf). shape.js and its 50 KB of vendored shapes load only when a tab asks for forms, and each value's path is
+// built once: a live market redraws every 400 ms and must not pay for a form per frame. Until the module lands the
+// row shows its plain lead; the forms then appear together, once. Static paths: nothing draws at rest.
+let SHAPE = null, shapeWant = false;
+const shapeTick = atom(0);
+const formPaths = new Map();
+function wantShapes() {
+  if (shapeWant) return;
+  shapeWant = true;
+  import("./shape.js").then((m) => { SHAPE = m; shapeTick.set(1); }).catch(() => {});
+}
+function formOf(seed) {
+  if (!SHAPE || seed == null || seed === "" || seed === false) return null;
+  const k = String(seed);
+  let f = formPaths.get(k);
+  if (!f) { const name = SHAPE.shapeOf(k); f = { name, d: SHAPE.pathOf(name) }; if (formPaths.size > 2000) formPaths.clear(); formPaths.set(k, f); }
+  return f;
+}
+function FormMark({ seed, cls, children }) {
+  useStore(shapeTick);
+  wantShapes();
+  const f = formOf(seed);
+  return html`<div data-form=${f ? f.name : null} class=${`relative shrink-0 grid place-items-center ${cls}`}>
+    ${f ? html`<svg aria-hidden="true" viewBox="0 0 1 1" class="ms-form-mark absolute inset-0 w-full h-full"><path d=${f.d} /></svg>` : null}
+    ${children}
+  </div>`;
+}
 
 function test(it, fav, expr) {
   if (!expr) return true;
@@ -67,7 +98,9 @@ function Card({ item: it, card, hide }) {
 
   if (card.layout === "row") {
     return html`<div class="card @container sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-3 px-4 flex-row items-center gap-3 @max-[260px]:px-2.5 @max-[260px]:gap-2">
-      <div class="font-bold text-primary w-11 shrink-0 @max-[260px]:w-8 @max-[260px]:text-sm">${it[card.lead] ?? "—"}</div>
+      ${card.form
+        ? html`<${FormMark} seed=${it[card.form]} cls="w-11 h-11 @max-[260px]:w-8 @max-[260px]:h-8"><span class="relative max-w-full px-0.5 truncate font-bold text-primary text-[0.68rem] leading-none @max-[260px]:text-[0.58rem]">${it[card.lead] ?? "—"}</span><//>`
+        : html`<div class="font-bold text-primary w-11 shrink-0 @max-[260px]:w-8 @max-[260px]:text-sm">${it[card.lead] ?? "—"}</div>`}
       <div class="flex-1 min-w-0 @max-[260px]:hidden"><div class="font-medium truncate text-sm">${fieldNode(it, card.title, loc)}</div></div>
       <div class="text-right @max-[260px]:text-sm"><div class="font-semibold tabular-nums">${it[card.trailing] == null ? "—" : card.unit ? it[card.trailing] + " " + card.unit : it[card.trailing]}</div>${card.trend && it[card.trend] != null ? html`<div class=${`text-xs font-medium tabular-nums ${Number(it[card.trend]) >= 0 ? "text-success" : "text-error"}`}>${Number(it[card.trend]) >= 0 ? "+" : ""}${it[card.trend]}%</div>` : null}</div>
       ${star}
@@ -222,10 +255,11 @@ function Table({ items, tab }) {
   const cls = (c) => `${c.grow ? "flex-1 min-w-0 truncate" : "shrink-0"}${c.align === "right" ? " text-right" : ""}${c.mono ? " tabular-nums" : ""}${c.muted ? " text-base-content/55" : ""}${c.lg ? " text-[0.95rem] font-semibold" : " font-medium"}`;
   const open = (it) => { if (A.spec.detail) A.S.detail.set(it); else if (tab.card.href) { const h = safeHref(it[tab.card.href]); if (h) window.open(h, "_blank"); } };
   return html`<div class="px-4 max-w-xl mx-auto w-full">
-    <div class="flex items-center gap-3 px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-base-content/45">${cols.map((c) => html`<div class=${(c.grow ? "flex-1 min-w-0 truncate" : "shrink-0") + (c.align === "right" ? " text-right" : "")} key=${c.field}>${c.label ? T(t, c.label) : ""}</div>`)}</div>
+    <div class="flex items-center gap-3 px-3 py-1.5 text-[0.62rem] uppercase tracking-wide text-base-content/45">${tab.card.form ? html`<div class="w-7 shrink-0"></div>` : null}${cols.map((c) => html`<div class=${(c.grow ? "flex-1 min-w-0 truncate" : "shrink-0") + (c.align === "right" ? " text-right" : "")} key=${c.field}>${c.label ? T(t, c.label) : ""}</div>`)}</div>
     <div class="flex flex-col rounded-[var(--ms-r)] overflow-hidden sf-raised sf-e2">
       ${rows.map((it, i) => html`<button type="button" data-row=${i} class="flex items-center gap-3 pl-4 pr-3.5 py-3 text-sm border-b border-base-300/50 last:border-0 active:bg-base-200 text-left w-full relative" key=${A.favKey(it) || it[cols[0].field] || i} onClick=${() => open(it)}>
         ${heat ? html`<span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full" style=${`background:${heatBg(heat.get(it))}`}></span>` : null}
+        ${tab.card.form ? html`<${FormMark} seed=${it[tab.card.form]} cls="w-7 h-7" />` : null}
         ${cols.map((c) => html`<div class=${cls(c) + " leading-tight"} style=${c.heat && heat ? `color:${heatInk(heat.get(it))}` : ""} key=${c.field}>${fmtCell(c, it, t, loc)}${c.sub && it[c.sub] != null && it[c.sub] !== "" ? html`<div class="text-[0.7rem] font-normal text-base-content/45 tabular-nums leading-tight mt-0.5">${it[c.sub]}</div>` : null}</div>`)}
       </button>`)}
     </div>

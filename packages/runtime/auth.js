@@ -29,8 +29,10 @@
  *
  * **Sign in, restore, sign out**
  * - {@link restore} — rehydrate on boot: cached profile immediately, revalidated in the background; dropped only on a definitive 401.
- * - {@link login} — `({ scope = SCOPE })` opens the GitHub consent popup, resolves with the session when the edge posts back a sid; rejects "popup-blocked", "popup-closed", "timeout" or "no-profile".
- * - {@link loginGoogle} — `(credential)` exchanges a GIS ID token for a farm session; throws with `.status` 502 when the edge returns no sid.
+ * - {@link login} — `({ scope = SCOPE, adopt = true })` opens the GitHub consent popup, resolves with the session when the edge posts back a sid; rejects "popup-blocked", "popup-closed", "timeout" or "no-profile".
+ * - {@link loginGoogle} — `(credential, { adopt = true })` exchanges a GIS ID token for a farm session; throws with `.status` 502 when the edge returns no sid.
+ * - Every login takes `adopt`: false PROVES the sign-in and returns its session without making it this page's own
+ *   (no storage, no `session` change) — how a second sign-in is added to an account (account.js, «Входи»).
  * - {@link googleClientId} — the Google client id the edge is configured with ("" when unset — the surface then offers GitHub alone); fetched once per page.
  * - {@link logout} — drop the local sid and session, best-effort tell the edge (or GIS auto-select) to forget it.
  * - {@link adoptSession} — `({ sid, provider, user })` makes a session minted elsewhere this page's own: persisted under the keys `restore` reads, set on the atom.
@@ -122,6 +124,8 @@ export const MOCK_USER = { login: "octocat", name: "Octocat", avatar: "", html_u
 const MOCK_SESSION = { sid: "mock-sid", user: MOCK_USER, provider: "github" };
 /** The deterministic Google session the gate uses for the Google sign-in path; never used off the gate. */
 export const MOCK_GOOGLE_SESSION = { sid: "mock-sid-google", user: { login: "octo@example.com", name: "Octocat", avatar: "", html_url: "" }, provider: "google" };
+/** The deterministic SECOND sign-in the gate proves when a sign-in is added to an account (`adopt: false`). */
+export const MOCK_LINK = { sid: "mock-sid-link", user: { login: "octo_tg", name: "Octocat", avatar: "", html_url: "" }, provider: "telegram" };
 
 /**
  * Whether a session is currently held.
@@ -185,8 +189,8 @@ export async function restore() {
  * @param opts `{ scope }` — the OAuth scope this app actually needs (default `SCOPE`)
  * @returns a promise of the session; rejects on "popup-blocked", "popup-closed", "timeout" or a missing profile
  */
-export function login({ scope = SCOPE } = {}) {
-  if (gate) { session.set(MOCK_SESSION); return Promise.resolve(MOCK_SESSION); }
+export function login({ scope = SCOPE, adopt = true } = {}) {
+  if (gate) { if (!adopt) return Promise.resolve(MOCK_LINK); session.set(MOCK_SESSION); return Promise.resolve(MOCK_SESSION); }
   return new Promise((resolve, reject) => {
     const url = `${GH}/authorize?scope=${encodeURIComponent(scope)}&origin=${encodeURIComponent(PWA_ORIGIN)}`;
     const w = 640, h = 720;
@@ -200,14 +204,13 @@ export function login({ scope = SCOPE } = {}) {
       if (e.origin !== EDGE_ORIGIN) return;
       const d = e.data;
       if (!d || d.source !== "microspec-gh" || typeof d.sid !== "string") return;
-      lsSet(SID_KEY, d.sid);
+      if (adopt) lsSet(SID_KEY, d.sid);
       try {
         const j = await edge("me", { sid: d.sid });
         const user = trimUser(j && j.user);
         if (!user) throw new Error("no-profile");
-        lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "github");
         const s = { sid: d.sid, user, provider: "github" };
-        session.set(s);
+        if (adopt) { lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "github"); session.set(s); }
         finish(resolve, s);
       } catch (err) { finish(reject, err); }
     };
@@ -376,14 +379,13 @@ export function googleClientId() {
 }
 
 /** Exchange a GIS credential (the ID token JWT) for a farm session. Gate → the mock Google session. */
-export async function loginGoogle(credential) {
-  if (gate) { session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
+export async function loginGoogle(credential, { adopt = true } = {}) {
+  if (gate) { if (!adopt) return MOCK_LINK; session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
   const j = await edgeAt(`${GOOGLE}/verify`, { credential: String(credential || "") });
   const user = trimGoogleUser(j && j.user);
   if (!j?.sid || !user) throw Object.assign(new Error("google-verify"), { status: 502 });
-  lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "google");
   const s = { sid: j.sid, user, provider: "google" };
-  session.set(s);
+  if (adopt) { lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "google"); session.set(s); }
   return s;
 }
 
@@ -392,17 +394,16 @@ export async function loginGoogle(credential) {
  * (signed by the bot) becomes a farm session with no popup and no second login. Reads `WebApp.initData` when
  * not passed one; throws `no-telegram` outside Telegram, `tg-verify` (`.status` 502) if the edge refuses.
  */
-export async function loginTelegram(initData) {
-  if (gate) { session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
+export async function loginTelegram(initData, { adopt = true } = {}) {
+  if (gate) { if (!adopt) return MOCK_LINK; session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
   let id = initData;
   if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch { } }
   if (!id) throw Object.assign(new Error("no-telegram"), { status: 0 });
   const j = await edgeAt(`${TG}/verify`, { initData: String(id) });
   const user = trimGoogleUser(j && j.user);
   if (!j?.sid || !user) throw Object.assign(new Error("tg-verify"), { status: 502 });
-  lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram");
   const s = { sid: j.sid, user, provider: "telegram" };
-  session.set(s);
+  if (adopt) { lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram"); session.set(s); }
   return s;
 }
 
@@ -411,8 +412,8 @@ export async function loginTelegram(initData) {
  * edge runs the code flow at /feed/tg/oidc/*) and resolves with the same telegram session the Mini App path
  * mints. Mirrors {@link login}: trusts only a `microspec-tg` message from the edge origin carrying a sid.
  */
-export function loginTelegramWeb() {
-  if (gate) { session.set(MOCK_GOOGLE_SESSION); return Promise.resolve(MOCK_GOOGLE_SESSION); }
+export function loginTelegramWeb({ adopt = true } = {}) {
+  if (gate) { if (!adopt) return Promise.resolve(MOCK_LINK); session.set(MOCK_GOOGLE_SESSION); return Promise.resolve(MOCK_GOOGLE_SESSION); }
   return new Promise((resolve, reject) => {
     const url = `${TG}/oidc/start?origin=${encodeURIComponent(PWA_ORIGIN)}`;
     const w = 640, h = 720;
@@ -427,9 +428,8 @@ export function loginTelegramWeb() {
       if (!d || d.source !== "microspec-tg" || typeof d.sid !== "string") return;
       const user = trimGoogleUser(d.user);
       if (!user) { finish(reject, new Error("no-profile")); return; }
-      lsSet(SID_KEY, d.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram");
       const s = { sid: d.sid, user, provider: "telegram" };
-      session.set(s);
+      if (adopt) { lsSet(SID_KEY, d.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram"); session.set(s); }
       finish(resolve, s);
     };
     const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);

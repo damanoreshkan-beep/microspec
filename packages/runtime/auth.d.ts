@@ -28,8 +28,10 @@
  *
  * **Sign in, restore, sign out**
  * - {@link restore} — rehydrate on boot: cached profile immediately, revalidated in the background; dropped only on a definitive 401.
- * - {@link login} — `({ scope = SCOPE })` opens the GitHub consent popup, resolves with the session when the edge posts back a sid; rejects "popup-blocked", "popup-closed", "timeout" or "no-profile".
- * - {@link loginGoogle} — `(credential)` exchanges a GIS ID token for a farm session; throws with `.status` 502 when the edge returns no sid.
+ * - {@link login} — `({ scope = SCOPE, adopt = true })` opens the GitHub consent popup, resolves with the session when the edge posts back a sid; rejects "popup-blocked", "popup-closed", "timeout" or "no-profile".
+ * - {@link loginGoogle} — `(credential, { adopt = true })` exchanges a GIS ID token for a farm session; throws with `.status` 502 when the edge returns no sid.
+ * - Every login takes `adopt`: false PROVES the sign-in and returns its session without making it this page's own
+ *   (no storage, no `session` change) — how a second sign-in is added to an account (account.js, «Входи»).
  * - {@link googleClientId} — the Google client id the edge is configured with ("" when unset — the surface then offers GitHub alone); fetched once per page.
  * - {@link logout} — drop the local sid and session, best-effort tell the edge (or GIS auto-select) to forget it.
  * - {@link adoptSession} — `({ sid, provider, user })` makes a session minted elsewhere this page's own: persisted under the keys `restore` reads, set on the atom.
@@ -98,8 +100,9 @@ export function restore(): Promise<any>;
  * @param opts `{ scope }` — the OAuth scope this app actually needs (default `SCOPE`)
  * @returns a promise of the session; rejects on "popup-blocked", "popup-closed", "timeout" or a missing profile
  */
-export function login({ scope }?: {
+export function login({ scope, adopt }?: {
     scope?: string;
+    adopt?: boolean;
 }): Promise<any>;
 /**
  * Star or unstar a repository on the user's behalf.
@@ -164,7 +167,9 @@ export function logout(): Promise<void>;
  *  surface then offers GitHub alone). Fetched once per page; gate → a mock id so the surface renders. */
 export function googleClientId(): any;
 /** Exchange a GIS credential (the ID token JWT) for a farm session. Gate → the mock Google session. */
-export function loginGoogle(credential: any): Promise<{
+export function loginGoogle(credential: any, { adopt }?: {
+    adopt?: boolean;
+}): Promise<{
     sid: any;
     user: {
         login: any;
@@ -179,7 +184,9 @@ export function loginGoogle(credential: any): Promise<{
  * (signed by the bot) becomes a farm session with no popup and no second login. Reads `WebApp.initData` when
  * not passed one; throws `no-telegram` outside Telegram, `tg-verify` (`.status` 502) if the edge refuses.
  */
-export function loginTelegram(initData: any): Promise<{
+export function loginTelegram(initData: any, { adopt }?: {
+    adopt?: boolean;
+}): Promise<{
     sid: any;
     user: {
         login: any;
@@ -194,7 +201,9 @@ export function loginTelegram(initData: any): Promise<{
  * edge runs the code flow at /feed/tg/oidc/*) and resolves with the same telegram session the Mini App path
  * mints. Mirrors {@link login}: trusts only a `microspec-tg` message from the edge origin carrying a sid.
  */
-export function loginTelegramWeb(): Promise<any>;
+export function loginTelegramWeb({ adopt }?: {
+    adopt?: boolean;
+}): Promise<any>;
 /** The default GitHub OAuth scope — the narrowest classic scope that permits starring on the user's behalf. */
 export const SCOPE: "public_repo";
 /** The session atom: null when signed out, `{ sid, user, provider }` when signed in. */
@@ -203,6 +212,23 @@ export const session: any;
 export const MOCK_USER: {};
 /** The deterministic Google session the gate uses for the Google sign-in path; never used off the gate. */
 export const MOCK_GOOGLE_SESSION: {};
+/** The deterministic SECOND sign-in the gate proves when a sign-in is added to an account (`adopt: false`). */
+export const MOCK_LINK: {
+    sid: string;
+    user_1: {
+        login: string;
+        name: string;
+        avatar: string;
+        html_url: string;
+    };
+    user: {
+        login: string;
+        name: string;
+        avatar: string;
+        html_url: string;
+    };
+    provider: string;
+};
 /**
  * Whether a session is currently held.
  * @returns true when `session` is non-null

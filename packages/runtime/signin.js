@@ -74,7 +74,8 @@ import { inTelegram } from "./tma.js";
 import { shell } from "./shell.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
-const GoogleG = () => html`<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>`;
+/** Google's "G", for a button or a row that names the provider (account.js «Входи» marks a Google sign-in with it). */
+export const GoogleG = () => html`<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.9 6.1C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.1C.9 16.6 0 20.2 0 24s.9 7.4 2.6 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>`;
 
 const L = {
   en: { google: "Continue with Google", github: "Continue with GitHub", ghQuiet: "GitHub", telegram: "Continue with Telegram", failed: "Sign-in did not complete", or: "or", browser: "Sign in via browser", waiting: "Finish signing in in the browser, then come back here.", cancel: "Cancel" },
@@ -103,8 +104,11 @@ let prompted = false;
  * @param scope    the GitHub scope to ask for (see auth.js SCOPE)
  * @param onDone   called with the session after either provider succeeds
  * @param onError  called with an Error when a sign-in fails (the surface also shows its own line)
+ * @param adopt    true (default) signs this page in; false only PROVES a further sign-in and hands its session to
+ *                 `onDone` — the «add a sign-in» mode of the account's «Входи» card: no One Tap, no automatic
+ *                 Telegram sign-in, and inside a Mini App the Telegram button proves the launch's own initData
  */
-export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onError, className = "" }) {
+export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onError, className = "", adopt = true }) {
   const t = L[lang(locale)] || L.en;
   const slot = useRef(), box = useRef();
   const [clientId, setClientId] = useState(gate ? "mock-google-client" : null);
@@ -115,7 +119,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   const fail = (e) => { setErr(t.failed); onError?.(e); };
   const finish = (s) => { setErr(""); onDone?.(s); };
 
-  const [tgTrying, setTgTrying] = useState(() => { try { return inTelegram() && !gate; } catch { return false; } });
+  const [tgTrying, setTgTrying] = useState(() => { try { return adopt && inTelegram() && !gate; } catch { return false; } });
   useEffect(() => {
     if (!tgTrying) return;
     let live = true;
@@ -137,7 +141,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
         callback: async (resp) => {
           if (!resp?.credential) return;
           setBusy(true);
-          try { finish(await loginGoogle(resp.credential)); } catch (e) { fail(e); } finally { setBusy(false); }
+          try { finish(await loginGoogle(resp.credential, { adopt })); } catch (e) { fail(e); } finally { setBusy(false); }
         },
         use_fedcm_for_button: true,
         ux_mode: "popup",
@@ -154,22 +158,24 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       render();
       mo = new MutationObserver(render);
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-      if (!prompted) { prompted = true; try { gis.prompt(); } catch { } }
+      if (adopt && !prompted) { prompted = true; try { gis.prompt(); } catch { } }
     })();
     return () => { live = false; mo?.disconnect(); };
   }, [clientId, wantGoogle]);
 
   const viaGithub = async () => {
     setBusy(true); setErr("");
-    try { finish(await login({ scope })); } catch (e) { fail(e); } finally { setBusy(false); }
+    try { finish(await login({ scope, adopt })); } catch (e) { fail(e); } finally { setBusy(false); }
   };
   const viaMockGoogle = async () => {
     setBusy(true); setErr("");
-    try { finish(await loginGoogle("mock")); } catch (e) { fail(e); } finally { setBusy(false); }
+    try { finish(await loginGoogle("mock", { adopt })); } catch (e) { fail(e); } finally { setBusy(false); }
   };
   const viaTelegram = async () => {
     setBusy(true); setErr("");
-    try { finish(await loginTelegramWeb()); } catch (e) { if (e?.message !== "popup-closed") fail(e); } finally { setBusy(false); }
+    // inside a Mini App the launch is already a proved Telegram sign-in — adding it needs no popup
+    const mini = !adopt && !gate && (() => { try { return inTelegram(); } catch { return false; } })();
+    try { finish(mini ? await loginTelegram(undefined, { adopt }) : await loginTelegramWeb({ adopt })); } catch (e) { if (e?.message !== "popup-closed") fail(e); } finally { setBusy(false); }
   };
 
   const inShell = !gate && shell.present;
@@ -181,7 +187,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       while (live && Date.now() - t0 < 10 * 60_000) {
         await new Promise((ok) => setTimeout(ok, 3000));
         if (!live) return;
-        try { const j = await pairPoll(pairing); if (j?.sid) { const sess = adoptSession(j); if (live) { setPairing(null); finish(sess); } return; } }
+        try { const j = await pairPoll(pairing); if (j?.sid) { const sess = adopt ? adoptSession(j) : { sid: j.sid, provider: j.provider || "github", user: j.user || null }; if (live) { setPairing(null); finish(sess); } return; } }
         catch (e) { if (e?.status === 404) { if (live) { setPairing(null); fail(new Error("pair-gone")); } return; } }
       }
       if (live) { setPairing(null); fail(new Error("timeout")); }

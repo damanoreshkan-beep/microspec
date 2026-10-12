@@ -81,8 +81,12 @@
  *   delegate lives on those controls; `Player` draws its own transport instead (play/pause, position,
  *   length, sound) and rotating now only rotates the video. `controlsList="nofullscreen"` and
  *   `disableRemotePlayback` are the belt and braces for a shell that shows controls anyway.
- * - There is no SYSTEM fullscreen button: the overlay already covers the screen, so it only ever handed OUR
- *   surface to the browser's. "Fill" (#player-fill) is ours instead: the picture covers the whole dialog
+ * - "Full screen" (#player-fill) is OUR dialog taken full screen (`requestFullscreen` on the overlay, never on
+ * the element, so the chrome and the gestures stay ours):
+ *   "на весь екран, масштабуй", 2026-10-06), a LANDSCAPE picture also locks the screen to landscape, a
+ *   portrait one is left as the phone is held, and while it plays the header and the bar leave after 2 s of
+ *   Leaving it (the button, the system back, closing the player) unlocks the orientation. Where the platform has
+ *   no element fullscreen (iPhone Safari) the same mode stays inside the overlay, which already covers the screen.
  * - A HOLD is a loupe: press and keep still for 320 ms and the picture scales 2.4× around the finger — the
  *   focus sits 12 % of the height ABOVE the fingertip so the thumb never covers what it magnifies — with a
  *   bump; dragging while holding moves the lens; letting go puts the frame back with a tick. The hold ends

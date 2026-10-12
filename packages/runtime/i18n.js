@@ -213,7 +213,7 @@ export const MEDIA = {
   mute: { en: "Mute", uk: "Без звуку" },
   unmute: { en: "Sound on", uk: "Увімкнути звук" },
   fill: { en: "Fill the screen", uk: "На весь екран" },
-  fit: { en: "Fit the picture", uk: "Вмістити кадр" },
+  fit: { en: "Exit full screen", uk: "Вийти з повного екрана" },
   seek: { en: "Position", uk: "Позиція" },
   live: { en: "LIVE", uk: "НАЖИВО" },
   pip: { en: "Picture in picture", uk: "Картинка в картинці" },

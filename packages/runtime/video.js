@@ -82,9 +82,14 @@
  *   delegate lives on those controls; `Player` draws its own transport instead (play/pause, position,
  *   length, sound) and rotating now only rotates the video. `controlsList="nofullscreen"` and
  *   `disableRemotePlayback` are the belt and braces for a shell that shows controls anyway.
- * - There is no SYSTEM fullscreen button: the overlay already covers the screen, so it only ever handed OUR
- *   surface to the browser's. "Fill" (#player-fill) is ours instead: the picture covers the whole dialog
- *   (object-cover) and the chrome floats over it — the owner's "на весь екран, масштабуй" (2026-10-06).
+ * - "Full screen" (#player-fill) is OUR dialog taken full screen (`requestFullscreen` on the overlay, never on
+ *   the element, so the chrome and the gestures stay ours): the picture covers it (object-cover — the owner's
+ *   "на весь екран, масштабуй", 2026-10-06), a LANDSCAPE picture also locks the screen to landscape, a
+ *   portrait one is left as the phone is held, and while it plays the header and the bar leave after 2 s of
+ *   stillness — a touch brings them back without pausing (owner 2026-10-12: «fullscreen з горизонтально якщо
+ *   формат відео такий, якщо портретний то так і залишай і прибери у цьому режимі кнопки усі через 2 секунди»).
+ *   Leaving it (the button, the system back, closing the player) unlocks the orientation. Where the platform has
+ *   no element fullscreen (iPhone Safari) the same mode stays inside the overlay, which already covers the screen.
  * - A HOLD is a loupe: press and keep still for 320 ms and the picture scales 2.4× around the finger — the
  *   focus sits 12 % of the height ABOVE the fingertip so the thumb never covers what it magnifies — with a
  *   bump; dragging while holding moves the lens; letting go puts the frame back with a tick. The hold ends
@@ -237,6 +242,39 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
 
   const drag = useRef({ on: false, x0: 0, y0: 0, axis: 0, from: 0, moved: 0, at: 0, hold: false, timer: 0 });
   const [fill, setFill] = useState(false);
+  // FULL SCREEN and its chrome: in it, while playing, the header and the bar leave after CHROME_MS of stillness
+  const CHROME_MS = 2000;
+  const [chrome, setChrome] = useState(true);
+  const chromeTimer = useRef(0);
+  const wake = () => {
+    setChrome(true);
+    clearTimeout(chromeTimer.current);
+    if (fill && playing) chromeTimer.current = setTimeout(() => setChrome(false), CHROME_MS);
+  };
+  useEffect(() => { wake(); return () => clearTimeout(chromeTimer.current); }, [fill, playing]);
+  const unlockTurn = () => { try { screen.orientation?.unlock?.(); } catch { } };
+  const enterFull = async () => {
+    setFill(true);
+    const box = boxRef.current, v = ref.current;
+    try { if (box?.requestFullscreen && !document.fullscreenElement) await box.requestFullscreen({ navigationUI: "hide" }); } catch { }
+    // a landscape picture turns the screen; a portrait one is left as the phone is held. The lock needs full screen
+    // on Android and is refused elsewhere — a refusal leaves the picture as it is.
+    if (v && v.videoWidth > v.videoHeight) { try { await screen.orientation?.lock?.("landscape"); } catch { } }
+  };
+  const exitFull = async () => {
+    setFill(false); unlockTurn();
+    try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { }
+  };
+  useEffect(() => {
+    // the system back (or Esc) leaves full screen by itself: follow it, and give the orientation back
+    const on = () => { if (!document.fullscreenElement) { setFill(false); unlockTurn(); } };
+    document.addEventListener("fullscreenchange", on);
+    return () => {
+      document.removeEventListener("fullscreenchange", on);
+      unlockTurn();
+      try { if (document.fullscreenElement) document.exitFullscreen(); } catch { }
+    };
+  }, []);
   const [loupe, setLoupe] = useState(null);                      // { x, y } — the lens origin in % of the picture
   const LOUPE = 2.4, LOUPE_LIFT = 0.12, HOLD_MS = 320;
   const lensAt = (e) => {
@@ -259,7 +297,10 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     const v = ref.current;
     clearTimeout(drag.current.timer);
     const ev = { clientX: e.clientX, clientY: e.clientY };
-    drag.current = { on: true, x0: e.clientX, y0: e.clientY, axis: 0, from: v?.currentTime || 0, moved: 0, at: 0, hold: false, timer: 0 };
+    // a touch while the chrome is away only brings it back: the tap that follows neither pauses nor seeks
+    const reveal = !chrome;
+    wake();
+    drag.current = { on: true, x0: e.clientX, y0: e.clientY, axis: 0, from: v?.currentTime || 0, moved: 0, at: 0, hold: false, timer: 0, reveal };
     drag.current.timer = setTimeout(() => {
       const d = drag.current; if (!d.on || d.axis) return;
       d.hold = true; const at = lensAt(ev); if (at) { setLoupe(at); haptic.bump(); }
@@ -267,7 +308,8 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { }
   };
   const move = (e) => {
-    const d = drag.current; if (!d.on) return;
+    const d = drag.current;
+    if (!d.on) { if (e.pointerType === "mouse") wake(); return; }   // a mouse moving over the picture is a person there
     if (d.hold) { const at = lensAt(e); if (at) setLoupe(at); return; }
     const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
     if (!d.axis) {
@@ -296,6 +338,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   const [jump, setJump] = useState(null);
   const surfaceTap = (e) => {
     if (Date.now() - drag.current.at < 400) return;
+    if (drag.current.reveal) { drag.current.reveal = false; return; }
     const now = Date.now(), prev = lastTap.current;
     lastTap.current = { t: now, x: e.clientX };
     if (now - prev.t < 280 && Math.abs(e.clientX - prev.x) < 60) {
@@ -316,6 +359,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
   useEffect(() => {
     const onKey = (e) => {
       if (e.defaultPrevented || /^(?:INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || "")) return;
+      wake();
       if (e.key === " " || e.key === "Spacebar") { e.preventDefault(); toggle(); return; }
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       e.preventDefault();
@@ -323,15 +367,17 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [len]);
+  }, [len, fill, playing]);
   const seek = (e) => { const v = ref.current, to = Number(e.target.value); setAt(to); if (v && isFinite(to)) { try { v.currentTime = to; } catch { } } };
   const sound = () => { const v = ref.current; if (v) v.muted = !v.muted; };
 
   const pip = async () => { try { const v = ref.current; document.pictureInPictureElement ? await document.exitPictureInPicture() : await v?.requestPictureInPicture(); } catch { } };
   const openBtn = html`<a href=${url} target="_blank" rel="noopener" class="btn btn-sm btn-outline text-white border-white/30 gap-2"><iconify-icon icon="lucide:external-link"></iconify-icon>${media("openExternal", locale)}</a>`;
   const retryBtn = html`<button id="player-retry" class="btn btn-sm btn-primary gap-2" onClick=${() => { setState("loading"); setAttempt((n) => n + 1); }}><iconify-icon icon="lucide:rotate-cw"></iconify-icon>${media("retry", locale)}</button>`;
-  return html`<div ref=${boxRef} role="dialog" aria-modal="true" aria-label=${title || media("player", locale)} data-fill=${fill ? "" : null} data-loupe=${loupe ? "" : null} class="fixed inset-0 z-40 bg-black flex flex-col" style="padding-top:var(--ms-safe-top)">
-    <header class=${`flex items-center gap-1 px-2 py-1.5 text-white bg-black/70 ${fill ? "absolute inset-x-0 top-0 z-10" : ""}`} style=${fill ? "margin-top:var(--ms-safe-top)" : ""}>
+  // the chrome away: faded and out of the way of the finger; the cursor goes with it on a desktop
+  const away = fill && !chrome ? " opacity-0 pointer-events-none" : "";
+  return html`<div ref=${boxRef} role="dialog" aria-modal="true" aria-label=${title || media("player", locale)} data-fill=${fill ? "" : null} data-chrome=${fill ? (chrome ? "on" : "off") : null} data-loupe=${loupe ? "" : null} class="fixed inset-0 z-40 bg-black flex flex-col" style=${`padding-top:var(--ms-safe-top)${fill && !chrome ? ";cursor:none" : ""}`}>
+    <header class=${`flex items-center gap-1 px-2 py-1.5 text-white bg-black/70 transition-opacity duration-300 ${fill ? "absolute inset-x-0 top-0 z-10" : ""}${away}`} style=${fill ? "margin-top:var(--ms-safe-top)" : ""}>
       <button id="player-back" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("back", locale)} onClick=${onClose}><iconify-icon icon="lucide:arrow-left" class="text-xl"></iconify-icon></button>
       <span class="flex-1 min-w-0 truncate font-medium">${title || ""}</span>
       ${state === "playing" && canPip ? html`<button id="player-pip" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media("pip", locale)} onClick=${pip}><iconify-icon icon="lucide:picture-in-picture-2" class="text-lg"></iconify-icon></button>` : null}
@@ -362,7 +408,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
         <div class="flex items-center gap-2 flex-wrap justify-center">${retryBtn}${openBtn}</div></div>` : null}
     </div>
     ${""}
-    ${state === "playing" ? html`<div id="player-bar" class=${`flex items-center gap-3 px-3 py-2 text-white bg-black/70 ${fill ? "absolute inset-x-0 bottom-0 z-10" : ""}`} style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
+    ${state === "playing" ? html`<div id="player-bar" class=${`flex items-center gap-3 px-3 py-2 text-white bg-black/70 transition-opacity duration-300 ${fill ? "absolute inset-x-0 bottom-0 z-10" : ""}${away}`} style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
       <button id="player-play" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(playing ? "pause" : "play", locale)} onClick=${toggle}>
         <iconify-icon icon=${playing ? "lucide:pause" : "lucide:play"} class="text-lg"></iconify-icon></button>
       ${len > 0
@@ -377,7 +423,7 @@ export function Player({ url, title, locale = "en", onClose, poster, startAt = 0
         : html`<span class="flex-1 text-xs font-semibold tracking-wide opacity-80">${media("live", locale)}</span>`}
       <button id="player-mute" class="btn btn-ghost btn-sm btn-circle text-white" aria-label=${media(muted ? "unmute" : "mute", locale)} onClick=${sound}>
         <iconify-icon icon=${muted ? "lucide:volume-x" : "lucide:volume-2"} class="text-lg"></iconify-icon></button>
-      <button id="player-fill" class="btn btn-ghost btn-sm btn-circle text-white" aria-pressed=${fill ? "true" : "false"} aria-label=${media(fill ? "fit" : "fill", locale)} onClick=${() => setFill((f) => !f)}>
+      <button id="player-fill" class="btn btn-ghost btn-sm btn-circle text-white" aria-pressed=${fill ? "true" : "false"} aria-label=${media(fill ? "fit" : "fill", locale)} onClick=${() => (fill ? exitFull() : enterFull())}>
         <iconify-icon icon=${fill ? "lucide:minimize-2" : "lucide:maximize-2"} class="text-lg"></iconify-icon></button>
     </div>` : null}
   </div>`;

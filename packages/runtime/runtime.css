@@ -801,6 +801,9 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
    edge, so the lead text on it keeps its contrast on dark and on paper; static, never animated */
 .ms-form-mark path { fill: color-mix(in oklch, var(--color-primary) 13%, transparent);
   stroke: color-mix(in oklch, var(--color-primary) 42%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+/* a picture through its form (list.js FormMark `img` — feed cards, gallery tiles): a quiet hairline rim, no bloom —
+   a list holds dozens of them, and light on every one is light on none */
+.ms-form-rim path { fill: none; stroke: color-mix(in oklch, var(--color-base-content) 24%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 
 /* MINI PLAYER (ui.js MiniPlayer): a pill above the dock; the fill is the song's time, eased between the clock's
    ticks (~4 a second) on the compositor; the range input lies under the two keys and covers the pill, so a drag

@@ -1033,7 +1033,7 @@
               "form": {
                 "type": "string",
                 "minLength": 1,
-                "description": "row / table layout (OPTIONAL) — item field that names the row's object; the row then carries that object's own organic form (core shape.js shapeOf), the same value → the same form on every phone. Row: the lead sits on the form. Table: a small form opens the row; a falsy value draws none."
+                "description": "row / table / feed / gallery layout (OPTIONAL) — item field that names the card's object; the card then carries that object's own organic form (core shape.js shapeOf), the same value → the same form on every phone. Row: the lead sits on the form. Table: a small form opens the row; a falsy value draws none. Feed: the form opens the card beside the title, holding the card's image (which then leaves the banner) or else `lead` / the object's initials. Gallery (square): the tile's image is seen through the form."
               },
               "title": {
                 "type": "string",

@@ -106,6 +106,7 @@ Every tab has: `id`, `type`, `icon` (lucide, for dock), `label` (i18n key, dock 
 
 Row has **no badges/subtitle/body/more**. Star (if `fav`) is automatic. `form` also works on `table`: a small
 form opens each row, keyed by the field; a falsy value (e.g. `whale: false`) draws none, so it can mark a kind.
+It works on `feed` and `gallery` too (below).
 
 **`feed`** — rich card (jobs, articles). Slots:
 
@@ -121,10 +122,16 @@ form opens each row, keyed by the field; a falsy value (e.g. `whale: false`) dra
   "meta": {"field":"ts","format":"ago"}, // OPTIONAL: a field name, OR {field,format:"ago"} → locale-aware relative date
 
   "more": "more",        // OPTIONAL i18n key for the "Details ↗" link (bottom-right)
-  "badges": [ ... ]      // OPTIONAL
+  "badges": [ ... ],     // OPTIONAL
+  "form": "author"       // OPTIONAL item field naming the card's object — see below
 }
 ```
 Empty/falsy fields are dropped automatically.
+
+`form` on a feed: the card opens with its object's own organic form beside the title — the same author, owner or
+film gets the same form on every card and every phone. With an `image` the picture is seen THROUGH the form (and
+leaves the 16:9 banner); without one the form holds `lead` (if set) or the object's initials ("Jane Austen" → JA,
+"stabilityai" → S). On a square `gallery` the tile's image is seen through the item's form, as the store's apps are.
 
 ---
 

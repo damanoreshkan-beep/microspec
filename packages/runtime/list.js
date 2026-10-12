@@ -19,22 +19,42 @@ function wantShapes() {
   shapeWant = true;
   import("./shape.js").then((m) => { SHAPE = m; shapeTick.set(1); }).catch(() => {});
 }
-function formOf(seed) {
+const MEDIA_OUT = new Set(["Flower", "PuffyDiamond", "Puffy"]);
+function formOf(seed, media = false) {
   if (!SHAPE || seed == null || seed === "" || seed === false) return null;
-  const k = String(seed);
+  const k = (media ? "m:" : "") + String(seed);
   let f = formPaths.get(k);
-  if (!f) { const name = SHAPE.shapeOf(k); f = { name, d: SHAPE.pathOf(name) }; if (formPaths.size > 2000) formPaths.clear(); formPaths.set(k, f); }
+  if (!f) {
+    const name = media ? SHAPE.shapeOf(String(seed), SHAPE.ORGANIC.filter((n) => !MEDIA_OUT.has(n))) : SHAPE.shapeOf(String(seed));
+    const d = SHAPE.pathOf(name);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none"><path d="${d}"/></svg>`;
+    f = { name, d, mask: `url("data:image/svg+xml,${encodeURIComponent(svg)}") center / 100% 100% no-repeat` };
+    if (formPaths.size > 2000) formPaths.clear();
+    formPaths.set(k, f);
+  }
   return f;
 }
-function FormMark({ seed, cls, children }) {
+function FormMark({ seed, cls, img, children }) {
   useStore(shapeTick);
   wantShapes();
-  const f = formOf(seed);
+  const f = formOf(seed, !!img);
+  if (img) {
+    return html`<div data-form=${f ? f.name : null} class=${`ms-form-media relative shrink-0 ${cls}`}>
+      <div class="absolute inset-0 overflow-hidden bg-base-200" style=${f ? `-webkit-mask:${f.mask};mask:${f.mask}` : "border-radius:var(--ms-r-in)"}>
+        <img src=${img} alt="" loading="lazy" class="w-full h-full object-cover" />
+      </div>
+      ${f ? html`<svg aria-hidden="true" viewBox="0 0 1 1" class="ms-form-rim absolute inset-0 w-full h-full overflow-visible"><path d=${f.d} /></svg>` : null}
+    </div>`;
+  }
   return html`<div data-form=${f ? f.name : null} class=${`relative shrink-0 grid place-items-center ${cls}`}>
     ${f ? html`<svg aria-hidden="true" viewBox="0 0 1 1" class="ms-form-mark absolute inset-0 w-full h-full"><path d=${f.d} /></svg>` : null}
     ${children}
   </div>`;
 }
+const initialsOf = (v) => {
+  const words = String(v ?? "").trim().split(/\s+/).map((w) => w.match(/[\p{L}\p{N}]/u)?.[0]).filter(Boolean);
+  return (words.length > 1 ? words[0] + words[1] : words[0] || "").toUpperCase();
+};
 
 function test(it, fav, expr) {
   if (!expr) return true;
@@ -116,7 +136,9 @@ function Card({ item: it, card, hide }) {
 
   if (card.layout === "gallery") {
     const ratio = card.aspect === "portrait" ? "aspect-[2/3]" : "aspect-square";
-    const art = html`<div class=${`${ratio} w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-raised sf-e2 shrink-0`}>
+    const art = card.form && ratio === "aspect-square" && card.image && it[card.image]
+      ? html`<${FormMark} seed=${it[card.form]} img=${it[card.image]} cls="aspect-square w-full" />`
+      : html`<div class=${`${ratio} w-full rounded-[var(--ms-r)] flex items-center justify-center overflow-hidden sf-raised sf-e2 shrink-0`}>
       ${card.image && it[card.image]
         ? html`<img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "cover" ? "object-cover" : "object-contain p-3"}`}/>`
         : html`<iconify-icon icon=${(card.icon && it[card.icon]) || "lucide:package"} class="text-3xl opacity-60"></iconify-icon>`}
@@ -137,8 +159,15 @@ function Card({ item: it, card, hide }) {
 
   const sub = card.subtitle ? field(it, card.subtitle, loc) : null;
   const bodyTxt = card.body ? field(it, card.body, loc) : null;
+  const pic = card.image && it[card.image] ? it[card.image] : null;
+  const mark = card.form && it[card.form] != null && it[card.form] !== "" && it[card.form] !== false
+    ? (pic
+      ? html`<${FormMark} seed=${it[card.form]} img=${pic} cls="w-16 h-16 @max-[240px]:w-11 @max-[240px]:h-11" />`
+      : html`<${FormMark} seed=${it[card.form]} cls="w-11 h-11 @max-[240px]:w-8 @max-[240px]:h-8"><span class="relative max-w-full px-0.5 truncate font-bold text-primary text-[0.8rem] leading-none @max-[240px]:text-[0.65rem]">${card.lead ? (it[card.lead] ?? "") : initialsOf(it[card.form])}</span><//>`)
+    : null;
+  const head = html`<div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${fieldNode(it, card.title, loc) ?? "—"}</h2>${star}</div>`;
   const body = html`<div class="card-body p-4 gap-2 @max-[240px]:p-3 @max-[240px]:gap-1">
-    <div class="flex items-start justify-between gap-2"><h2 class="font-semibold leading-snug break-words min-w-0 @max-[240px]:text-sm">${fieldNode(it, card.title, loc) ?? "—"}</h2>${star}</div>
+    ${mark ? html`<div class="flex items-center gap-3 @max-[240px]:gap-2">${mark}<div class="flex-1 min-w-0">${head}</div></div>` : head}
     ${sub ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${fieldNode(it, card.subtitle, loc)}</div>` : null}
     <${Badges} item=${it} badges=${card.badges} hide=${hide} />
     ${bodyTxt ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${fieldNode(it, card.body, loc)}</p>` : null}
@@ -147,8 +176,8 @@ function Card({ item: it, card, hide }) {
       ${card.more ? html`<span class="text-xs text-primary font-medium flex items-center gap-0.5 ml-auto">${T(t, card.more)} ${Icon(A.spec.detail ? "lucide:chevron-right" : "lucide:arrow-up-right")}</span>` : null}
     </div></div>`;
 
-  const img = card.image && it[card.image] ? html`<figure class="aspect-video bg-base-300 overflow-hidden @max-[240px]:hidden"><img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "contain" ? "object-contain" : "object-cover"}`}/></figure>` : null;
-  const cls = `card @container sf-raised sf-e2 rounded-[var(--ms-r)]${card.image ? " overflow-hidden" : ""}`;
+  const img = pic && !mark ? html`<figure class="aspect-video bg-base-300 overflow-hidden @max-[240px]:hidden"><img src=${it[card.image]} alt="" loading="lazy" class=${`w-full h-full ${card.imageFit === "contain" ? "object-contain" : "object-cover"}`}/></figure>` : null;
+  const cls = `card @container sf-raised sf-e2 rounded-[var(--ms-r)]${img ? " overflow-hidden" : ""}`;
 
   if (A.spec.detail) {
     return html`<div class=${cls + " relative active:scale-[.99] transition"}>${img}${body}

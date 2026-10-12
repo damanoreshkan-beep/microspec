@@ -407,6 +407,8 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
 .ms-form-mark path { fill: color-mix(in oklch, var(--color-primary) 13%, transparent);
   stroke: color-mix(in oklch, var(--color-primary) 42%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 
+.ms-form-rim path { fill: none; stroke: color-mix(in oklch, var(--color-base-content) 24%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
 
 .ms-mini { position: fixed; z-index: 30; left: 50%; bottom: calc(var(--dock-h, 4.5rem) + env(safe-area-inset-bottom) + .5rem);
   width: min(22rem, calc(100vw - 2rem)); translate: -50% .75rem; opacity: 0; pointer-events: none;
@@ -424,11 +426,9 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
   overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .ms-mini { translate: -50% 0; } .ms-mini-fill { transition: none; } }
 
-
 .pf-form > svg path { fill: color-mix(in oklch, var(--color-primary) 11%, transparent);
   stroke: color-mix(in oklch, var(--color-primary) 30%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .pf-hero > svg path { fill: color-mix(in oklch, var(--color-primary) 16%, transparent); }
-
 .pf-list > * + * { border-top: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent); }
 .ac-fill { background: var(--ds-fill, var(--ds-scatter, none)) center / 140% auto no-repeat, var(--color-base-200); }
 .ac-rim path { fill: none; stroke: color-mix(in oklch, var(--app-accent) 80%, white); stroke-width: 1.5; vector-effect: non-scaling-stroke;
@@ -439,10 +439,10 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 
-
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .ms-stagger > * { animation: msRise .32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
+
 
 @keyframes msWordIn { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }
 .ms-word-in { animation: msWordIn .42s ease-out both; }
@@ -484,8 +484,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 }
 
 
-
-
 .ms-shell {
   --sh-r: calc(var(--ms-r) * 1.2);
   --sh-r-in: max(var(--r-1), calc(var(--sh-r) - var(--ms-pad)));
@@ -496,7 +494,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   background: var(--sh-body, var(--color-base-100));
   border-radius: var(--sh-r);
 }
-
 .ms-shell { --sh-body: var(--color-base-300); box-shadow: var(--sf-drop); }
 .ms-screen {
   --sf-inset-face: var(--sh-tint, var(--color-base-200));
@@ -504,7 +501,6 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
   padding: max(0.3rem, 2.5%);
   border-radius: var(--sh-r-in, var(--ms-r-in));
 }
-
 @media (max-height: 520px) and (min-width: 301px) {
   .ms-shell { max-width: 46rem; }
   [data-shell-body].ms-side > [data-stage-box] { flex: 1 1 auto; }
@@ -514,9 +510,8 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 .ms-pad-hub { width: 92%; height: 92%; }
 .ms-pad-key { border-radius: 12%; }
 
+
 .ms-menu { flex-wrap: wrap; justify-content: center; }
-
-
 
 .ms-sweep { animation: ms-sweep 4s linear infinite; }
 @keyframes ms-sweep { to { transform: rotate(360deg); } }

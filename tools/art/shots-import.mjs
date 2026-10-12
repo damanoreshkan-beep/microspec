@@ -7,12 +7,15 @@ const b64 = (b) => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s +=
 let wasm = null;
 
 /**
- * Every `<name>.png` in `dir` becomes `shot-<name>.webp` in `out`, at half size (a DPR-2 capture → 1×), quality 80.
+ * Every `<name>.png` in `dir` becomes `shot-<name>.webp` in `out`, quality 80 — at half size (a DPR-2 capture → 1×),
+ * or with `full` at the capture's own size: a store page or a landing shows a capture ~300 CSS px wide on a 3×
+ * phone, where 1× (384 px) is soft and the DPR-2 capture (768 px) is not.
  * @param dir a directory of PNG captures named `<app>--<tab>[--light].png`
  * @param out the store's assets directory
+ * @param full keep the capture's pixels instead of halving them
  * @returns `{ n, bytes }` — how many pictures were written and their total size
  */
-export async function importShots(dir, out) {
+export async function importShots(dir, out, full = false) {
   await (wasm ||= initWasm(fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm")));
   await Deno.mkdir(out, { recursive: true });
   let n = 0, bytes = 0;
@@ -20,7 +23,7 @@ export async function importShots(dir, out) {
     if (!e.isFile || !e.name.endsWith(".png")) continue;
     const png = await Deno.readFile(`${dir}/${e.name}`);
     const src = await decodePng(png.buffer);
-    const w = Math.round(src.width / 2), h = Math.round(src.height / 2);
+    const w = full ? src.width : Math.round(src.width / 2), h = full ? src.height : Math.round(src.height / 2);
     const r = new Resvg(`<svg xmlns="http://www.w3.org/2000/svg" width="${src.width}" height="${src.height}"><image width="${src.width}" height="${src.height}" href="data:image/png;base64,${b64(png)}"/></svg>`, { fitTo: { mode: "width", value: w } }).render();
     const px = r.pixels;
     const webp = new Uint8Array(await encodeWebp({ data: new Uint8ClampedArray(px.buffer, px.byteOffset, px.byteLength), width: w, height: h }, { quality: 80 }));
@@ -32,8 +35,8 @@ export async function importShots(dir, out) {
 
 if (import.meta.main) {
   const dir = Deno.args.find((a) => !a.startsWith("--"));
-  if (!dir) { console.error("usage: shots-import.mjs <dir of PNGs> [--out=<store assets dir>]"); Deno.exit(2); }
+  if (!dir) { console.error("usage: shots-import.mjs <dir of PNGs> [--out=<store assets dir>] [--full]"); Deno.exit(2); }
   const out = Deno.args.find((a) => a.startsWith("--out="))?.slice(6) ?? `${Deno.cwd()}/${APPS}/store/assets`;
-  const { n, bytes } = await importShots(dir, out);
+  const { n, bytes } = await importShots(dir, out, Deno.args.includes("--full"));
   console.log(`shots: ${n} written to ${out} (${(bytes / 1024).toFixed(0)} KB total)`);
 }

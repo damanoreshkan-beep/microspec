@@ -23,8 +23,9 @@
  * - {@link installSealedFetch} — `installSealedFetch(realFetch = globalThis.fetch)` replaces `globalThis.fetch`
  *   with the sealing wrapper and returns an uninstall function that restores `realFetch` (for tests). Anything
  *   off VPS_PROXY, the tunnel itself and the PLAIN routes pass through untouched.
- * - {@link sealedFrameUrl} — `async (url, ref) → "${VPS_PROXY}/frame?s=<envelope>"`: a plain GET an ELEMENT
+ * - {@link sealedFrameUrl} — `async (url, ref, egress?) → "${VPS_PROXY}/frame?s=<envelope>"`: a plain GET an ELEMENT
  *   can load (`<video src>`, `<iframe src>`), with the destination sealed into `?s=`. The reply is not sealed.
+ *   `egress` names an edge exit group (iptv: "tv"); a proxied HLS playlist keeps it on every line it rewrites.
  * - {@link sealedUrl} — `async (route, fields) → "${VPS_PROXY}${route}?s=<envelope>"` with the SESSION inside, for
  *   the library's raw upload and its `<audio src>` stream (fonoteka).
  * - {@link sealedClipUrl} — `async (url, page, format) → "${VPS_PROXY}/clip?s=<envelope>"` for the clip
@@ -89,10 +90,12 @@ const sidNow = () => { try { return localStorage.getItem("ms:gh:sid") || ""; } c
  * Build the /feed/frame GET URL an element can load, with the destination sealed into `?s=`.
  * @param url the target page or media URL
  * @param ref optional referer the proxy should present
+ * @param egress optional egress group (the edge's EGRESS map, e.g. "tv"): the stream — and, for HLS, every
+ *   variant, segment and key the proxied playlist points at — is fetched from that group's own exit
  * @returns the proxy URL string
  */
-export async function sealedFrameUrl(url, ref) {
-  const { wire } = await seal(SEALED_KEY, { p: "/feed/frame", u: url, r: ref || null });
+export async function sealedFrameUrl(url, ref, egress) {
+  const { wire } = await seal(SEALED_KEY, { p: "/feed/frame", u: url, r: ref || null, ...(egress ? { e: egress } : {}) });
   return `${VPS_PROXY}/frame?s=${b64u(wire)}`;
 }
 

@@ -112,7 +112,7 @@ tools run straight off the registry. Same barrel, same gates, same floor — dif
 | Layer | Role |
 |---|---|
 | `packages/schema` | the spec **contract** — JSON Schema (single source of truth) + ajv validator |
-| `packages/runtime` | 68 zero-build core modules: the five families, the UI kit, the design tokens, the systemic capabilities |
+| `packages/runtime` | 81 zero-build core modules: the five families, the UI kit, the design tokens, the systemic capabilities |
 | `packages/gates` | `verify` (Chromium: a11y / matrix / e2e) · `preflight` (browser-free) · `efficacy` (mutation-tests the gates) · `dist-eye` (measures the BUILT pages) |
 | `packages/gen` | `scaffold` (spec + adapter → runnable shell) · `authorless` (recipe → app, no model) |
 | `tools/8n8` | the pipeline registry — the DAG, its runner, and the determinism measurement |
@@ -149,6 +149,26 @@ luminous material is one such module; the contract is `docs/research/theme-split
 <div align="center">
 <img src="https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/theme-split.svg" width="880" alt="runtime.css (structure, neutral) → a product's rt/theme.css (the brand, sprites, tests) → the page's one link; the overlay wins by name in the gate's server and the build">
 </div>
+
+## The backend and the name are the product's too
+
+The core names no product — no domain, no key, no brand. What a page needs to reach its backend comes
+from **`runtime/backend.js`**, which a product shadows with its own `rt/backend.js` by the same overlay
+that carries `rt/theme.css` (the build copies `rt/` over the runtime, the dev and gate servers serve `rt/`
+first, and `rtmap` maps the core's own URL for a shadowed module to `./rt/` so preflight runs the
+product's file too):
+
+```js
+// rt/backend.js
+export const ORIGINS = ["https://example.com"];   // canonical first; [] = every page talks to its own origin's /feed
+export const SEALED_KEY = "";                      // the backend's pinned public key for the sealed tunnel; "" = none
+```
+
+With no file of its own a product's pages talk to `/feed` on whatever origin serves them, without the
+sealed tunnel. The build's **link previews** (`og.png` and the meta block on every app page) read the
+same declarations: the product's name is its store's `title`, the card's accent and ground its store's
+`brand.json`, the absolute URLs the first of `ORIGINS` — none declared, and the previews use
+site-relative URLs. The `shot` tool shoots that same first origin unless given `--base`.
 
 ## Quickstart
 

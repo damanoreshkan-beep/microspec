@@ -11,6 +11,7 @@
  */
 import "./tests/apk_test.js";
 import "./tests/feed_test.js";
+import "./tests/backend_test.js";
 import "./tests/sealedfetch_test.js";
 import "./tests/tma_test.js";
 import "./tests/tone_test.js";

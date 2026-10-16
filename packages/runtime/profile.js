@@ -7,7 +7,11 @@ import { CORE, BUILD, appVersion } from "./version.js";
 import { refreshNow } from "./update.js";
 import { permLabels } from "./permissions.js";
 import { inTelegram, payStars, celebrate } from "./tma.js";
-import { BOT } from "./backend.js";
+import * as backend from "./backend.js";
+
+// Optional flags of the product's backend; a product file that predates them has neither, and keeps both rows.
+const BOT = backend.BOT;
+const APK_ROW = backend.APK ?? true, STARS_CARD = backend.STARS ?? true;
 import { A, Icon, isStandalone } from "./render-ctx.js";
 
 function AccountSlot({ github, loc }) {
@@ -163,7 +167,7 @@ export function Profile({ tab }) {
   const shape = useShape();
   const acts = [
     install ? { id: "p-install", icon: p.icon || "lucide:box", label: T(t, "install"), onClick: () => A.S.installOpen.set(true) } : null,
-    { id: "p-apk", mark: AndroidMark, label: sys("apkRow", loc), onClick: () => A.S.screen.set("apk") },
+    APK_ROW ? { id: "p-apk", mark: AndroidMark, label: sys("apkRow", loc), onClick: () => A.S.screen.set("apk") } : null,
     { id: "p-share", icon: "lucide:share-2", label: sys("share", loc), onClick: shareApp },
     !inTelegram() ? { id: "p-tg", icon: "lucide:send", label: sys("openTelegram", loc), href: `https://t.me/${BOT}?startapp=${A.spec.id}` } : null,
   ].filter(Boolean);
@@ -186,9 +190,9 @@ export function Profile({ tab }) {
           <div class="text-sm text-base-content/70 leading-snug line-clamp-3 mt-0.5">${T(t, "profTagline")}</div>
         </div>
       </div>
-      <div class=${`grid gap-1 pt-3 border-t border-base-content/10 ${acts.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>${acts.map((a) => html`<${ActKey} key=${a.id} a=${a} shape=${shape} />`)}</div>
+      <div class=${`grid gap-1 pt-3 border-t border-base-content/10 ${["grid-cols-1", "grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4"][acts.length]}`}>${acts.map((a) => html`<${ActKey} key=${a.id} a=${a} shape=${shape} />`)}</div>
     </div></section>
-    ${inTelegram() ? html`<div id="p-support" class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-3">
+    ${inTelegram() && STARS_CARD ? html`<div id="p-support" class="card sf-raised sf-e2 rounded-[var(--ms-r)]"><div class="card-body p-4 gap-3">
       <div class="flex items-center gap-3">
         <div class="size-11 rounded-xl grid place-items-center bg-primary/10 text-primary shrink-0">${Icon("lucide:heart", "text-2xl")}</div>
         <div class="flex-1 min-w-0"><div class="font-semibold leading-tight truncate">${sys("support", loc)}</div><div class="text-xs text-muted truncate">${sys("supportSub", loc)}</div></div>

@@ -1,5 +1,9 @@
 import { assert } from "jsr:@std/assert@1";
-import { BOT, ORIGINS, SEALED_KEY } from "../backend.js";
+import { APK, BOT, ORIGINS, SEALED_KEY, STARS } from "../backend.js";
+
+Deno.test("backend: the APK and Stars flags default to on, so products written before them keep both", () => {
+  assert(APK === true && STARS === true);
+});
 
 Deno.test("backend: every origin is a bare https origin — no path, no trailing slash", () => {
   for (const o of ORIGINS) assert(new URL(o).origin === o && o.startsWith("https://"), `not a bare https origin: ${o}`);

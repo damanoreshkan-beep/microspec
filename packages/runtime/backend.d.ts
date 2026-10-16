@@ -26,6 +26,9 @@
  *   the product's backend has no sealed tunnel — then calls to `/feed` go out as plain requests.
  * - {@link BOT} — the product's Telegram bot username (no `@`): the profile's "Open in Telegram" row and the watch
  *   card's deep link open `https://t.me/<BOT>?startapp=<app>`. A product with Telegram sets it in its rt/backend.js.
+ * - {@link APK} · {@link STARS} — whether the backend builds APKs (`/feed/apk`) and takes Telegram Stars
+ *   (`/feed/stars`); the profile offers "Download APK" and "Support the maker" only when they are true. Both default
+ *   to true and are read through a namespace import, so a product file that predates them keeps both.
  *
  * ## A product's own file
  * ```js
@@ -70,6 +73,9 @@
  *   the product's backend has no sealed tunnel — then calls to `/feed` go out as plain requests.
  * - {@link BOT} — the product's Telegram bot username (no `@`): the profile's "Open in Telegram" row and the watch
  *   card's deep link open `https://t.me/<BOT>?startapp=<app>`. A product with Telegram sets it in its rt/backend.js.
+ * - {@link APK} · {@link STARS} — whether the backend builds APKs (`/feed/apk`) and takes Telegram Stars
+ *   (`/feed/stars`); the profile offers "Download APK" and "Support the maker" only when they are true. Both default
+ *   to true and are read through a namespace import, so a product file that predates them keeps both.
  *
  * ## A product's own file
  * ```js
@@ -95,3 +101,10 @@ export const ORIGINS: any[];
 export const SEALED_KEY: "";
 /** The product's Telegram bot username (no `@`), for the "Open in Telegram" links; a product with Telegram sets it. */
 export const BOT: "";
+/**
+ * Whether the backend builds APKs (`/feed/apk`): the profile's "Download APK" row shows only then. Read through a
+ * namespace import with `true` as the fallback, so a product file written before this flag keeps the row.
+ */
+export const APK: true;
+/** Whether the backend takes Telegram Stars (`/feed/stars`): the profile's "Support the maker" card shows only then. */
+export const STARS: true;

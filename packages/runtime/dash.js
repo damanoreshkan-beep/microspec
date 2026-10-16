@@ -2,12 +2,12 @@ import { Fragment } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { html } from "htm/preact";
 import { useStore } from "@nanostores/preact";
-import { T } from "./i18n.js";
+import { T, intlLocale } from "./i18n.js";
 import { Scramble, Pixels, useReveal } from "./skeleton.js";
 import { curvePath } from "./weather.js";
 import { A, Icon, Empty, Skeleton } from "./render-ctx.js";
 
-const fmtNum = (n, loc) => new Intl.NumberFormat(loc === "uk" ? "uk-UA" : "en-US", { maximumFractionDigits: 2 }).format(Number(n) || 0);
+const fmtNum = (n, loc) => new Intl.NumberFormat(intlLocale(loc), { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 export function ConverterView({ tab }) {
   const t = useStore(A.S.t), data = useStore(A.S.data), loc = useStore(A.S.locale);

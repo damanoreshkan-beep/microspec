@@ -1,0 +1,33 @@
+/* @ts-self-types="./locales.d.ts" */
+/**
+ * # runtime/locales.js — which languages a product speaks, and how its first one is chosen
+ *
+ * Data only, shadowed by the product's own `rt/locales.js` through the same overlay as `rt/backend.js` and
+ * `rt/theme.css` (the build copies `rt/` over the runtime, the dev and gate servers serve `rt/` first, `rtmap`
+ * maps the core's URL for this name to `./rt/locales.js` for preflight). The logic that reads it lives in
+ * i18n.js, so a product's file is two constants and nothing else.
+ *
+ * The default keeps the behaviour every product had before this module existed: Ukrainian and English, and a
+ * first visit opens in Ukrainian whatever the browser says.
+ *
+ * ## What it exports
+ * - {@link LOCALES} — the locale codes the product offers, in switcher order; the FIRST is the fallback. An app
+ *   offers the ones it has a dictionary for (`spec.i18n`).
+ * - {@link DETECT} — true: a first visit opens in the Telegram client's language when the page was launched
+ *   from Telegram and that language is offered, else in the browser's, else in the fallback. false: always the
+ *   fallback. A choice made in the profile is remembered per app either way, and `?locale=` still wins.
+ *
+ * ## A product's own file
+ * ```js
+ * // rt/locales.js — English first, Ukrainian and Russian offered, the client's language detected
+ * export const LOCALES = ["en", "uk", "ru"];
+ * export const DETECT = true;
+ * ```
+ * @module
+ */
+
+/** The offered locale codes, in switcher order; the first is the fallback. */
+export const LOCALES = ["uk", "en"];
+
+/** Whether a first visit follows the Telegram client's or the browser's language. */
+export const DETECT = false;

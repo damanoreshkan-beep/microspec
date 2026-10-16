@@ -1,8 +1,9 @@
-import { assert } from "jsr:@std/assert@1";
-import { APK, BOT, ORIGINS, SEALED_KEY, STARS } from "../backend.js";
+import { assert, assertEquals } from "jsr:@std/assert@1";
+import { APK, BOT, ORIGINS, SEALED_KEY, SIGNIN, STARS } from "../backend.js";
 
-Deno.test("backend: the APK and Stars flags default to on, so products written before them keep both", () => {
+Deno.test("backend: the APK, Stars and sign-in flags default to everything, so older product files keep it all", () => {
   assert(APK === true && STARS === true);
+  assertEquals(SIGNIN, ["google", "github", "telegram"]);
 });
 
 Deno.test("backend: every origin is a bare https origin — no path, no trailing slash", () => {

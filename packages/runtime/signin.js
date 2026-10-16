@@ -72,6 +72,12 @@ import { gate } from "./gate.js";
 import { googleClientId, loginGoogle, login, SCOPE, pairNew, pairPoll, adoptSession, loginTelegram, loginTelegramWeb } from "./auth.js";
 import { inTelegram } from "./tma.js";
 import { shell } from "./shell.js";
+import * as backend from "./backend.js";
+
+// The sign-ins the product's backend offers (runtime/backend.js SIGNIN). Read through a namespace import with the
+// full set as the fallback, so a product file written before the flag keeps every button it had.
+const SIGNIN = backend.SIGNIN ?? ["google", "github", "telegram"];
+const offers = (p) => SIGNIN.includes(p);
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 /** Google's "G", for a button or a row that names the provider (account.js's Sign-ins card marks a Google sign-in with it). */
@@ -116,7 +122,8 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   const [clientId, setClientId] = useState(gate ? "mock-google-client" : null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const wantGoogle = github !== "primary";
+  const wantGoogle = github !== "primary" && offers("google");
+  if (!offers("github")) github = false;
 
   const fail = (e) => { setErr(t.failed); onError?.(e); };
   const finish = (s) => { setErr(""); onDone?.(s); };
@@ -231,8 +238,10 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       : html`<button data-signin-github type="button" disabled=${busy} onClick=${viaGithub}
           class="btn btn-ghost btn-sm rounded-full self-center gap-1.5 text-base-content/70">${Icon("lucide:github", "text-base")}${t.ghQuiet}</button>`)
     : null}
-    ${!gate ? html`<button data-signin-telegram type="button" disabled=${busy} onClick=${viaTelegram}
+    ${!gate && offers("telegram") ? html`<button data-signin-telegram type="button" disabled=${busy} onClick=${viaTelegram}
         class="btn btn-ghost btn-sm rounded-full self-center gap-1.5 text-base-content/70">${Icon("lucide:send", "text-base text-primary")}${t.telegram || "Log in with Telegram"}</button>` : null}
+    ${!googleOn && !github && !offers("telegram") && backend.BOT ? html`<a data-signin-bot class="btn btn-primary rounded-full w-full gap-2"
+        href=${`https://t.me/${backend.BOT}`} target="_blank" rel="noopener">${Icon("lucide:send", "text-xl")}${t.telegram}</a>` : null}
     ${err ? html`<p role="alert" class="text-error text-sm text-center">${err}</p>` : null}
   </div>`;
 }

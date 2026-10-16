@@ -1,8 +1,13 @@
+import { productSite } from "../../deploy/product.mjs";
+
 const args = Deno.args;
 const flag = (n, d) => { const i = args.indexOf(n); return i >= 0 ? (args[i + 1] ?? d) : d; };
 const isFlagVal = (a) => ["--out", "--base", "--bp", "--theme", "--locale", "--query"].some((f) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] === a; });
 const apps = args.filter((a) => !a.startsWith("--") && !isFlagVal(a));
-const base = flag("--base", "https://mriia.si/").replace(/\/?$/, "/");
+// The site to shoot is the product's, never the core's: --base, else the first origin of the product's
+// rt/backend.js (deploy/product.mjs, as the build reads it), else a named failure.
+const base = (flag("--base", "") || await productSite()).replace(/\/?$/, "/");
+if (base === "/") { console.error("shoot: no site to shoot — pass --base <site url>, or declare ORIGINS in the product's rt/backend.js"); Deno.exit(2); }
 const out = flag("--out", "packages/gates/shots");
 const seed = args.includes("--seed");
 const mock = args.includes("--mock");

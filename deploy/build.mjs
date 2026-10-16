@@ -72,7 +72,8 @@
  */
 
 import { generateAppIcons } from "./icons.mjs";
-import { renderOgCard, metaBlock, injectMeta, previewGaps, SITE_NAME } from "./og.mjs";
+import { renderOgCard, metaBlock, injectMeta, previewGaps } from "./og.mjs";
+import { productIdentity } from "./product.mjs";
 import { buildManifest } from "./manifest.mjs";
 import { buildAppCompat } from "./build-app.mjs";
 import { APPS } from "../tools/graph.mjs";
@@ -160,6 +161,11 @@ if (RT_OVERLAY) {
   }
 }
 
+// THE PRODUCT'S IDENTITY for link previews — read from what the product already declares, never named by the core
+// (product.mjs): its name is the store's title, its accent and ground the store's brand.json, its site the first
+// origin of its rt/backend.js; no site declared, and the previews use site-relative URLs.
+const PRODUCT = await productIdentity(APPS);
+
 const ids = [];
 const skipped = [];
 const previews = new Map();
@@ -205,8 +211,8 @@ for await (const a of Deno.readDir(APPS)) {
     await generateAppIcons(`${outDir}/icons`, brand, paths, master);
     const uk = JSON.parse(await Deno.readTextFile(`${APPS}/${a.name}/i18n/uk.json`));
     const title = uk.title || a.name, tagline = uk.profTagline || uk.heroBody || "";
-    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline, master }));
-    previews.set(a.name, { title, description: tagline || `${title} — ${SITE_NAME}` });
+    await Deno.writeFile(`${outDir}/og.png`, await renderOgCard({ brand, paths, title, tagline, master, product: PRODUCT }));
+    previews.set(a.name, { title, description: tagline || (PRODUCT.name ? `${title} — ${PRODUCT.name}` : title) });
   }
   await assertInstallable(outDir, a.name);
   ids.push(a.name);
@@ -230,9 +236,9 @@ console.log(`compat: bundled JS + precompiled CSS for ${ids.length} apps (Safari
 for (const id of ids) {
   const p = previews.get(id);
   if (!p) throw new Error(`${id}: no link-preview record — the app loop did not render its card`);
-  const withMeta = injectMeta(await Deno.readTextFile(`${OUT}/${id}/index.html`), metaBlock({ path: `/${id}/`, ...p }));
+  const withMeta = injectMeta(await Deno.readTextFile(`${OUT}/${id}/index.html`), metaBlock({ path: `/${id}/`, ...p, site: PRODUCT.site, siteName: PRODUCT.name }));
   await Deno.writeTextFile(`${OUT}/${id}/index.html`, withMeta);
-  const gaps = previewGaps(withMeta);
+  const gaps = previewGaps(withMeta, !!PRODUCT.site);
   if (gaps.length) throw new Error(`${id}: link preview incomplete — ${gaps.join(", ")}`);
   try { await Deno.stat(`${OUT}/${id}/og.png`); } catch { throw new Error(`${id}: og.png missing`); }
 }
@@ -305,7 +311,7 @@ self.addEventListener("activate", (e) => e.waitUntil((async () => {
 `);
 if (await has(`${APPS}/store`)) {
   const storeUk = JSON.parse(await Deno.readTextFile(`${APPS}/store/i18n/uk.json`));
-  const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png" }));
+  const rootHtml = injectMeta(`<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>${storeUk.title || "microspec"}</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0; url=./store/"><script>location.replace("./store/"+location.search+location.hash)</script></head><body style="background:#0a0a0b"></body></html>\n`, metaBlock({ path: "/", title: storeUk.title || "microspec", description: storeUk.profTagline || "", image: "/store/og.png", site: PRODUCT.site, siteName: PRODUCT.name }));
   await Deno.writeTextFile(`${OUT}/index.html`, rootHtml);
 } else {
   await Deno.writeTextFile(`${OUT}/index.html`, `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>microspec</title></head><body>microspec ${BUILD_SHA}</body></html>\n`);

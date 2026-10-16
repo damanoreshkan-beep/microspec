@@ -1,8 +1,8 @@
 import { Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
 import { ensure, masterPngB64 } from "./icons.mjs";
 
-export const SITE = "https://mriia.si";
-export const SITE_NAME = "Mriia";
+// The core names no product: the site, the product's name and its accent arrive from the build, which reads what
+// the product already declares (the store's title and brand.json, the first origin of rt/backend.js).
 export const OG_W = 1200, OG_H = 630;
 
 let fontsP = null;
@@ -28,11 +28,15 @@ function wrap(text, perLine, maxLines = 2) {
   return lines;
 }
 
-const INK = "#F2EEE6", MUTED = "#A39E94", AMBER = "#F2B84B", RIM = "rgba(255,232,196,.14)", RIM_HI = "rgba(255,238,208,.22)";
+const INK = "#F2EEE6", MUTED = "#A39E94", RIM = "rgba(255,232,196,.14)", RIM_HI = "rgba(255,238,208,.22)";
 
 /** Render the card: the app's icon (its luminous master, or the brand glyph for an app without one) on the
- *  left, name / site / tagline on the right. `master` = the bytes of apps/<id>/icon.webp when present. */
-export async function renderOgCard({ brand, paths, title, tagline, master = null }) {
+ *  left, name / site / tagline on the right. `master` = the bytes of apps/<id>/icon.webp when present.
+ *  `product` = `{ site, name, accent, ground }` — the product's own, from the build; the line under the title is
+ *  the site's host, or the product's name when it declares no site. */
+export async function renderOgCard({ brand, paths, title, tagline, master = null, product }) {
+  const { site = "", name = "", accent = "#A39E94", ground = "#000000" } = product || {};
+  const line = site ? new URL(site).host : name;
   await ensure();
   const fb = await fonts();
   const titleSize = Math.max(40, Math.min(88, Math.floor(612 / (0.62 * Math.max(1, title.length)))));
@@ -46,12 +50,12 @@ export async function renderOgCard({ brand, paths, title, tagline, master = null
     : `<rect x="96" y="135" width="360" height="360" rx="72" fill="#000" stroke="${RIM}" stroke-width="1"/>
 <g transform="translate(156,195) scale(10)" fill="none" stroke="${brand.fg}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${paths}</g>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_W}" height="${OG_H}" viewBox="0 0 ${OG_W} ${OG_H}">
-<defs><radialGradient id="bloom" cx="0.5" cy="0.55" r="0.5"><stop offset="0" stop-color="${AMBER}" stop-opacity="0.22"/><stop offset="1" stop-color="${AMBER}" stop-opacity="0"/></radialGradient></defs>
-<rect width="${OG_W}" height="${OG_H}" fill="#000000"/>
+<defs><radialGradient id="bloom" cx="0.5" cy="0.55" r="0.5"><stop offset="0" stop-color="${accent}" stop-opacity="0.22"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient></defs>
+<rect width="${OG_W}" height="${OG_H}" fill="${ground}"/>
 <ellipse cx="276" cy="330" rx="300" ry="270" fill="url(#bloom)"/>
 ${tile}
 <text x="528" y="${tagLines.length > 1 ? 262 : 292}" font-family="Geist" font-weight="700" font-size="${titleSize}" fill="${INK}">${esc(title)}</text>
-<text x="530" y="${tagLines.length > 1 ? 318 : 352}" font-family="Geist Mono" font-weight="500" font-size="28" fill="${AMBER}" letter-spacing="2">${new URL(SITE).host.toUpperCase()}</text>
+<text x="530" y="${tagLines.length > 1 ? 318 : 352}" font-family="Geist Mono" font-weight="500" font-size="28" fill="${accent}" letter-spacing="2">${esc(line.toUpperCase())}</text>
 ${tagLines.map((l, i) => `<text x="528" y="${(tagLines.length > 1 ? 386 : 424) + i * 44}" font-family="Geist" font-weight="700" font-size="${tagSize}" fill="${MUTED}">${esc(l)}</text>`).join("\n")}
 <rect x="0.5" y="0.5" width="${OG_W - 1}" height="${OG_H - 1}" fill="none" stroke="${RIM}" stroke-width="1"/>
 </svg>`;
@@ -61,15 +65,17 @@ ${tagLines.map((l, i) => `<text x="528" y="${(tagLines.length > 1 ? 386 : 424) +
 /** The meta block for one page. `path` is the site-relative directory ("/persona/"), image is `${path}og.png`. */
 export const shortDescription = (s, max = 200) => { s = String(s || "").trim(); if (s.length <= max) return s; const cut = s.slice(0, max).replace(/\s+\S*$/, ""); return cut + "…"; };
 
-export function metaBlock({ path, title, description, image = `${path}og.png`, alt }) {
+export function metaBlock({ path, title, description, image = `${path}og.png`, alt, site = "", siteName = "" }) {
   description = shortDescription(description);
-  const url = SITE + path, img = SITE + image;
-  const t = esc(title), d = esc(description), a = esc(alt || `${title} — ${SITE_NAME}`);
+  // a product that declares no site gets site-relative URLs: the page still names its card, a crawler that needs
+  // an absolute URL simply gets less (previewGaps asks for absolute only when a site is declared)
+  const url = site + path, img = site + image;
+  const t = esc(title), d = esc(description), a = esc(alt || (siteName ? `${title} — ${siteName}` : title));
   return [
     `<meta name="description" content="${d}">`,
     `<link rel="canonical" href="${url}">`,
     `<meta property="og:type" content="website">`,
-    `<meta property="og:site_name" content="${SITE_NAME}">`,
+    ...(siteName ? [`<meta property="og:site_name" content="${esc(siteName)}">`] : []),
     `<meta property="og:title" content="${t}">`,
     `<meta property="og:description" content="${d}">`,
     `<meta property="og:url" content="${url}">`,
@@ -98,11 +104,12 @@ export function injectMeta(html, block) {
   return stripped.slice(0, at) + `\n  <!-- link preview -->\n${block}\n  <!-- /link preview -->` + stripped.slice(at);
 }
 
-/** Every tag a preview bot needs, or the list of what is missing — the build's assertion. */
-export function previewGaps(html) {
+/** Every tag a preview bot needs, or the list of what is missing — the build's assertion. `absolute`: the product
+ *  declares a site, so og:image must be an absolute https URL. */
+export function previewGaps(html, absolute = true) {
   const need = ["og:title", "og:description", "og:image", "og:url", "twitter:card"];
   const gaps = need.filter((k) => !new RegExp(`(property|name)="${k}"`).test(html));
-  if (!/property="og:image" content="https:\/\/[^"]+\.(png|jpe?g|webp)"/.test(html)) gaps.push("og:image absolute png/jpg/webp");
+  if (absolute && !/property="og:image" content="https:\/\/[^"]+\.(png|jpe?g|webp)"/.test(html)) gaps.push("og:image absolute png/jpg/webp");
   if (!/name="twitter:card" content="summary_large_image"/.test(html)) gaps.push("twitter:card=summary_large_image");
   return gaps;
 }

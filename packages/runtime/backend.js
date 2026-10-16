@@ -10,8 +10,8 @@
  * browser-free preflight resolves feed.js's relative import to the product's file.
  *
  * The defaults name nothing: a product that brings no file of its own talks to whatever origin serves its page
- * (`/feed` there) and has no sealed tunnel. The Mriia farm carries its own values in its `rt/backend.js`
- * (since core 1.2.137); the core names no product at all (1.2.138).
+ * (`/feed` there) and has no sealed tunnel. A product with a backend carries its own values in its
+ * `rt/backend.js`; the core names no product at all.
  *
  * ## Import
  * ```js
@@ -25,18 +25,21 @@
  *   means the product has no fixed origin: every page talks to its own origin's `/feed`.
  * - {@link SEALED_KEY} — the backend's pinned long-term public key (base64url) for sealedfetch.js, or `""` when
  *   the product's backend has no sealed tunnel — then calls to `/feed` go out as plain requests.
+ * - {@link BOT} — the product's Telegram bot username (no `@`): the profile's "Open in Telegram" row and the watch
+ *   card's deep link open `https://t.me/<BOT>?startapp=<app>`. A product with Telegram sets it in its rt/backend.js.
  *
  * ## A product's own file
  * ```js
  * // rt/backend.js — a product whose pages and backend share one origin, without the sealed tunnel
- * export const ORIGINS = ["https://pokermon.mooo.com"];
+ * export const ORIGINS = ["https://app.example.com"];
  * export const SEALED_KEY = "";
+ * export const BOT = "example_bot";
  * ```
  *
  * ## How it fits
  * Imports nothing. feed.js reads both values (`FARM_ORIGINS`, `feedBase`, `VPS_PROXY`, `SEALED_KEY` are built
  * from them), and everything that talks to the backend goes through feed.js. The edge must allow the same
- * origins (microspec-edge `util.js` ALLOW_ORIGIN for Mriia).
+ * origins in its CORS allowlist.
  * @module
  */
 
@@ -49,3 +52,6 @@ export const ORIGINS = [];
  * the channel it defends pins nothing.
  */
 export const SEALED_KEY = "";
+
+/** The product's Telegram bot username (no `@`), for the "Open in Telegram" links; a product with Telegram sets it. */
+export const BOT = "";

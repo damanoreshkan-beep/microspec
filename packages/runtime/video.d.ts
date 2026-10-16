@@ -82,11 +82,11 @@
  *   length, sound) and rotating now only rotates the video. `controlsList="nofullscreen"` and
  *   `disableRemotePlayback` are the belt and braces for a shell that shows controls anyway.
  * - "Full screen" (#player-fill) is OUR dialog taken full screen (`requestFullscreen` on the overlay, never on
- *   the element, so the chrome and the gestures stay ours): the picture covers it (object-cover — the owner's
- *   "на весь екран, масштабуй", 2026-10-06), a LANDSCAPE picture also locks the screen to landscape, a
+ *   the element, so the chrome and the gestures stay ours): the picture covers it (object-cover — full screen,
+ *   scaled to fill), a LANDSCAPE picture also locks the screen to landscape, a
  *   portrait one is left as the phone is held, and while it plays the header and the bar leave after 2 s of
- *   stillness — a touch brings them back without pausing (owner 2026-10-12: «fullscreen з горизонтально якщо
- *   формат відео такий, якщо портретний то так і залишай і прибери у цьому режимі кнопки усі через 2 секунди»).
+ *   stillness — a touch brings them back without pausing (a landscape video goes landscape, a portrait one stays
+ *   portrait, and every control hides after two seconds).
  *   Leaving it (the button, the system back, closing the player) unlocks the orientation. Where the platform has
  *   no element fullscreen (iPhone Safari) the same mode stays inside the overlay, which already covers the screen.
  * - A HOLD is a loupe: press and keep still for 320 ms and the picture scales 2.4× around the finger — the

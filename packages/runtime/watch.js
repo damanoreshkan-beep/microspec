@@ -5,7 +5,7 @@
  * Every app in the farm answers the same shape of question: what is it NOW. This is the other half — a
  * rule the edge keeps: a source, a line, and a Telegram chat to say it in. It is systemic in the sense
  * `globe.js` and `calendar.js` are: it knows nothing about what the number MEANS. The edge's source matrix
- * (microspec-edge `edge/watch.js`) names what can be watched, its unit and its sane bounds; this component
+ * (in the product's backend) names what can be watched, its unit and its sane bounds; this component
  * renders whatever comes back, so a seventh source appears in every app's profile without a line changing
  * here.
  *
@@ -57,6 +57,7 @@ import { useStore } from "@nanostores/preact";
 import { session, loginTelegramWeb } from "./auth.js";
 import { shell } from "./shell.js";
 import { VPS_PROXY } from "./feed.js";
+import { BOT } from "./backend.js";
 import { gate } from "./gate.js";
 import { sys } from "./i18n.js";
 
@@ -96,7 +97,7 @@ export const watchAdd = (rule) => (gate ? Promise.resolve({ rule: { ...rule, id:
 export const watchDel = (id) => (gate ? Promise.resolve(true) : call("del", { id }).then(() => true));
 
 /** One fix, or null. Asked for only when something needs a place, and never kept here.
- *  Exported because the globe asks the same question — «і показати на глобусі де я» — and two copies of
+ *  Exported because the globe asks the same question — "show me on the globe" — and two copies of
  *  "where am I" would drift into two different accuracies and two different timeouts. */
 export function place() {
   return new Promise((ok) => {
@@ -138,7 +139,7 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
   const mine = (state?.rules || []).filter((r) => r.source === source);
 
   if (!tg) {
-    const deep = `https://t.me/mriia_si_bot?startapp=${encodeURIComponent(app || "")}`;
+    const deep = `https://t.me/${BOT}?startapp=${encodeURIComponent(app || "")}`;
     const viaTelegram = async () => {
       setBusy(true); setErr("");
       try { await loginTelegramWeb(); }

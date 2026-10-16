@@ -1,7 +1,7 @@
 /**
  * # runtime/grow.js — every text field is a textarea that starts at one line and grows
  *
- * The farm's golden rule for typing (owner 2026-10-09): no `<input type="text">` anywhere — a text field is a
+ * The farm's golden rule for typing: no `<input type="text">` anywhere — a text field is a
  * `<textarea rows="1">` that is one line tall when empty and grows with what is typed, up to a ceiling, then
  * scrolls. On a phone a one-line input hides everything past its width; a growing field shows the whole
  * thought. `runtime.css` does the growing with `field-sizing: content`; this module does the rest, once, for

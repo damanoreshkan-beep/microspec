@@ -600,7 +600,7 @@
             "required": [
               "source"
             ],
-            "description": "THE BELL — while THIS tab is open, the app bar carries a bell that opens 'tell me when' over one watchable source (/_rt/watch.js). It belongs to the TAB and not to the app because an app can hold several numbers worth watching: the globe's ISS screen and its earthquakes screen are two different rules, and the reader must be offered the one they are looking at. The edge owns the unit, the bounds and the poll interval (microspec-edge edge/watch.js).",
+            "description": "THE BELL — while THIS tab is open, the app bar carries a bell that opens 'tell me when' over one watchable source (/_rt/watch.js). It belongs to the TAB and not to the app because an app can hold several numbers worth watching: the globe's ISS screen and its earthquakes screen are two different rules, and the reader must be offered the one they are looking at. The edge owns the unit, the bounds and the poll interval (the product backend's watch matrix).",
             "properties": {
               "source": {
                 "type": "string",

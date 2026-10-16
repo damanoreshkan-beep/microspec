@@ -3,7 +3,7 @@
  *
  * The farm's authentication module: GitHub OAuth and Sign in with Google, reusable by any app that needs "who
  * is the signed-in user" and acting on their behalf (nova was the first consumer). The edge
- * (microspec-edge, routes /feed/gh/* and /feed/google/*) runs the code→token exchange with the client secret
+ * (the product's backend, routes /feed/gh/* and /feed/google/*) runs the code→token exchange with the client secret
  * and keeps the access token in a server-side session; the PWA is handed only an opaque session id (`sid`),
  * persisted in localStorage. Authenticated calls ride the sealed tunnel carrying the sid, and the edge
  * attaches the real token upstream. A stolen sid can act as the user until logout or an edge restart — but it
@@ -31,7 +31,7 @@
  * - {@link login} — `({ scope = SCOPE, adopt = true })` opens the GitHub consent popup, resolves with the session when the edge posts back a sid; rejects "popup-blocked", "popup-closed", "timeout" or "no-profile".
  * - {@link loginGoogle} — `(credential, { adopt = true })` exchanges a GIS ID token for a farm session; throws with `.status` 502 when the edge returns no sid.
  * - Every login takes `adopt`: false PROVES the sign-in and returns its session without making it this page's own
- *   (no storage, no `session` change) — how a second sign-in is added to an account (account.js, «Входи»).
+ *   (no storage, no `session` change) — how a second sign-in is added to an account (account.js, the Sign-ins card).
  * - {@link googleClientId} — the Google client id the edge is configured with ("" when unset — the surface then offers GitHub alone); fetched once per page.
  * - {@link logout} — drop the local sid and session, best-effort tell the edge (or GIS auto-select) to forget it.
  * - {@link adoptSession} — `({ sid, provider, user })` makes a session minted elsewhere this page's own: persisted under the keys `restore` reads, set on the atom.
@@ -265,7 +265,7 @@ export const MOCK_RUNS: {
         updated: string;
         url: string;
     }[];
-    "octocat/microspec-edge": {
+    "octocat/example-backend": {
         id: number;
         n: number;
         name: string;

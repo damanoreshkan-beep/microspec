@@ -9,7 +9,7 @@ one: an earlier pass took a single glance at the reference, extracted one idea (
 volume"), applied it to the **shell** — a vignette on `body` — and called the request done. The reference is
 not about the shell. Its very first row is titled **FOUNDATIONS** and it names four SURFACES; everything
 below is those surfaces applied to *every widget on the page*. So the shell got a shadow and all fifty-odd
-components stayed flat, which is precisely "кожен віджет не відповідає цьому".
+components stayed flat, which is precisely why no widget matched the reference.
 
 Second mistake: the first pass *described* the reference instead of measuring it. Below it is measured.
 

@@ -8,7 +8,6 @@
 [![JSR score](https://jsr.io/badges/@microspec/core/score)](https://jsr.io/@microspec/core/score)
 [![verify](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml/badge.svg)](https://github.com/damanoreshkan-beep/microspec/actions/workflows/verify.yml)
 [![gate efficacy](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damanoreshkan-beep/microspec/main/docs/efficacy.json)](packages/gates/efficacy.mjs)
-[![Mriia](https://img.shields.io/badge/Mriia-live-3fb950)](https://mriia.si/store/)
 [![built on Android](https://img.shields.io/badge/built%20on-Termux%20%2F%20Android-a78bfa)](#written-on-a-phone)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -17,7 +16,7 @@
 A JSON **spec contract**, a **verified zero-build runtime**, and **CI gates** that stop a broken app from
 shipping. This repo carries **no apps at all** — not even a demo: the app its CI verifies is *generated*
 on the spot (`deno task demo`, a deterministic recipe, zero model calls) and walks the same gates as
-everything a product ships. The first product built on it is **[Mriia](https://github.com/damanoreshkan-beep/mriia)** — live at [mriia.si](https://mriia.si/store/).
+everything a product ships.
 
 **It is a package: [`@microspec/core` on JSR](https://jsr.io/@microspec/core)** — documented module by module,
 every export typed, published from CI with provenance.
@@ -143,8 +142,8 @@ rules, the surface *system* (what `sf-raised` means) and every hook the markup c
 defaults, so a tree with no brand renders clean and legible. A product brings its **theme module**,
 `rt/theme.css` (`@import "./runtime.css";` first, then its palettes, its material's token values, its
 sprites, its type), and the overlay replaces `/_rt/theme.css` by name — in the gate's server and in the
-build alike. No colour, sprite or font ever enters the core; a brand change is a product commit. Mriia's
-luminous material is one such module; the contract is `docs/research/theme-split.md`.
+build alike. No colour, sprite or font ever enters the core; a brand change is a product commit. The
+contract is `docs/research/theme-split.md`.
 
 <div align="center">
 <img src="https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/theme-split.svg" width="880" alt="runtime.css (structure, neutral) → a product's rt/theme.css (the brand, sprites, tests) → the page's one link; the overlay wins by name in the gate's server and the build">
@@ -162,6 +161,7 @@ product's file too):
 // rt/backend.js
 export const ORIGINS = ["https://example.com"];   // canonical first; [] = every page talks to its own origin's /feed
 export const SEALED_KEY = "";                      // the backend's pinned public key for the sealed tunnel; "" = none
+export const BOT = "";                             // the product's Telegram bot (no @) for the "Open in Telegram" links
 ```
 
 With no file of its own a product's pages talk to `/feed` on whatever origin serves them, without the

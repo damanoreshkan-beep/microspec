@@ -121,7 +121,7 @@ export async function askAI(text, locale, mode, extra) {
   return { text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated), ungrounded: !!(j && j.ungrounded) };
 }
 
-// ── the wire: the AI call as a TASK (owner, 2026-10-08: «переведи і ШІ-запити теж») ─────────────────────────────
+// ── the wire: the AI call as a TASK, like every other long job ─────────────────────────────────────────────────
 // A model cascade answers after up to two minutes; one POST held for that long lost the answer to any dead zone and
 // the retry started the cascade over. Now the edge runs it as a task (edge jobtask.js DIRECT route): the start
 // carries a tap key (a re-sent start is the same task), and the answer is read from the task's Durable Stream by

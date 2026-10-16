@@ -71,7 +71,7 @@ const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}><
 
 // THE PORTRAIT — the person inside their OWN organic form (core shape.js, seeded by the account, so it is the same
 // form on every phone and in every app), the theme's material behind it and a rim of light around it: the profile
-// tab's one hero (owner 2026-10-11: «перероби також екран акаунту системно … сучасно у нашому стилі»). shape.js
+// tab's one hero (the account screen redesigned as a system screen). shape.js
 // loads with the card; until it lands the portrait is a plain disc, so nothing waits on it.
 const SIZE = 88;
 function Portrait({ sess }) {
@@ -119,8 +119,8 @@ export function Account({ github = "quiet", loc, onChange }) {
   ${sess ? html`<${Signins} key=${sess.sid} github=${github} loc=${loc} onChange=${onChange} />` : null}`;
 }
 
-// ── «Входи» — ONE account, several sign-ins (owner 2026-10-11: «у мене декілька акк через тг та гугл … коли я
-// залогінений то можу підключити декілька соц мереж»; «окремий збагачений віджет у акаунті табі системний»). The
+// ── SIGN-INS — ONE account, several sign-ins: a person signed in once can link Telegram, Google and GitHub to the
+// same account, shown as one rich widget on the account tab. The
 // edge maps every sign-in to its account (accounts.js on the edge); this card lists the account's sign-ins, adds one
 // by PROVING it with the ordinary SignIn surface in `adopt: false` mode (the page stays signed in as it was, the new
 // sign-in's sid goes to /account/link), and unlinks one. A sign-in that already carries its own things is MERGED

@@ -7,6 +7,7 @@ import { CORE, BUILD, appVersion } from "./version.js";
 import { refreshNow } from "./update.js";
 import { permLabels } from "./permissions.js";
 import { inTelegram, payStars, celebrate } from "./tma.js";
+import { BOT } from "./backend.js";
 import { A, Icon, isStandalone } from "./render-ctx.js";
 
 function AccountSlot({ github, loc }) {
@@ -95,8 +96,7 @@ function ThemeWidget({ t, loc, theme, modeToggle, materials, current, tone = "" 
   </div></div>`;
 }
 
-// THE PROFILE as one system screen (owner 2026-10-11: «перероби також екран акаунту системно, редизайн також окремо
-// продуманий, міняй все місцями, сучасно у нашому стилі»). It used to be a column of look-alike cards; now it reads
+// THE PROFILE as one system screen, redesigned from scratch. It used to be a column of look-alike cards; now it reads
 // in four bands, each one surface: WHO you are (the account hero, then its sign-ins), WHAT this app is (its form, its
 // line, and its four ways out — install, APK, share, Telegram — as round keys), HOW it looks (material, day/night,
 // tone), and the SETTINGS as one grouped list. Every id the farm's tests and the shell use is kept.
@@ -165,7 +165,7 @@ export function Profile({ tab }) {
     install ? { id: "p-install", icon: p.icon || "lucide:box", label: T(t, "install"), onClick: () => A.S.installOpen.set(true) } : null,
     { id: "p-apk", mark: AndroidMark, label: sys("apkRow", loc), onClick: () => A.S.screen.set("apk") },
     { id: "p-share", icon: "lucide:share-2", label: sys("share", loc), onClick: shareApp },
-    !inTelegram() ? { id: "p-tg", icon: "lucide:send", label: sys("openTelegram", loc), href: `https://t.me/mriia_si_bot?startapp=${A.spec.id}` } : null,
+    !inTelegram() ? { id: "p-tg", icon: "lucide:send", label: sys("openTelegram", loc), href: `https://t.me/${BOT}?startapp=${A.spec.id}` } : null,
   ].filter(Boolean);
   const arrow = Icon("lucide:arrow-up-right", "opacity-60 shrink-0"), chevron = Icon("lucide:chevron-right", "opacity-60 shrink-0");
   const rows = [

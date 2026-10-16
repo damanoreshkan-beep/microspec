@@ -3,7 +3,7 @@
  * # runtime/apk.js — the APK client, the icon rasteriser, and the one save/share path that works in the shell
  *
  * Client helper for the on-demand APK generator. The heavy lifting (patch + v1-sign) is pure Deno on the
- * edge (microspec-edge /feed/apk, core, holds the key); this module only calls it through the sealed tunnel
+ * edge (the product backend's /feed/apk, which holds the key); this module only calls it through the sealed tunnel
  * and hands the result to the user. Because the edge has no image library, every icon is rasterised here in
  * the browser (canvas → PNG): a site favicon or a crafted letter tile becomes the legacy launcher icon, and
  * the same tile is shrunk into the safe zone to become a real adaptive icon, so an APK carries exactly the

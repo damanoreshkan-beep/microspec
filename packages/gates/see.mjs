@@ -8,7 +8,7 @@
  * the gates do — apps at `/<id>/`, the runtime at `/_rt/` OVERLAY-first (the product's `rt/` shadows the
  * framework file of the same name, as the build copies it) — on a fixed port, and keeps serving while files
  * change underneath it. Pair it with the eye on `http://127.0.0.1:<port>/<app>/?mock` and a screen is seen
- * BEFORE it is pushed (owner, 2026-09-03: "більше сирий ui не продуманий не видавати"). A gate script with
+ * BEFORE it is pushed (no raw, unconsidered UI ships). A gate script with
  * no exports.
  *
  * ![The see line: the working tree rsynced to the box, served by see, shot by the eye's Chromium, the PNG back on the phone](https://cdn.jsdelivr.net/gh/damanoreshkan-beep/microspec@main/docs/art/see.svg)

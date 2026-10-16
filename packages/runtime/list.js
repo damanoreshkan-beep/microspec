@@ -11,8 +11,7 @@ import { A, Icon, field, fieldNode, safeHref, debouncedLoad, Empty, Skeleton } f
 
 const searchText = (it) => Object.values(it).map((v) => Array.isArray(v) ? v.join(" ") : v).join(" ").toLowerCase();
 
-// A ROW'S OWN FORM (spec `card.form` on row / table — 2026-10-11: «давай ядро — форми в рядках»; on feed / gallery —
-// 2026-10-12: «так, давай стрічки»). The field
+// A ROW'S OWN FORM (spec `card.form` on row / table, and on feed / gallery). The field
 // names the row's object — a ticker, a currency, a kind — and that value always gets the same organic form (shape.js
 // shapeOf). shape.js and its 50 KB of vendored shapes load only when a tab asks for forms, and each value's path is
 // built once: a live market redraws every 400 ms and must not pay for a form per frame. Until the module lands the
@@ -25,7 +24,7 @@ function wantShapes() {
   shapeWant = true;
   import("./shape.js").then((m) => { SHAPE = m; shapeTick.set(1); }).catch(() => {});
 }
-// A picture inside a form (a feed card's image, a gallery tile — owner 2026-10-12: «так, давай стрічки») leaves out
+// A picture inside a form (a feed card's image, a gallery tile) leaves out
 // the forms that cut deepest into a centred picture, as the store's tiles and the profile portrait do. The cut is a
 // CSS mask of the form's own path in a unit viewBox, so it scales with the box — no measuring, no ids, any size.
 const MEDIA_OUT = new Set(["Flower", "PuffyDiamond", "Puffy"]);
@@ -174,7 +173,7 @@ function Card({ item: it, card, hide }) {
 
   const sub = card.subtitle ? field(it, card.subtitle, loc) : null;
   const bodyTxt = card.body ? field(it, card.body, loc) : null;
-  // `form` on a feed (owner 2026-10-12: «так, давай стрічки»): the card opens with its object's own form — the author,
+  // `form` on a feed: the card opens with its object's own form — the author,
   // the owner, the film — holding the card's picture when it has one (the picture then leaves the banner), else the
   // `lead` field or the object's initials. The same object has the same form on every card and every phone.
   const pic = card.image && it[card.image] ? it[card.image] : null;

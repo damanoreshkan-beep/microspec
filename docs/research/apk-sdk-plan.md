@@ -216,7 +216,7 @@ the case the template's fully-qualified activity name was written for; the manif
 that comment. Both templates (`lite` and `full`) get the sentinel: two APKs built from two different
 arbitrary URLs must not overwrite each other either.
 
-Files to touch (phase 1, all in `microspec-edge`): `template/app/build.gradle` (namespace +
+Files to touch (phase 1, all in the APK shell template's repo): `template/app/build.gradle` (namespace +
 applicationId), `template/app/src/main/AndroidManifest.xml` (activity name),
 `template/app/src/main/java/world/anubis/shell/MainActivity.java` → `java/apk/microspec/`, the
 `anubis.world` fixture URLs in `edge/apk/apk.test.js` and `build-test-apk.ts`, then a GitHub Actions

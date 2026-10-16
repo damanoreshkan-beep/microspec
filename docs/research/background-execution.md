@@ -43,7 +43,7 @@ process.
 **Consequence:** in the browser, *any* "tell me later / tell me when X happens" feature requires
 **our edge to hold the schedule and send a push**. There is no offline, device-local alarm on the web.
 
-### In our current APK (`microspec-edge/template`, plain WebView shell)
+### In our current APK (the shell template, plain WebView shell)
 
 **VERIFIED (MDN browser-compat-data, `main`):**
 

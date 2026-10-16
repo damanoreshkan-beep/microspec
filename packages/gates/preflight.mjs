@@ -225,7 +225,7 @@ async function preflight(appdir) {
     }
   }
 
-  // THE GOLDEN RULE OF TYPING (owner 2026-10-09): a text field is a <textarea rows="1"> that grows (runtime.css
+  // THE GOLDEN RULE OF TYPING: a text field is a <textarea rows="1"> that grows (runtime.css
   // field-sizing + grow.js). A password stays an <input> (a textarea cannot mask); every non-text type is fine.
   for (const [file, text] of parts) for (const m of text.matchAll(/<input\b[^>]*>/gs)) {
     if (/type=["']?(file|checkbox|radio|range|hidden|color|date|time|datetime-local|month|week|submit|button|reset|image|password)\b/.test(m[0]) || /password/.test(m[0])) continue;

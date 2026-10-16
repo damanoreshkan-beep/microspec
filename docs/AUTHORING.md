@@ -73,8 +73,7 @@ prompt → probe source → author spec.json (ajv-gated) → author data.js|view
    card is incomplete, in a tree that has a store:
    - **Icon** — a generated picture in the product's icon style, never the scaffold's glyph. Generate several
      takes, measure them, LOOK, then `deno run -A jsr:@microspec/core/icon-import <id>=<take.png>` (writes
-     `icon.webp` + `icon.svg`). The prompt block, the generator and the geometry gate are the product's
-     (Mriia: `docs/research/luminous-icons.md`, `docs/research/mascot-tools/`).
+     `icon.webp` + `icon.svg`). The prompt block, the generator and the geometry gate are the product's.
    - **Screenshots** — `deno run -A jsr:@microspec/core/store-shots <id>`: every non-profile tab at the
      reference phone, dark and light, from the gate's fixtures; it rewrites the catalog too. Shoot after the
      screen is final, and look at what it shot.

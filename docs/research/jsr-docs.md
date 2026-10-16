@@ -1,7 +1,7 @@
 # The registry docs — premium module pages on jsr.io (research, 2026-09-01)
 
-Owner: "зроби доку … бо вони усі пусті. зроби реально преміум з svg анімаціями діаграмами але у нашому
-стильовому дизайні бренду dreamstudio". The pages at `jsr.io/@microspec/core/doc/<entry>` render ONE
+The ask: the registry pages were empty — make them premium, with animated SVG diagrams in the house
+style. The pages at `jsr.io/@microspec/core/doc/<entry>` render ONE
 thing per entrypoint: its `/** … @module */` block (markdown) plus the documented symbols. A CLI
 entrypoint has no symbols, so its page IS the module doc — two sentences looked empty.
 

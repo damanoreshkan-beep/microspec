@@ -4,7 +4,7 @@
  * Every camera app of the farm used to open the stream itself: the priming screen, `camera.start` with its
  * retry, the wake lock, the flip, the pinch that zooms the track, the tap that focuses it and draws a ring,
  * the fullscreen of the stage subtree — a hundred lines copied from podoba into portal into the next one
- * (owner, 2026-09-05: "здається у нас кожна апка реалізовує ядро камери і це не ок"). `CamStage` is that
+ * (every camera app reimplementing the camera core). `CamStage` is that
  * hundred lines as ONE element of the kit. It owns the hidden `<video>` and the whole lifecycle, and hands the
  * playing element OUT through `onVideo` — the app draws it wherever it draws (a GlStage's `cam`, a pixi
  * texture, a 2D canvas). Its children are the app's drawing surface, rendered INSIDE the stage element so a
@@ -67,7 +67,7 @@
  * - A flip (a new `facing`) stops the stream, then opens the other camera; the kit's retry after the hardware
  *   lets go (sensors.js, core ≥ 1.2.32) is inside `camera.start`.
  * - The tap does two things at once, on purpose: it focuses the track at the point under the finger and
- *   toggles the fullscreen of the stage (owner: "кліком по полотну включити на весь екран і кліком вимкнути").
+ *   toggles the fullscreen of the stage (a tap on the canvas enters full screen, another tap leaves it).
  *   The browser leaving fullscreen on its own (Back, ESC, the system gesture) is mirrored into `onState`.
  * - The pinch sends ONE constraint per frame, never per event — the track's `applyConstraints` is slow.
  * - The wake lock is held while the stream runs and released with it.

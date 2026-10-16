@@ -1,7 +1,7 @@
 # Motion and free forms — the research behind runtime.css MOTION, shape.js and breath.js
 
-2026-10-09. The owner asked for premium-level motion that is ultra-modern AND energy-efficient on current
-iPhones and Androids with good screens, and for free forms instead of boxes ("досить будувати квадратики").
+2026-10-09. The ask: premium-level motion that is ultra-modern AND energy-efficient on current iPhones and
+Androids with good screens, and free forms instead of boxes.
 This is the evidence the three pieces stand on. Support data: MDN browser-compat-data, `main`, read the same
 day. Skill repos read at the commits named.
 

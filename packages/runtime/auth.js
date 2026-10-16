@@ -4,7 +4,7 @@
  *
  * The farm's authentication module: GitHub OAuth and Sign in with Google, reusable by any app that needs "who
  * is the signed-in user" and acting on their behalf (nova was the first consumer). The edge
- * (microspec-edge, routes /feed/gh/* and /feed/google/*) runs the code→token exchange with the client secret
+ * (the product's backend, routes /feed/gh/* and /feed/google/*) runs the code→token exchange with the client secret
  * and keeps the access token in a server-side session; the PWA is handed only an opaque session id (`sid`),
  * persisted in localStorage. Authenticated calls ride the sealed tunnel carrying the sid, and the edge
  * attaches the real token upstream. A stolen sid can act as the user until logout or an edge restart — but it
@@ -32,7 +32,7 @@
  * - {@link login} — `({ scope = SCOPE, adopt = true })` opens the GitHub consent popup, resolves with the session when the edge posts back a sid; rejects "popup-blocked", "popup-closed", "timeout" or "no-profile".
  * - {@link loginGoogle} — `(credential, { adopt = true })` exchanges a GIS ID token for a farm session; throws with `.status` 502 when the edge returns no sid.
  * - Every login takes `adopt`: false PROVES the sign-in and returns its session without making it this page's own
- *   (no storage, no `session` change) — how a second sign-in is added to an account (account.js, «Входи»).
+ *   (no storage, no `session` change) — how a second sign-in is added to an account (account.js, the Sign-ins card).
  * - {@link googleClientId} — the Google client id the edge is configured with ("" when unset — the surface then offers GitHub alone); fetched once per page.
  * - {@link logout} — drop the local sid and session, best-effort tell the edge (or GIS auto-select) to forget it.
  * - {@link adoptSession} — `({ sid, provider, user })` makes a session minted elsewhere this page's own: persisted under the keys `restore` reads, set on the atom.
@@ -260,7 +260,7 @@ const trimJob = (j) => ({
 /** Deterministic repository fixtures `repos()` returns under the gate. */
 export const MOCK_REPOS = [
   { id: 1, name: "microspec", full: "octocat/microspec", owner: "octocat", private: false, pushed: "2026-07-26T10:00:00Z", url: "" },
-  { id: 2, name: "microspec-edge", full: "octocat/microspec-edge", owner: "octocat", private: true, pushed: "2026-07-25T18:20:00Z", url: "" },
+  { id: 2, name: "example-backend", full: "octocat/example-backend", owner: "octocat", private: true, pushed: "2026-07-25T18:20:00Z", url: "" },
   { id: 3, name: "anubis-launcher", full: "octocat/anubis-launcher", owner: "octocat", private: false, pushed: "2026-07-24T09:05:00Z", url: "" },
 ];
 /** Deterministic workflow-run fixtures keyed by "owner/repo", returned by `runs()` under the gate. */
@@ -270,7 +270,7 @@ export const MOCK_RUNS = {
     { id: 12, n: 411, name: "verify", title: "the seek bar lost its groove", state: "running", event: "push", branch: "main", sha: "f8a52fd", started: "2026-07-26T09:40:00Z", updated: "2026-07-26T09:46:00Z", url: "" },
     { id: 13, n: 410, name: "deploy", title: "ambient's offline precache", state: "success", event: "push", branch: "main", sha: "de46fa5", started: "2026-07-26T09:20:00Z", updated: "", url: "" },
   ],
-  "octocat/microspec-edge": [
+  "octocat/example-backend": [
     { id: 21, n: 87, name: "test", title: "gh: actions routes", state: "success", event: "push", branch: "main", sha: "a1b2c3d", started: "2026-07-25T18:22:00Z", updated: "2026-07-25T18:24:00Z", url: "" },
   ],
   "octocat/anubis-launcher": [],

@@ -75,7 +75,7 @@
  * @param onDone   called with the session after either provider succeeds
  * @param onError  called with an Error when a sign-in fails (the surface also shows its own line)
  * @param adopt    true (default) signs this page in; false only PROVES a further sign-in and hands its session to
- *                 `onDone` — the «add a sign-in» mode of the account's «Входи» card: no One Tap, no automatic
+ *                 `onDone` — the "add a sign-in" mode of the account's Sign-ins card: no One Tap, no automatic
  *                 Telegram sign-in, and inside a Mini App the Telegram button proves the launch's own initData
  */
 export function SignIn({ github, scope, locale, onDone, onError, className, adopt }: {
@@ -87,5 +87,5 @@ export function SignIn({ github, scope, locale, onDone, onError, className, adop
     className?: string;
     adopt?: boolean;
 }): any;
-/** Google's "G", for a button or a row that names the provider (account.js «Входи» marks a Google sign-in with it). */
+/** Google's "G", for a button or a row that names the provider (account.js's Sign-ins card marks a Google sign-in with it). */
 export function GoogleG(): any;

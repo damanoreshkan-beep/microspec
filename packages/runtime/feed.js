@@ -4,7 +4,7 @@
  *
  * A CORS strategy with graceful fallback for a farm that has no backend of its own on the page host. Order:
  * direct (CORS-friendly APIs) → the dev `/feed` proxy (localhost only) → our own host-allowlisted proxy
- * (microspec-edge on the VPS, behind nginx) for the few CORS-blocked sources. A validator lets a bad or
+ * (the product's backend, behind its web server) for the few CORS-blocked sources. A validator lets a bad or
  * HTML proxy response be skipped to the next hop instead of parsed. Public CORS proxies used to sit at the
  * end of that list and are gone on purpose: a third party in the data path degrades silently and often, an
  * app goes blank for real users, and — because `verify` is the farm gate and a data-less app fails its e2e —
@@ -57,7 +57,7 @@
  * `VPS_PROXY` in view.js; the product's rt/characters.js and rt/sync.js take `VPS_PROXY` as well.
  *
  * ## Invariants and pitfalls
- * - The chain is direct → dev `/feed` (only when `location.hostname` is localhost) → `VPS_PROXY`. No public proxy is ever appended; a new CORS-blocked source is a one-line allowlist change in microspec-edge (feed-core.mjs) plus a restart.
+ * - The chain is direct → dev `/feed` (only when `location.hostname` is localhost) → `VPS_PROXY`. No public proxy is ever appended; a new CORS-blocked source is a one-line allowlist change in the product's backend plus a restart.
  * - The validator is what makes fallback safe: a proxy that answers 200 with an HTML error page fails `isJsonObject` and the next hop is tried, instead of `JSON.parse` throwing on `<!doctype`.
  * - `timeout` is per hop, not per call — three hops at the default 10 s can take 30 s before the last error surfaces.
  * - `SEALED_KEY` is pinned in source and never fetched at runtime: a key collected over the channel you are defending pins nothing. Check the pin after a rotation with GET /feed/pubkey by hand (see the comment above the constant).

@@ -14,7 +14,7 @@ Labels: **VERIFIED** = I read the primary source / measured it here. **INFERRED*
 
 ## 1. Root cause — Android strips our trailing zeros, iOS then sees a truncated TLV (VERIFIED)
 
-Our own shell Java documents the trap it did not encode around, `microspec-edge/.../Peripherals.java:246`:
+Our own shell Java documents the trap it did not encode around, `Peripherals.java` in the APK shell template:
 
 > *The stack strips TRAILING ZERO BYTES from legacy payloads (AdvertiseDataParser.RemoveTrailingZeros). A
 > payload that ends in 0x00 arrives shorter than it left. That is the caller's problem to encode around.*

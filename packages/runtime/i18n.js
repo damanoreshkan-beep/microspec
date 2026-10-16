@@ -161,7 +161,7 @@ export const SYS = {
   signOut: { en: "Sign out", uk: "Вийти" },
   signedOut: { en: "Not signed in", uk: "Ви не увійшли" },
   accountVia: { en: "via", uk: "через" },
-  // «Входи» — one account, several sign-ins (account.js)
+  // Sign-ins — one account, several sign-ins (account.js)
   signins: { en: "Sign-ins", uk: "Входи" },
   signinNow: { en: "now", uk: "зараз" },
   signinAdd: { en: "Add a sign-in", uk: "Додати вхід" },

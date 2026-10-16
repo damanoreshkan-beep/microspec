@@ -32,6 +32,7 @@ import "./tests/graph_test.js";
 import "./tests/groove_test.js";
 import "./tests/hdr_test.js";
 import "./tests/i18n_test.js";
+import "./tests/locales_test.js";
 import "./tests/imagejob_test.js";
 import "./tests/intake_test.js";
 import "./tests/telemetry_test.js";

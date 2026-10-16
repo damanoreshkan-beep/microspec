@@ -63,7 +63,7 @@ import { useEffect, useState } from "preact/hooks";
 import { useStore } from "@nanostores/preact";
 import { session, restore, logout } from "./auth.js";
 import { SignIn, GoogleG } from "./signin.js";
-import { sys } from "./i18n.js";
+import { sys, intlLocale } from "./i18n.js";
 import { gate } from "./gate.js";
 import { VPS_PROXY } from "./feed.js";
 
@@ -167,7 +167,7 @@ function Signins({ github, loc, onChange }) {
     try { done(gate ? { ...list, identities: list.identities.filter((i) => i.ident !== ident) } : await call("unlink", { ident }), ""); }
     catch { setNote("signinFailed"); } finally { setBusy(false); setAsk(""); }
   };
-  const fmt = (n) => Number(n).toLocaleString(loc === "en" ? "en-US" : "uk-UA");
+  const fmt = (n) => Number(n).toLocaleString(intlLocale(loc));
   const ids = list?.identities || [];
 
   return html`<div data-signins class="card sf-raised sf-e2 rounded-[var(--ms-r)]">

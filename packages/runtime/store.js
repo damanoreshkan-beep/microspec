@@ -72,7 +72,7 @@
  */
 import { atom, map, computed } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
-import { dictFor } from "./i18n.js";
+import { dictFor, firstLocale } from "./i18n.js";
 
 const JSON_CODEC = { encode: JSON.stringify, decode: (s) => { try { return JSON.parse(s); } catch { return {}; } } };
 
@@ -99,7 +99,9 @@ export function createApp(spec, dataLoad) {
   })();
 
   const S = {
-    locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", "uk"),
+    // A first visit opens in firstLocale (the product's rt/locales.js: its fallback, or the Telegram client's /
+    // the browser's language when it detects); a choice made in the profile is persisted per app and wins after.
+    locale: urlLocale ? atom(urlLocale) : persistentAtom(ns + "locale", firstLocale(spec.i18n)),
     theme: persistentAtom(ns + "theme", spec.theme || "dim"),
     material: persistentAtom("ms:material", ""),
     tone: persistentAtom("ms:tone", ""),           // "" | noir | green | amber — the screen's tone, one for the whole farm (tone.css)

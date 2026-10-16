@@ -23,13 +23,20 @@
  * - {@link T} — `T(dict, key, params?)`: translate a key, interpolate `{param}` tokens, fall back to the key itself.
  * - {@link dictFor} — `dictFor(i18n, locale)`: the dict for a locale from an app's `{ [locale]: dict }` table, then `en`, then `{}`.
  *
- * **Runtime chrome strings** (`{ key: { en, uk } }`, owned here so no app dict repeats them)
+ * **Locales** (the product's list and detection rule live in `locales.js`, which a product shadows with `rt/locales.js`)
+ * - {@link appLocales} — `appLocales(i18n)`: the product's locales this app has a dictionary for, in the product's order.
+ * - {@link firstLocale} — `firstLocale(i18n, env?)`: the locale a first visit opens in (Telegram client → browser → fallback, or the fallback alone).
+ * - {@link telegramLanguage} — the Telegram client's language from the launch URL, before the SDK loads; `""` outside Telegram.
+ * - {@link intlLocale} · {@link INTL} — a code's Intl locale (`uk` → `uk-UA`, `ru` → `ru-RU`, else `en-US`) for dates and numbers.
+ * - {@link LOCALE_LABEL} — the switcher's short label per code (`UA`, `EN`, `RU`).
+ *
+ * **Runtime chrome strings** (`{ key: { en, uk, ru } }`, owned here so no app dict repeats them)
  * - {@link SYS} — the shell: back-to-exit, undo, close, clean screen, share, update, account, APK.
  * - {@link sys} — `sys(key, locale)`: a `SYS` string for a locale, falling back to English, then `""`.
  * - {@link MEDIA} — the video player: loading, unavailable, PiP, fullscreen.
  * - {@link media} — `media(key, locale)`: a `MEDIA` string for a locale, same fallback as `sys`.
  *
- * **Time labels** (each takes the app dict, a timestamp and the locale; `uk` formats as `uk-UA`, everything else as `en-US`)
+ * **Time labels** (each takes the app dict, a timestamp and the locale; dates format through {@link intlLocale})
  * - {@link whenLabel} — `whenLabel(dict, ts, locale, full = true, precision)`: absolute month + HH:MM plus a relative countdown for a future event (`format: "when"`); `""` for an invalid date. `precision` ("day" | "month" | "quarter" | "year") stops the label where the timestamp stops being true.
  * - {@link sinceLabel} — `sinceLabel(dict, ts, locale)`: fine-grained "x ago" at seconds/minutes granularity for live feeds (`format: "since"`).
  * - {@link ago} — `ago(dict, ts, locale)`: today / yesterday / days / weeks, then a locale date past ~a month (`format: "ago"`).
@@ -49,7 +56,7 @@
  * ```
  *
  * ## How it fits
- * Imports nothing. Inside the runtime, `store.js` builds `S.t` from {@link dictFor}, `render.js` renders card
+ * Imports only `locales.js` (data the product shadows). Inside the runtime, `store.js` builds `S.t` from {@link dictFor}, `render.js` renders card
  * meta through {@link T}, {@link ago}, {@link whenLabel}, {@link sinceLabel} and {@link sys}, `ui.js` and
  * `account.js` read their chrome via {@link sys}, `video.js` via {@link media}, and `console.js` uses {@link T}.
  * All 74 farm apps import it (tide, rave, v2m, imagine, mirage, hoard, persona…), and the product's `rt/timescale.js`
@@ -67,9 +74,10 @@
  *   needs `sinceNow` / `sinceSec` / `sinceMin` / `sinceHour` / `sinceDay`; {@link ago} needs `agoToday` / `agoYesterday`
  *   / `agoDays` / `agoWeeks` — each with `{n}`. Without them the label renders the bare key.
  * - Interpolation is `replaceAll` on `{name}`; the value is stringified. There is no pluralisation — the `{n}` keys carry the number.
- * - Absolute dates are Intl output for `uk-UA` or `en-US` only; other locales share the English date shape.
+ * - Absolute dates are Intl output for the code's {@link intlLocale}; a code outside {@link INTL} shares the English date shape.
  * @module
  */
+import { LOCALES, DETECT } from "./locales.js";
 
 /**
  * Translate a key through a locale dict, interpolating `{param}` tokens; a missing key returns the key itself.
@@ -92,104 +100,156 @@ export const T = (dict, key, params) => {
  */
 export const dictFor = (i18n, locale) => i18n?.[locale] || i18n?.en || {};
 
-/** Built-in runtime chrome strings, `{ key: { en, uk } }` — the shell, sheets, share, update, account and APK flows. */
+/** The Intl locale each offered code formats dates and numbers with; an unknown code formats as English. */
+export const INTL = { uk: "uk-UA", en: "en-US", ru: "ru-RU" };
+/** @param locale a locale code @returns its Intl locale (`"uk"` → `"uk-UA"`), `"en-US"` when unknown */
+export const intlLocale = (locale) => INTL[locale] || INTL.en;
+
+/** The short label the profile's language switcher shows for each code. */
+export const LOCALE_LABEL = { uk: "UA", en: "EN", ru: "RU" };
+
+/**
+ * The locales an app offers: the product's {@link LOCALES} it has a dictionary for, in the product's order.
+ * @param i18n the app's `{ [locale]: dict }` @param offered the product's list (default: locales.js)
+ * @returns at least one code — the app's first dictionary when none of the offered ones exists
+ */
+export function appLocales(i18n, offered = LOCALES) {
+  const have = offered.filter((l) => i18n?.[l]);
+  return have.length ? have : [Object.keys(i18n || {})[0] || "en"];
+}
+
+const base = (code) => String(code || "").toLowerCase().split(/[-_]/)[0];
+
+/**
+ * The Telegram client's language for a page launched from Telegram, read from the launch URL itself
+ * (`#tgWebAppData=…user={…"language_code":"ru"}…`) so it is known before the SDK script loads; `""` otherwise.
+ * @param hash the page's `location.hash` (default: the live one)
+ */
+export function telegramLanguage(hash = typeof location !== "undefined" ? location.hash : "") {
+  try {
+    const data = new URLSearchParams(String(hash).replace(/^#/, "")).get("tgWebAppData");
+    if (!data) return "";
+    return base(JSON.parse(new URLSearchParams(data).get("user") || "{}").language_code);
+  } catch { return ""; }
+}
+
+/**
+ * The locale a first visit opens in: with {@link DETECT}, the Telegram client's language if offered, else the
+ * first of the browser's languages that is offered, else the fallback (the first offered); without it, always
+ * the fallback. A stored choice and `?locale=` are applied by the caller (store.js) before this.
+ * @param i18n the app's `{ [locale]: dict }`
+ * @param env `{ offered, detect, telegram, browser }` — defaults read locales.js, the launch URL and `navigator`
+ */
+export function firstLocale(i18n, env = {}) {
+  const offered = appLocales(i18n, env.offered ?? LOCALES);
+  const detect = env.detect ?? DETECT;
+  if (!detect) return offered[0];
+  const telegram = base(env.telegram ?? telegramLanguage());
+  if (offered.includes(telegram)) return telegram;
+  const browser = env.browser ?? (typeof navigator !== "undefined" ? (navigator.languages?.length ? navigator.languages : [navigator.language]) : []);
+  for (const b of browser) if (offered.includes(base(b))) return base(b);
+  return offered[0];
+}
+
+/** Built-in runtime chrome strings, `{ key: { en, uk, ru } }` — the shell, sheets, share, update, account and APK flows. */
 export const SYS = {
-  exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти" },
-  deleted: { en: "Deleted", uk: "Видалено" },
-  undo: { en: "Undo", uk: "Скасувати" },
-  cancel: { en: "Cancel", uk: "Скасувати" },
-  signInTitle: { en: "Sign in", uk: "Увійти" },
-  pairBody: { en: "Sign in here to sign in the app on your phone.", uk: "Увійди тут — і застосунок на телефоні увійде разом з тобою." },
-  pairDone: { en: "Signed in — go back to the app.", uk: "Готово — повернись у застосунок." },
-  pairFail: { en: "The app did not receive the sign-in — try again from the app.", uk: "Застосунок не отримав вхід — спробуй ще раз із застосунку." },
-  signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам." },
-  close: { en: "Close", uk: "Закрити" },
-  material: { en: "Theme", uk: "Тема" },
-  battery: { en: "Battery", uk: "Батарея" },
-  modeDay: { en: "Day", uk: "День" },
-  modeNight: { en: "Night", uk: "Ніч" },
-  clean: { en: "Clean screen", uk: "Чистий екран" },
-  cleanExit: { en: "Show controls", uk: "Показати керування" },
-  share: { en: "Share app", uk: "Поділитися" },
-  shareCopied: { en: "Link copied", uk: "Посилання скопійовано" },
-  openTelegram: { en: "Open in Telegram", uk: "Відкрити в Telegram" },
-  support: { en: "Support the maker", uk: "Підтримати автора" },
-  supportSub: { en: "with Telegram Stars", uk: "зірками в Телеграмі" },
-  supportThanks: { en: "Thank you 💛", uk: "Дякую 💛" },
-  supportFailed: { en: "Payment didn't go through", uk: "Оплата не пройшла" },
-  whatsNew: { en: "What's new", uk: "Що нового" },
-  refresh: { en: "Get the newest version and clear this app's cache", uk: "Оновити до найновішої версії й скинути кеш застосунку" },
-  refreshOffline: { en: "No network — nothing was changed", uk: "Немає мережі — нічого не змінено" },
-  privacy: { en: "Privacy", uk: "Приватність" },
-  terms: { en: "Terms", uk: "Умови" },
-  refreshed: { en: "Newest version loaded", uk: "Завантажено найновішу версію" },
-  tone: { en: "Screen", uk: "Екран" },
-  toneNormal: { en: "Normal", uk: "Звичайний" },
-  toneNoir: { en: "Noir", uk: "Нуар" },
-  toneGreen: { en: "Green", uk: "Зелений" },
-  toneAmber: { en: "Amber", uk: "Жовтий" },
-  restart: { en: "Restart", uk: "Перезапустити" },
-  aPlay: { en: "Play", uk: "Грати" },
-  aPause: { en: "Pause", uk: "Пауза" },
-  aStop: { en: "Stop", uk: "Стоп" },
-  aPrev: { en: "Previous track", uk: "Попередній трек" },
-  aNext: { en: "Next track", uk: "Наступний трек" },
-  aSeek: { en: "Seek", uk: "Перемотати" },
-  aRepeat: { en: "Repeat", uk: "Повтор" },
-  aShuffle: { en: "Shuffle", uk: "Перемішати" },
-  more: { en: "More", uk: "Ще" },
-  back: { en: "Back", uk: "Назад" },
-  calPrev: { en: "Previous month", uk: "Попередній місяць" },
-  calNext: { en: "Next month", uk: "Наступний місяць" },
-  watchRow: { en: "Tell me when", uk: "Сповісти мене" },
-  watchNeedTg: { en: "Alerts arrive in Telegram", uk: "Сповіщення приходять у Telegram" },
-  watchSignIn: { en: "Sign in with Telegram", uk: "Увійти через Telegram" },
-  watchCost: { en: "1 coin per alert", uk: "1 монета за сповіщення" },
-  watchFree: { en: "free for you", uk: "тобі безкоштовно" },
-  watchBalance: { en: "balance", uk: "баланс" },
-  watchAbove: { en: "above", uk: "вище" },
-  watchBelow: { en: "below", uk: "нижче" },
-  watchNow: { en: "now", uk: "зараз" },
-  watchQuiet: { en: "out of coins", uk: "немає монет" },
-  watchSave: { en: "Save this alert", uk: "Зберегти сповіщення" },
-  watchOff: { en: "Remove this alert", uk: "Прибрати сповіщення" },
-  watchNoPlace: { en: "Couldn't get your location", uk: "Не вдалося визначити місце" },
-  watchTooMany: { en: "That is as many alerts as one account keeps", uk: "Більше сповіщень на один акаунт не можна" },
-  watchFailed: { en: "Couldn't save the alert", uk: "Не вдалося зберегти сповіщення" },
-  apkRow: { en: "Download APK", uk: "Завантажити APK" },
-  adminRow: { en: "Farm admin", uk: "Адмінка ферми" },
-  signOut: { en: "Sign out", uk: "Вийти" },
-  signedOut: { en: "Not signed in", uk: "Ви не увійшли" },
-  accountVia: { en: "via", uk: "через" },
+  exit: { en: "Press Back again to exit", uk: "Натисніть «Назад» ще раз, щоб вийти", ru: "Нажмите «Назад» ещё раз, чтобы выйти" },
+  deleted: { en: "Deleted", uk: "Видалено", ru: "Удалено" },
+  undo: { en: "Undo", uk: "Скасувати", ru: "Отменить" },
+  cancel: { en: "Cancel", uk: "Скасувати", ru: "Отмена" },
+  signInTitle: { en: "Sign in", uk: "Увійти", ru: "Войти" },
+  pairBody: { en: "Sign in here to sign in the app on your phone.", uk: "Увійди тут — і застосунок на телефоні увійде разом з тобою.", ru: "Войдите здесь — и приложение на телефоне войдёт вместе с вами." },
+  pairDone: { en: "Signed in — go back to the app.", uk: "Готово — повернись у застосунок.", ru: "Готово — вернитесь в приложение." },
+  pairFail: { en: "The app did not receive the sign-in — try again from the app.", uk: "Застосунок не отримав вхід — спробуй ще раз із застосунку.", ru: "Приложение не получило вход — попробуйте ещё раз из приложения." },
+  signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам.", ru: "AI-генерация доступна после входа — так бесплатная квота достаётся людям, а не ботам." },
+  close: { en: "Close", uk: "Закрити", ru: "Закрыть" },
+  material: { en: "Theme", uk: "Тема", ru: "Тема" },
+  battery: { en: "Battery", uk: "Батарея", ru: "Батарея" },
+  modeDay: { en: "Day", uk: "День", ru: "День" },
+  modeNight: { en: "Night", uk: "Ніч", ru: "Ночь" },
+  clean: { en: "Clean screen", uk: "Чистий екран", ru: "Чистый экран" },
+  cleanExit: { en: "Show controls", uk: "Показати керування", ru: "Показать управление" },
+  share: { en: "Share app", uk: "Поділитися", ru: "Поделиться" },
+  shareCopied: { en: "Link copied", uk: "Посилання скопійовано", ru: "Ссылка скопирована" },
+  openTelegram: { en: "Open in Telegram", uk: "Відкрити в Telegram", ru: "Открыть в Telegram" },
+  support: { en: "Support the maker", uk: "Підтримати автора", ru: "Поддержать автора" },
+  supportSub: { en: "with Telegram Stars", uk: "зірками в Телеграмі", ru: "звёздами в Телеграме" },
+  supportThanks: { en: "Thank you 💛", uk: "Дякую 💛", ru: "Спасибо 💛" },
+  supportFailed: { en: "Payment didn't go through", uk: "Оплата не пройшла", ru: "Оплата не прошла" },
+  whatsNew: { en: "What's new", uk: "Що нового", ru: "Что нового" },
+  refresh: { en: "Get the newest version and clear this app's cache", uk: "Оновити до найновішої версії й скинути кеш застосунку", ru: "Обновить до новейшей версии и очистить кеш приложения" },
+  refreshOffline: { en: "No network — nothing was changed", uk: "Немає мережі — нічого не змінено", ru: "Нет сети — ничего не изменено" },
+  privacy: { en: "Privacy", uk: "Приватність", ru: "Конфиденциальность" },
+  terms: { en: "Terms", uk: "Умови", ru: "Условия" },
+  refreshed: { en: "Newest version loaded", uk: "Завантажено найновішу версію", ru: "Загружена новейшая версия" },
+  tone: { en: "Screen", uk: "Екран", ru: "Экран" },
+  toneNormal: { en: "Normal", uk: "Звичайний", ru: "Обычный" },
+  toneNoir: { en: "Noir", uk: "Нуар", ru: "Нуар" },
+  toneGreen: { en: "Green", uk: "Зелений", ru: "Зелёный" },
+  toneAmber: { en: "Amber", uk: "Жовтий", ru: "Янтарный" },
+  restart: { en: "Restart", uk: "Перезапустити", ru: "Перезапустить" },
+  aPlay: { en: "Play", uk: "Грати", ru: "Играть" },
+  aPause: { en: "Pause", uk: "Пауза", ru: "Пауза" },
+  aStop: { en: "Stop", uk: "Стоп", ru: "Стоп" },
+  aPrev: { en: "Previous track", uk: "Попередній трек", ru: "Предыдущий трек" },
+  aNext: { en: "Next track", uk: "Наступний трек", ru: "Следующий трек" },
+  aSeek: { en: "Seek", uk: "Перемотати", ru: "Перемотать" },
+  aRepeat: { en: "Repeat", uk: "Повтор", ru: "Повтор" },
+  aShuffle: { en: "Shuffle", uk: "Перемішати", ru: "Перемешать" },
+  more: { en: "More", uk: "Ще", ru: "Ещё" },
+  back: { en: "Back", uk: "Назад", ru: "Назад" },
+  calPrev: { en: "Previous month", uk: "Попередній місяць", ru: "Предыдущий месяц" },
+  calNext: { en: "Next month", uk: "Наступний місяць", ru: "Следующий месяц" },
+  watchRow: { en: "Tell me when", uk: "Сповісти мене", ru: "Сообщить мне" },
+  watchNeedTg: { en: "Alerts arrive in Telegram", uk: "Сповіщення приходять у Telegram", ru: "Уведомления приходят в Telegram" },
+  watchSignIn: { en: "Sign in with Telegram", uk: "Увійти через Telegram", ru: "Войти через Telegram" },
+  watchCost: { en: "1 coin per alert", uk: "1 монета за сповіщення", ru: "1 монета за уведомление" },
+  watchFree: { en: "free for you", uk: "тобі безкоштовно", ru: "для вас бесплатно" },
+  watchBalance: { en: "balance", uk: "баланс", ru: "баланс" },
+  watchAbove: { en: "above", uk: "вище", ru: "выше" },
+  watchBelow: { en: "below", uk: "нижче", ru: "ниже" },
+  watchNow: { en: "now", uk: "зараз", ru: "сейчас" },
+  watchQuiet: { en: "out of coins", uk: "немає монет", ru: "нет монет" },
+  watchSave: { en: "Save this alert", uk: "Зберегти сповіщення", ru: "Сохранить уведомление" },
+  watchOff: { en: "Remove this alert", uk: "Прибрати сповіщення", ru: "Убрать уведомление" },
+  watchNoPlace: { en: "Couldn't get your location", uk: "Не вдалося визначити місце", ru: "Не удалось определить место" },
+  watchTooMany: { en: "That is as many alerts as one account keeps", uk: "Більше сповіщень на один акаунт не можна", ru: "Больше уведомлений на один аккаунт нельзя" },
+  watchFailed: { en: "Couldn't save the alert", uk: "Не вдалося зберегти сповіщення", ru: "Не удалось сохранить уведомление" },
+  apkRow: { en: "Download APK", uk: "Завантажити APK", ru: "Скачать APK" },
+  adminRow: { en: "Farm admin", uk: "Адмінка ферми", ru: "Админка фермы" },
+  signOut: { en: "Sign out", uk: "Вийти", ru: "Выйти" },
+  signedOut: { en: "Not signed in", uk: "Ви не увійшли", ru: "Вы не вошли" },
+  accountVia: { en: "via", uk: "через", ru: "через" },
   // Sign-ins — one account, several sign-ins (account.js)
-  signins: { en: "Sign-ins", uk: "Входи" },
-  signinNow: { en: "now", uk: "зараз" },
-  signinAdd: { en: "Add a sign-in", uk: "Додати вхід" },
-  signinAddHint: { en: "Sign in another way — it joins this account instead of replacing it.", uk: "Увійди іншим способом — він приєднається до цього акаунта, а не замінить його." },
-  signinUnlink: { en: "Unlink", uk: "Відв'язати" },
-  signinUnlinkAsk: { en: "Unlink this sign-in? Everything stays in this account.", uk: "Відв'язати цей вхід? Усе лишиться в цьому акаунті." },
-  signinMergeAsk: { en: "This sign-in already has its own things. Move them all into this account?", uk: "У цього входу вже є свої речі. Перенести все в цей акаунт?" },
-  signinMerge: { en: "Merge", uk: "Об'єднати" },
-  signinCancel: { en: "Cancel", uk: "Скасувати" },
-  signinAdded: { en: "Sign-in added", uk: "Вхід додано" },
-  signinSame: { en: "This sign-in is already here", uk: "Цей вхід уже тут" },
-  signinFailed: { en: "Could not add the sign-in", uk: "Не вдалося додати вхід" },
-  cSongs: { en: "songs", uk: "пісні" },
-  cCoins: { en: "coins", uk: "монети" },
-  cChats: { en: "chats", uk: "чати" },
-  cCharacters: { en: "characters", uk: "персонажі" },
-  cWatches: { en: "alerts", uk: "сповіщення" },
-  cYoutube: { en: "YouTube", uk: "YouTube" },
-  cJobs: { en: "jobs", uk: "вакансії" },
-  apkTitle: { en: "Download as APK", uk: "Завантажити як APK" },
-  apkGenerate: { en: "Generate APK", uk: "Згенерувати APK" },
-  apkGenerating: { en: "Signing…", uk: "Підписую…" },
-  apkDone: { en: "APK ready", uk: "APK готовий" },
-  apkErr: { en: "Couldn't build the APK", uk: "Не вдалося зібрати APK" },
-  apkRate: { en: "Too many builds — wait a minute and try once.", uk: "Забагато збірок — зачекай хвилину і спробуй раз." },
+  signins: { en: "Sign-ins", uk: "Входи", ru: "Входы" },
+  signinNow: { en: "now", uk: "зараз", ru: "сейчас" },
+  signinAdd: { en: "Add a sign-in", uk: "Додати вхід", ru: "Добавить вход" },
+  signinAddHint: { en: "Sign in another way — it joins this account instead of replacing it.", uk: "Увійди іншим способом — він приєднається до цього акаунта, а не замінить його.", ru: "Войдите другим способом — он присоединится к этому аккаунту, а не заменит его." },
+  signinUnlink: { en: "Unlink", uk: "Відв'язати", ru: "Отвязать" },
+  signinUnlinkAsk: { en: "Unlink this sign-in? Everything stays in this account.", uk: "Відв'язати цей вхід? Усе лишиться в цьому акаунті.", ru: "Отвязать этот вход? Всё останется в этом аккаунте." },
+  signinMergeAsk: { en: "This sign-in already has its own things. Move them all into this account?", uk: "У цього входу вже є свої речі. Перенести все в цей акаунт?", ru: "У этого входа уже есть свои данные. Перенести всё в этот аккаунт?" },
+  signinMerge: { en: "Merge", uk: "Об'єднати", ru: "Объединить" },
+  signinCancel: { en: "Cancel", uk: "Скасувати", ru: "Отмена" },
+  signinAdded: { en: "Sign-in added", uk: "Вхід додано", ru: "Вход добавлен" },
+  signinSame: { en: "This sign-in is already here", uk: "Цей вхід уже тут", ru: "Этот вход уже здесь" },
+  signinFailed: { en: "Could not add the sign-in", uk: "Не вдалося додати вхід", ru: "Не удалось добавить вход" },
+  cSongs: { en: "songs", uk: "пісні", ru: "песни" },
+  cCoins: { en: "coins", uk: "монети", ru: "монеты" },
+  cChats: { en: "chats", uk: "чати", ru: "чаты" },
+  cCharacters: { en: "characters", uk: "персонажі", ru: "персонажи" },
+  cWatches: { en: "alerts", uk: "сповіщення", ru: "уведомления" },
+  cYoutube: { en: "YouTube", uk: "YouTube", ru: "YouTube" },
+  cJobs: { en: "jobs", uk: "вакансії", ru: "вакансии" },
+  apkTitle: { en: "Download as APK", uk: "Завантажити як APK", ru: "Скачать как APK" },
+  apkGenerate: { en: "Generate APK", uk: "Згенерувати APK", ru: "Собрать APK" },
+  apkGenerating: { en: "Signing…", uk: "Підписую…", ru: "Подписываю…" },
+  apkDone: { en: "APK ready", uk: "APK готовий", ru: "APK готов" },
+  apkErr: { en: "Couldn't build the APK", uk: "Не вдалося зібрати APK", ru: "Не удалось собрать APK" },
+  apkRate: { en: "Too many builds — wait a minute and try once.", uk: "Забагато збірок — зачекай хвилину і спробуй раз.", ru: "Слишком много сборок — подождите минуту и попробуйте ещё раз." },
   apkNote: {
     en: "Sideload only. On Samsung, turn Auto Blocker off (Settings → Security & privacy) or install over adb, then allow unknown sources.",
     uk: "Лише sideload. На Samsung вимкни Auto Blocker (Налаштування → Безпека і приватність) або встанови через adb, тоді дозволь невідомі джерела.",
+    ru: "Только sideload. На Samsung отключите Auto Blocker (Настройки → Безопасность и конфиденциальность) или установите через adb, затем разрешите неизвестные источники.",
   },
 };
 /**
@@ -200,25 +260,25 @@ export const SYS = {
  */
 export const sys = (key, locale) => SYS[key]?.[locale] || SYS[key]?.en || "";
 
-/** Built-in video-player chrome strings, `{ key: { en, uk } }`. */
+/** Built-in video-player chrome strings, `{ key: { en, uk, ru } }`. */
 export const MEDIA = {
-  player: { en: "Player", uk: "Плеєр" },
-  back: { en: "Back", uk: "Назад" },
-  loading: { en: "Connecting…", uk: "Підключення…" },
-  unavailable: { en: "Stream unavailable", uk: "Потік недоступний" },
-  openExternal: { en: "Open in player", uk: "Відкрити у плеєрі" },
-  retry: { en: "Try again", uk: "Спробувати ще" },
-  play: { en: "Play", uk: "Відтворити" },
-  pause: { en: "Pause", uk: "Пауза" },
-  mute: { en: "Mute", uk: "Без звуку" },
-  unmute: { en: "Sound on", uk: "Увімкнути звук" },
-  fill: { en: "Fill the screen", uk: "На весь екран" },
-  fit: { en: "Exit full screen", uk: "Вийти з повного екрана" },
-  seek: { en: "Position", uk: "Позиція" },
-  live: { en: "LIVE", uk: "НАЖИВО" },
-  pip: { en: "Picture in picture", uk: "Картинка в картинці" },
-  fullscreen: { en: "Fullscreen", uk: "На весь екран" },
-  exitFullscreen: { en: "Exit fullscreen", uk: "Вийти з повного екрана" },
+  player: { en: "Player", uk: "Плеєр", ru: "Плеер" },
+  back: { en: "Back", uk: "Назад", ru: "Назад" },
+  loading: { en: "Connecting…", uk: "Підключення…", ru: "Подключение…" },
+  unavailable: { en: "Stream unavailable", uk: "Потік недоступний", ru: "Поток недоступен" },
+  openExternal: { en: "Open in player", uk: "Відкрити у плеєрі", ru: "Открыть в плеере" },
+  retry: { en: "Try again", uk: "Спробувати ще", ru: "Попробовать ещё" },
+  play: { en: "Play", uk: "Відтворити", ru: "Воспроизвести" },
+  pause: { en: "Pause", uk: "Пауза", ru: "Пауза" },
+  mute: { en: "Mute", uk: "Без звуку", ru: "Без звука" },
+  unmute: { en: "Sound on", uk: "Увімкнути звук", ru: "Включить звук" },
+  fill: { en: "Fill the screen", uk: "На весь екран", ru: "На весь экран" },
+  fit: { en: "Exit full screen", uk: "Вийти з повного екрана", ru: "Выйти из полноэкранного режима" },
+  seek: { en: "Position", uk: "Позиція", ru: "Позиция" },
+  live: { en: "LIVE", uk: "НАЖИВО", ru: "В ЭФИРЕ" },
+  pip: { en: "Picture in picture", uk: "Картинка в картинці", ru: "Картинка в картинке" },
+  fullscreen: { en: "Fullscreen", uk: "На весь екран", ru: "На весь экран" },
+  exitFullscreen: { en: "Exit fullscreen", uk: "Вийти з повного екрана", ru: "Выйти из полноэкранного режима" },
 };
 /**
  * Read a `MEDIA` string for a locale, falling back to English, then to "".
@@ -240,7 +300,7 @@ export const media = (key, locale) => MEDIA[key]?.[locale] || MEDIA[key]?.en || 
 export function whenLabel(dict, ts, locale, full = true, precision) {
   const d = new Date(ts);
   if (isNaN(d)) return "";
-  const loc = locale === "uk" ? "uk-UA" : "en-US";
+  const loc = intlLocale(locale);
   if (precision === "year") return String(d.getFullYear());
   if (precision === "quarter") return T(dict, "whenQuarter", { n: Math.floor(d.getMonth() / 3) + 1, y: d.getFullYear() });
   if (precision === "month") return d.toLocaleDateString(loc, { month: "long", year: "numeric" });
@@ -287,5 +347,5 @@ export function ago(dict, ts, locale) {
   if (days === 1) return T(dict, "agoYesterday");
   if (days < 7) return T(dict, "agoDays", { n: days });
   if (days < 31) return T(dict, "agoWeeks", { n: Math.floor(days / 7) });
-  return new Date(Number(ts)).toLocaleDateString(locale === "uk" ? "uk-UA" : "en-US", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(Number(ts)).toLocaleDateString(intlLocale(locale), { day: "numeric", month: "short", year: "numeric" });
 }

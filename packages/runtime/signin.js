@@ -80,7 +80,9 @@ export const GoogleG = () => html`<svg width="18" height="18" viewBox="0 0 48 48
 const L = {
   en: { google: "Continue with Google", github: "Continue with GitHub", ghQuiet: "GitHub", telegram: "Continue with Telegram", failed: "Sign-in did not complete", or: "or", browser: "Sign in via browser", waiting: "Finish signing in in the browser, then come back here.", cancel: "Cancel" },
   uk: { google: "Продовжити з Google", github: "Продовжити з GitHub", ghQuiet: "GitHub", telegram: "Продовжити з Telegram", failed: "Вхід не завершився", or: "або", browser: "Увійти через браузер", waiting: "Заверши вхід у браузері й повернись сюди.", cancel: "Скасувати" },
+  ru: { google: "Продолжить с Google", github: "Продолжить с GitHub", ghQuiet: "GitHub", telegram: "Продолжить с Telegram", failed: "Вход не завершился", or: "или", browser: "Войти через браузер", waiting: "Завершите вход в браузере и вернитесь сюда.", cancel: "Отмена" },
 };
+const TG_WAITING = { en: "Signing in via Telegram…", uk: "Вхід через Telegram…", ru: "Вход через Telegram…" };
 const lang = (locale) => locale || (typeof document !== "undefined" ? document.documentElement.lang : "") || "uk";
 const themeLight = () => (typeof document !== "undefined" && (document.documentElement.getAttribute("data-theme") || "").includes("light"));
 
@@ -208,7 +210,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   const googleOn = wantGoogle && clientId !== "";
   const ghPrimary = !googleOn || github === "primary";
   if (tgTrying) return html`<div ref=${box} data-signin class=${`flex flex-col items-stretch gap-2 w-full max-w-[400px] ${className}`}>
-    <p data-signin-waiting class="text-sm text-center text-base-content/75">${lang(locale) === "uk" ? "Вхід через Telegram…" : "Signing in via Telegram…"}</p>
+    <p data-signin-waiting class="text-sm text-center text-base-content/75">${TG_WAITING[lang(locale)] || TG_WAITING.en}</p>
   </div>`;
   if (inShell) return html`<div ref=${box} data-signin class=${`flex flex-col items-stretch gap-2 w-full max-w-[400px] ${className}`}>
     ${pairing

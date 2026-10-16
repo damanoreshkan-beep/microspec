@@ -170,6 +170,17 @@ same declarations: the product's name is its store's `title`, the card's accent 
 `brand.json`, the absolute URLs the first of `ORIGINS` — none declared, and the previews use
 site-relative URLs. The `shot` tool shoots that same first origin unless given `--base`.
 
+The languages are the product's the same way — **`runtime/locales.js`**, shadowed by `rt/locales.js`:
+
+```js
+// rt/locales.js
+export const LOCALES = ["en", "uk", "ru"];   // switcher order; the first is the fallback
+export const DETECT = true;                  // a first visit follows the Telegram client's, then the browser's language
+```
+
+Without the file a product offers Ukrainian and English and opens in Ukrainian. An app offers the listed
+locales it has an `i18n/<code>.json` for; the runtime's own chrome strings speak en, uk and ru.
+
 ## Quickstart
 
 ```bash

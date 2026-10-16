@@ -30,6 +30,8 @@
  * - {@link APK} · {@link STARS} — whether the backend builds APKs (`/feed/apk`) and takes Telegram Stars
  *   (`/feed/stars`); the profile offers "Download APK" and "Support the maker" only when they are true. Both default
  *   to true and are read through a namespace import, so a product file that predates them keeps both.
+ * - {@link SIGNIN} — the sign-ins the backend offers outside a Mini App (google, github, telegram); the sign-in
+ *   surface shows only those, and a link to the bot when there are none. Defaults to all three, read the same way.
  *
  * ## A product's own file
  * ```js
@@ -67,3 +69,10 @@ export const APK = true;
 
 /** Whether the backend takes Telegram Stars (`/feed/stars`): the profile's "Support the maker" card shows only then. */
 export const STARS = true;
+
+/**
+ * The sign-ins the backend offers outside a Telegram Mini App: "google" (`/feed/google/*`), "github" (`/feed/gh/*`),
+ * "telegram" (the web login, `/feed/tg/oidc/*`). Inside a Mini App the launch itself signs in (`/feed/tg/verify`)
+ * whatever this says. With none of them, the sign-in surface offers the bot instead (`BOT`).
+ */
+export const SIGNIN = ["google", "github", "telegram"];

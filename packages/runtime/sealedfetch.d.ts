@@ -102,9 +102,10 @@ export function sealedClipUrl(url: any, page: any, format: any): Promise<string>
  * The envelope carries `s` (the sid) plus `fields`, and is valid for 6 h on the route it names.
  * @param route the /feed sub-path, e.g. "/library/get"
  * @param fields what the route needs — `{ id }` for a stream, `{ n: name }` for an upload
+ * @param key the pinned key to seal with (default: the product's SEALED_KEY)
  * @returns the proxy URL string
  */
-export function sealedUrl(route: any, fields?: {}): Promise<string>;
+export function sealedUrl(route: any, fields?: {}, key?: any): Promise<string>;
 /**
  * Replace globalThis.fetch with the sealing wrapper; anything off VPS_PROXY and the PLAIN routes pass through untouched.
  * A product whose backend has no sealed tunnel (runtime/backend.js SEALED_KEY = "") gets no wrapper at all.

@@ -117,10 +117,11 @@ export async function sealedClipUrl(url, page, format) {
  * The envelope carries `s` (the sid) plus `fields`, and is valid for 6 h on the route it names.
  * @param route the /feed sub-path, e.g. "/library/get"
  * @param fields what the route needs — `{ id }` for a stream, `{ n: name }` for an upload
+ * @param key the pinned key to seal with (default: the product's SEALED_KEY)
  * @returns the proxy URL string
  */
-export async function sealedUrl(route, fields = {}) {
-  const { wire } = await seal(SEALED_KEY, { p: `/feed${route}`, s: sidNow(), ...fields });
+export async function sealedUrl(route, fields = {}, key = SEALED_KEY) {
+  const { wire } = await seal(key, { p: `/feed${route}`, s: sidNow(), ...fields });
   return `${VPS_PROXY}${route}?s=${b64u(wire)}`;
 }
 

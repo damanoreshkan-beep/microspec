@@ -8,8 +8,9 @@
  * servers serve `rt/` first, and `rtmap` maps the core's own URL for this file to `./rt/backend.js`, so even the
  * browser-free preflight resolves feed.js's relative import to the product's file.
  *
- * The defaults are the Mriia farm's, kept so a product that has not brought its own file yet behaves exactly as
- * before; they leave the core once Mriia carries them in its own `rt/backend.js`.
+ * The defaults name nothing: a product that brings no file of its own talks to whatever origin serves its page
+ * (`/feed` there) and has no sealed tunnel. The Mriia farm carries its own values in its `rt/backend.js`
+ * (since core 1.2.137); the core names no product at all (1.2.138).
  *
  * ## Import
  * ```js
@@ -48,8 +49,9 @@
  * servers serve `rt/` first, and `rtmap` maps the core's own URL for this file to `./rt/backend.js`, so even the
  * browser-free preflight resolves feed.js's relative import to the product's file.
  *
- * The defaults are the Mriia farm's, kept so a product that has not brought its own file yet behaves exactly as
- * before; they leave the core once Mriia carries them in its own `rt/backend.js`.
+ * The defaults name nothing: a product that brings no file of its own talks to whatever origin serves its page
+ * (`/feed` there) and has no sealed tunnel. The Mriia farm carries its own values in its `rt/backend.js`
+ * (since core 1.2.137); the core names no product at all (1.2.138).
  *
  * ## Import
  * ```js
@@ -78,9 +80,10 @@
  * @module
  */
 /** The product's own origins, canonical first; empty = every page talks to its own origin's `/feed`. */
-export const ORIGINS: string[];
+export const ORIGINS: any[];
 /**
  * The backend's pinned long-term public key (base64url) for sealedfetch.js, or "" for a backend without the
- * sealed tunnel. Pinned in source, never fetched: a key collected over the channel it defends pins nothing.
+ * sealed tunnel. A product pins its key in source in its own rt/backend.js, never fetched: a key collected over
+ * the channel it defends pins nothing.
  */
-export const SEALED_KEY: "BLP-06vCYzSiakKos1Sk7Yqzneb0MrbBjozH3EQ_YRgvzqc_0hcZeeFXoDzMhHlXL3awFtjOMFg08dzcKUmbNOM";
+export const SEALED_KEY: "";

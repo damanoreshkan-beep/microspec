@@ -1,14 +1,26 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { installSealedFetch } from "../sealedfetch.js";
+import { installSealedFetch, sealedUrl } from "../sealedfetch.js";
 import { VPS_PROXY } from "../feed.js";
+import { b64u } from "../sealed.js";
+
+// The core names no product's key (runtime/backend.js SEALED_KEY = ""), so the tunnel is tested with a key of its own:
+// a fresh P-256 public point, the shape a product pins in its rt/backend.js.
+const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+const KEY = b64u(await crypto.subtle.exportKey("raw", pair.publicKey));
 
 const tunnelInit = async (body, keepalive) => {
   let seen = null;
-  const restore = installSealedFetch(async (_url, init) => { seen = init; return new Response("x"); });
+  const restore = installSealedFetch(async (_url, init) => { seen = init; return new Response("x"); }, KEY);
   try { await globalThis.fetch(`${VPS_PROXY}/log`, { method: "POST", body: JSON.stringify(body), keepalive }).catch(() => {}); }
   finally { restore(); }
   return seen;
 };
+
+Deno.test("sealedfetch: no key, no tunnel — a product without one keeps the plain fetch", async () => {
+  const real = globalThis.fetch;
+  const restore = installSealedFetch(async () => new Response("x"), "");
+  try { assertEquals(globalThis.fetch, real); } finally { restore(); }
+});
 
 Deno.test("sealedfetch keeps keepalive for a small body, so a pagehide flush survives", async () => {
   assertEquals((await tunnelInit({ events: [{ event: "use" }] }, true)).keepalive, true);
@@ -24,7 +36,7 @@ Deno.test("sealedfetch never adds keepalive the caller did not ask for", async (
 
 Deno.test("sealedfetch: a task's stream and files go plain — long-poll/SSE and Range cannot ride the tunnel", async () => {
   const hits = [];
-  const restore = installSealedFetch(async (u, init) => { hits.push({ u: String(u), init }); return new Response("[]"); });
+  const restore = installSealedFetch(async (u, init) => { hits.push({ u: String(u), init }); return new Response("[]"); }, KEY);
   const id = "0123456789abcdef0123456789abcdef";
   try {
     await globalThis.fetch(`${VPS_PROXY}/task/${id}?offset=-1&live=long-poll`);
@@ -38,10 +50,9 @@ Deno.test("sealedfetch: a task's stream and files go plain — long-poll/SSE and
 });
 
 Deno.test("sealedfetch: a library song is fetched plain on its sealed URL — Range intact; the shelf's JSON stays sealed", async () => {
-  const { sealedUrl } = await import("../sealedfetch.js");
   const hits = [];
-  const restore = installSealedFetch(async (u, init) => { hits.push({ u: String(u), init }); return new Response("{}"); });
-  const song = await sealedUrl("/library/get", { id: "abcdef0123456789" });
+  const restore = installSealedFetch(async (u, init) => { hits.push({ u: String(u), init }); return new Response("{}"); }, KEY);
+  const song = await sealedUrl("/library/get", { id: "abcdef0123456789" }, KEY);
   try {
     await globalThis.fetch(song, { headers: { range: "bytes=4000000-" } });
     await globalThis.fetch(`${VPS_PROXY}/library/list`, { method: "POST", body: "{}" }).catch(() => {});
@@ -52,12 +63,11 @@ Deno.test("sealedfetch: a library song is fetched plain on its sealed URL — Ra
 });
 
 Deno.test("sealedUrl: the route with the envelope in ?s= — and a raw (non-JSON) body POST to it passes through to that URL untouched", async () => {
-  const { sealedUrl } = await import("../sealedfetch.js");
-  const url = await sealedUrl("/library/get", { id: "abc" });
+  const url = await sealedUrl("/library/get", { id: "abc" }, KEY);
   assert(url.startsWith(`${VPS_PROXY}/library/get?s=`) && url.length > `${VPS_PROXY}/library/get?s=`.length + 60, url);
   let hit = null;
-  const restore = installSealedFetch(async (u, init) => { hit = { u: String(typeof u === "string" ? u : u.url), body: init?.body }; return new Response("{}"); });
-  try { await globalThis.fetch(await sealedUrl("/library/put", { n: "x.mp3" }), { method: "POST", body: new Uint8Array([1, 2]) }); } finally { restore(); }
+  const restore = installSealedFetch(async (u, init) => { hit = { u: String(typeof u === "string" ? u : u.url), body: init?.body }; return new Response("{}"); }, KEY);
+  try { await globalThis.fetch(await sealedUrl("/library/put", { n: "x.mp3" }, KEY), { method: "POST", body: new Uint8Array([1, 2]) }); } finally { restore(); }
   assert(hit.u.startsWith(`${VPS_PROXY}/library/put?s=`), "a file body is never re-expressed through the tunnel");
   assert(hit.body instanceof Uint8Array);
 });

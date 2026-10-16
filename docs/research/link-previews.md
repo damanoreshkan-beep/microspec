@@ -1,5 +1,6 @@
 # Link previews (Telegram first) — research note, 2026-08-17
 
+The ask: enrich the HTML meta tags as far as they go, so link previews render — in Telegram at the very least.
 
 ## What a preview bot actually does (validated)
 

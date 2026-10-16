@@ -59,7 +59,7 @@ Deno.test("sw: live data is never cached — the feed proxy and unpinned third p
   const { self } = loadSwCore();
   const { cacheNameFor } = self.MS_POLICY;
   assertEquals(cacheNameFor(new URL("https://damanoreshkan-beep.github.io/feed?url=x")), null, "the dev/gate proxy is live data");
-  assertEquals(cacheNameFor(new URL("https://dreamstudio.mooo.com/feed?url=x")), null);
+  assertEquals(cacheNameFor(new URL("https://app.example.com/feed?url=x")), null);
   assertEquals(cacheNameFor(new URL("https://api.open-meteo.com/v1/forecast")), null);
 });
 

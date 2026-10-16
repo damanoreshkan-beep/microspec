@@ -511,8 +511,8 @@ export function Stage({ children, className = "" }) {
 }
 /**
  * The MINI PLAYER — the playing track as a pill above the dock, for when the full player has scrolled out of view
- * пісні і перемотка, щоб не скролити до верху … цей віджет міні острівець дуже кльовий, можна би винести зробити
- * Its FILL is the song's time — a tint that grows across the pill, eased between the clock's ticks on
+ * (one app's island, made system: the track's time as an animated fill and a seek, so nobody scrolls back up to
+ * the player). Its FILL is the song's time — a tint that grows across the pill, eased between the clock's ticks on
  * the compositor; a DRAG anywhere across the pill seeks (a range input under the two keys, so it is a slider to a
  * keyboard and a screen reader too). The track's glyph on the left takes you back to the full player; play/pause
  * on the right. Shown and hidden by one attribute and one transition; inert while hidden.

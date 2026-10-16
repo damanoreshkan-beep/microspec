@@ -1,6 +1,7 @@
 # The theme split — structure in the core, the brand in the product (spec, 2026-09-01)
 
-хочуть свою ui". Today `packages/runtime/theme.css` (1007 lines) mixes two things that change for two
+The ask: a UI change should not ripple through the whole core — move the UI theme out to the product,
+because people want their own UI. Today `packages/runtime/theme.css` (1007 lines) mixes two things that change for two
 different reasons: the STRUCTURE every consumer needs (the density ladder, the chrome contract, the fit and
 split-screen rules, the watch ladder, the surface classes) and the MATERIAL of one product (DreamStudio's
 true-black ground, the amber/cyan pair, the luminous rim + bloom, the portal chrome with its 12 sprites,

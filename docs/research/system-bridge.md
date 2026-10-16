@@ -35,7 +35,7 @@ reach for FCM or TWA we lose that, which is a strong argument for **not** doing 
 
 ## 2. What the shell must fix before it adds anything
 
-Reading `microspec-edge/template/.../MainActivity.java`: the shell installs a bare
+Reading the shell template's `MainActivity.java`: the shell installs a bare
 `new WebChromeClient()` and no download listener. A stock WebView **denies by default** everything
 that goes through those callbacks, so today, inside an apkforge APK:
 

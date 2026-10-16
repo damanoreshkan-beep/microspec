@@ -1,5 +1,5 @@
 /** One fix, or null. Asked for only when something needs a place, and never kept here.
- * Exported because the globe asks the same question — — and two copies of
+ *  Exported because the globe asks the same question — "show me on the globe" — and two copies of
  *  "where am I" would drift into two different accuracies and two different timeouts. */
 export function place(): Promise<any>;
 /**

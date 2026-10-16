@@ -18,7 +18,7 @@ AOSP source read from `platform/packages/modules/Bluetooth`, branch `main`, on 2
 
 ## 1. What we already have (verified in our own tree)
 
-`microspec-edge/template/app/src/full/java/apk/microspec/Peripherals.java`:
+The APK shell template's `Peripherals.java`:
 
 | Fact | Line | Consequence |
 |---|---|---|
@@ -267,7 +267,7 @@ physically possible at ~10 Cyrillic characters per packet.
 
 1. `ble.advertise` (start/stop) + `ble.state` extended with `extAdv` / `maxAdvLen` / `multiAdv` — catalogue
    first, published before the template build (`rules/shell.md`).
-2. Java in `microspec-edge`: `BluetoothLeAdvertiser`, non-connectable, `AdvertiseData.Builder` manufacturer
+2. Java in the APK shell template: `BluetoothLeAdvertiser`, non-connectable, `AdvertiseData.Builder` manufacturer
    data, plus the runtime permission path.
 3. Template rebuild in CI (no local Java toolchain), reinstall, hand-verify on the S25 through `apps/os`.
 4. Only then the app itself, which is ordinary farm work.

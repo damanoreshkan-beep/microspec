@@ -106,7 +106,7 @@ manufacturer only. To transmit §3–4 the shell needs a **new, separate capabil
 - optional advertised **device name / appearance** (Swift Pair prefers a Bluetooth friendly name);
 - keep non-connectable legacy, 31-byte budget, the existing 180 s timeout ceiling.
 
-Cost is the shell path from `rules/shell.md`: catalogue → publish → Java in `microspec-edge`
+Cost is the shell path from `rules/shell.md`: catalogue → publish → Java in the APK shell template
 (`AdvertiseData.Builder` + `BLUETOOTH_ADVERTISE`) → template rebuild in CI → **hand-verify on device** (CI
 capability, get the OK, then touch edge.**
 

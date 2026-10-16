@@ -140,10 +140,13 @@ const innerPath = (url) => "/feed" + url.slice(VPS_PROXY.length);
 
 /**
  * Replace globalThis.fetch with the sealing wrapper; anything off VPS_PROXY and the PLAIN routes pass through untouched.
+ * A product whose backend has no sealed tunnel (runtime/backend.js SEALED_KEY = "") gets no wrapper at all.
  * @param realFetch the underlying fetch to wrap (default: the global one)
+ * @param key the pinned key to seal with (default: the product's SEALED_KEY); "" installs nothing
  * @returns an uninstall function that restores `realFetch`
  */
-export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)) {
+export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis), key = SEALED_KEY) {
+  if (!key) return () => {};
   const patched = async (input, init = {}) => {
     const url = urlOf(input);
     if (!url.startsWith(VPS_PROXY) || url.startsWith(TUNNEL) || PLAIN.some((p) => url.startsWith(p))) {
@@ -158,7 +161,7 @@ export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)
     }
 
     const sid = sidNow();
-    const { wire, resKey } = await seal(SEALED_KEY, { p: innerPath(url), m: method, b: body, ...(sid ? { s: sid } : {}) });
+    const { wire, resKey } = await seal(key, { p: innerPath(url), m: method, b: body, ...(sid ? { s: sid } : {}) });
     const r = await realFetch(TUNNEL, {
       method: "POST",
       headers: { "content-type": "text/plain" },

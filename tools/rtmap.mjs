@@ -42,6 +42,10 @@
  * - the bare deps — manifest pins first, preflight-map extras where the manifest has no key;
  * - `canvas` → the pinned core's `packages/gates/canvas-stub.js`;
  * - `/_rt/<name>` → `./rt/<name>` for every overlay file — exact keys beat the prefix key by the import-map spec;
+ * - for an overlay file that SHADOWS a core runtime module (a name the core exports as `./runtime/<name>`, e.g. a
+ *   product's `rt/backend.js`), also the core's own URL for it → `./rt/<name>`: the core's modules import their
+ *   siblings relatively (feed.js → `./backend.js`), and only a full-URL key redirects that relative import, so
+ *   preflight runs the product's file exactly as the browser and the build do (measured 2026-10-16);
  * - `/_rt/` and `@microspec/core/runtime/` → the pinned core's `packages/runtime/`.
  *
  * The consumer's local entries under `.microspec/` are written ONCE, when missing, and then committed —
@@ -117,6 +121,9 @@ for (const [k, v] of Object.entries(pf.imports)) {
 }
 imports["canvas"] = `${base}packages/gates/canvas-stub.js`;
 for (const n of names) imports[`/_rt/${n}`] = `./rt/${n}`;
+// a product file that shadows a core runtime module: the core's relative imports of it follow the full-URL key
+const coreRuntime = new Set(Object.keys(manifest.exports ?? {}).filter((k) => k.startsWith("./runtime/")).map((k) => k.slice("./runtime/".length)));
+for (const n of names) if (coreRuntime.has(n)) imports[`${base}packages/runtime/${n}`] = `./rt/${n}`;
 imports["/_rt/"] = `${base}packages/runtime/`;
 imports["@microspec/core/runtime/"] = `${base}packages/runtime/`;
 

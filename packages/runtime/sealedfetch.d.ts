@@ -107,7 +107,9 @@ export function sealedClipUrl(url: any, page: any, format: any): Promise<string>
 export function sealedUrl(route: any, fields?: {}): Promise<string>;
 /**
  * Replace globalThis.fetch with the sealing wrapper; anything off VPS_PROXY and the PLAIN routes pass through untouched.
+ * A product whose backend has no sealed tunnel (runtime/backend.js SEALED_KEY = "") gets no wrapper at all.
  * @param realFetch the underlying fetch to wrap (default: the global one)
+ * @param key the pinned key to seal with (default: the product's SEALED_KEY); "" installs nothing
  * @returns an uninstall function that restores `realFetch`
  */
-export function installSealedFetch(realFetch?: any): () => void;
+export function installSealedFetch(realFetch?: any, key?: any): () => void;

@@ -41,6 +41,10 @@
  * - the bare deps — manifest pins first, preflight-map extras where the manifest has no key;
  * - `canvas` → the pinned core's `packages/gates/canvas-stub.js`;
  * - `/_rt/<name>` → `./rt/<name>` for every overlay file — exact keys beat the prefix key by the import-map spec;
+ * - for an overlay file that SHADOWS a core runtime module (a name the core exports as `./runtime/<name>`, e.g. a
+ *   product's `rt/backend.js`), also the core's own URL for it → `./rt/<name>`: the core's modules import their
+ *   siblings relatively (feed.js → `./backend.js`), and only a full-URL key redirects that relative import, so
+ *   preflight runs the product's file exactly as the browser and the build do (measured 2026-10-16);
  * - `/_rt/` and `@microspec/core/runtime/` → the pinned core's `packages/runtime/`.
  *
  * The consumer's local entries under `.microspec/` are written ONCE, when missing, and then committed —

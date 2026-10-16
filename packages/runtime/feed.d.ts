@@ -22,9 +22,13 @@
  * - {@link fetchJson} — `fetchJson(url, { array = false, timeout = 10000 })`: the one-liner every data.js repeated — `viaProxy` with the matching shape validator, then `JSON.parse`.
  * - {@link isJsonArray} / {@link isJsonObject} — validators for `viaProxy`: the trimmed text starts with `[` / `{`, so an HTML error page never reaches the parser.
  * - {@link pool} — `pool(items, n, fn)`: bounded-concurrency map, at most `n` of `fn` in flight; resolves when all are done.
- * - {@link VPS_PROXY} — the page's own farm origin + `/feed` (`feedBase(location.origin)`), the last hop; not an open proxy, it forwards only to hosts in microspec-edge's ALLOW list.
- * - {@link FARM_ORIGINS} / {@link feedBase} — the farm's origins (canonical first) and the `/feed` base a page on a given origin talks to.
- * - {@link SEALED_KEY} — the backend's pinned long-term public key (base64url), consumed by sealedfetch.js.
+ * - {@link VPS_PROXY} — the product's backend: the page's own origin + `/feed` (`feedBase(location.origin)`), the last hop; not an open proxy, it forwards only to hosts in the backend's allow list.
+ * - {@link FARM_ORIGINS} / {@link feedBase} / {@link backendFor} — the product's origins (canonical first, from runtime/backend.js) and the `/feed` base a page on a given origin talks to.
+ * - {@link SEALED_KEY} — the backend's pinned long-term public key (base64url) from runtime/backend.js, consumed by sealedfetch.js; "" = no sealed tunnel.
+ *
+ * ## Whose backend
+ * The origins and the key are the PRODUCT's, read from runtime/backend.js — a module a product shadows with its
+ * own `rt/backend.js` (see that module). The core itself names no product.
  *
  * ## In practice
  * ```js
@@ -44,7 +48,7 @@
  * ```
  *
  * ## How it fits
- * Imports nothing — it is a leaf, which is why so much sits on it. Inside the runtime, enrich.js takes
+ * Imports only runtime/backend.js (the product's origins and key) — otherwise a leaf, which is why so much sits on it. Inside the runtime, enrich.js takes
  * `viaProxy` + `pool`, ai-text.js takes `pool`, and apk.js, auth.js and ai-core.js take `VPS_PROXY`;
  * sealedfetch.js takes `VPS_PROXY` + `SEALED_KEY` and re-expresses every call to the proxy as an encrypted
  * envelope. 17 farm apps import it directly — hn, wiki, weather, rates, launches, books, hf, frontier,
@@ -90,20 +94,27 @@ export function fetchJson(url: any, { array, timeout }?: {
  * @returns resolves when every item has been processed
  */
 export function pool(items: any, n: any, fn: any): Promise<void>;
-/** The farm's origins, the canonical one first — the same set microspec-edge allows (util.js ALLOW_ORIGIN). */
-export const FARM_ORIGINS: string[];
+/** The product's own origins, canonical first — runtime/backend.js, which a product shadows with its rt/backend.js. */
+export const FARM_ORIGINS: any;
 /**
- * The backend a page talks to: its OWN origin's `/feed` when the page is served from the farm (same origin —
- * no CORS preflight, and the move to mriia.si on 2026-10-10 needs no second code path), else the canonical one
- * (localhost dev, a test, any other embedder).
+ * The `/feed` base a page on `origin` talks to, given the product's origins: its OWN origin's when the page is
+ * served from one of them (same origin — no CORS preflight) or when the product names none, else the first
+ * (localhost dev, a test, any other embedder). Pure, so both cases are testable without a browser.
+ * @param origin the page's `location.origin`, or "" outside a browser
+ * @param origins the product's origins, canonical first
+ * @returns the `/feed` base URL, without a trailing slash
+ */
+export function backendFor(origin: any, origins: any): string;
+/**
+ * The backend a page talks to, for this product's origins ({@link backendFor} over {@link FARM_ORIGINS}).
  * @param origin the page's `location.origin`, or "" outside a browser
  * @returns the `/feed` base URL, without a trailing slash
  */
 export function feedBase(origin: any): string;
-/** Our hardened, host-allowlisted CORS proxy (microspec-edge on the VPS) — the last hop of the proxy chain. */
+/** The product's backend (its edge behind nginx) — the last hop of the proxy chain. */
 export const VPS_PROXY: string;
-/** The backend's pinned long-term public key (base64url), used by sealedfetch.js to seal calls to VPS_PROXY. */
-export const SEALED_KEY: "BLP-06vCYzSiakKos1Sk7Yqzneb0MrbBjozH3EQ_YRgvzqc_0hcZeeFXoDzMhHlXL3awFtjOMFg08dzcKUmbNOM";
+/** The backend's pinned long-term public key (base64url) for sealedfetch.js, or "" when it has no sealed tunnel. */
+export const SEALED_KEY: any;
 /** Validator for `viaProxy`: true when the response text looks like a JSON array (not an HTML error page). */
 export function isJsonArray(x: any): any;
 /** Validator for `viaProxy`: true when the response text looks like a JSON object (not an HTML error page). */

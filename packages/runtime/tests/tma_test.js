@@ -1,5 +1,14 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { startTarget, outsideHref } from "../tma.js";
+import { startTarget, outsideHref, launchInitData } from "../tma.js";
+
+Deno.test("launchInitData: the signed initData comes from the launch URL, before the SDK loads", () => {
+  const initData = new URLSearchParams({ query_id: "AAE", user: JSON.stringify({ id: 1, first_name: "A" }), auth_date: "1700000000", hash: "abc" }).toString();
+  const launch = "tgWebAppData=" + encodeURIComponent(initData) + "&tgWebAppVersion=8.0&tgWebAppPlatform=android";
+  assertEquals(launchInitData(launch), initData, "exactly the string the bot signed, decoded once");
+  assertEquals(launchInitData("#" + launch), initData, "a leading # is fine");
+  assertEquals(launchInitData("&locale=en"), "", "outside Telegram there is none");
+  assertEquals(launchInitData(""), "");
+});
 
 Deno.test("outsideHref: the APK gets an intent:// for ACTION_VIEW, Telegram and a page keep the url", () => {
   const u = "https://accounts.google.com/o/oauth2/v2/auth?client_id=x&state=y";

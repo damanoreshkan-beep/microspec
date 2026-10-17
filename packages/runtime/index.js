@@ -91,7 +91,10 @@ export function start(spec, arg2) {
   installTelemetry(spec.id);
   installUsage(S);
   initTelegram();
-  if (inTelegram()) import("./auth.js").then((a) => a.restore().then((s) => (s ? null : a.loginTelegram())).catch(() => {})).catch(() => {});
+  // Inside a Mini App the launch decides who is signed in: always prove it, and fall back to the stored session only
+  // when that fails. Restoring first kept whatever account last used this WebView — on a phone with two Telegram
+  // accounts the second one opened the app as the first.
+  if (inTelegram()) import("./auth.js").then((a) => a.loginTelegram().catch(() => a.restore())).catch(() => {});
 
   // The status-bar colour must follow the theme, not a baked-in value: where the OS paints a status-bar band
   // (Android standalone, iOS non-translucent), a stale black meta made that band a visible strip over a light

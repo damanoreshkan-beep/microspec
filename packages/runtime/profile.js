@@ -141,7 +141,8 @@ export function Profile({ tab }) {
   const tone = useStore(A.S.tone);
   const material = materials.find((m) => m.id === materialId) || materials[0];
   const p = A.spec.profile || {};
-  const account = p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
+  // `account: false` — an app that lives only inside Telegram: the launch is the account, so no card, no sign-out.
+  const account = p.account === false ? null : p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
   const [adminHref, setAdminHref] = useState(null);
   useEffect(() => {
     if (!account) return;

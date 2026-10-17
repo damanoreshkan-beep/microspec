@@ -238,8 +238,12 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       : html`<button data-signin-github type="button" disabled=${busy} onClick=${viaGithub}
           class="btn btn-ghost btn-sm rounded-full self-center gap-1.5 text-base-content/70">${Icon("lucide:github", "text-base")}${t.ghQuiet}</button>`)
     : null}
-    ${!gate && offers("telegram") ? html`<button data-signin-telegram type="button" disabled=${busy} onClick=${viaTelegram}
-        class="btn btn-ghost btn-sm rounded-full self-center gap-1.5 text-base-content/70">${Icon("lucide:send", "text-base text-primary")}${t.telegram || "Log in with Telegram"}</button>` : null}
+    ${!gate && offers("telegram") ? (!googleOn && !github
+      // Telegram alone is THE way in, so it is the button, not a quiet line under one.
+      ? html`<button data-signin-telegram type="button" disabled=${busy} onClick=${viaTelegram}
+          class="btn btn-primary rounded-full w-full gap-2">${Icon("lucide:send", "text-xl")}${t.telegram || "Log in with Telegram"}</button>`
+      : html`<button data-signin-telegram type="button" disabled=${busy} onClick=${viaTelegram}
+          class="btn btn-ghost btn-sm rounded-full self-center gap-1.5 text-base-content/70">${Icon("lucide:send", "text-base text-primary")}${t.telegram || "Log in with Telegram"}</button>`) : null}
     ${!googleOn && !github && !offers("telegram") && backend.BOT ? html`<a data-signin-bot class="btn btn-primary rounded-full w-full gap-2"
         href=${`https://t.me/${backend.BOT}`} target="_blank" rel="noopener">${Icon("lucide:send", "text-xl")}${t.telegram}</a>` : null}
     ${err ? html`<p role="alert" class="text-error text-sm text-center">${err}</p>` : null}

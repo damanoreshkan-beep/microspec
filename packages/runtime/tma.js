@@ -20,6 +20,19 @@
 import { VPS_PROXY } from "./feed.js";
 import { shell } from "./shell.js";
 
+// The launch URL as it was when this module loaded — before any router rewrote the hash. Telegram puts the signed
+// initData there (`#tgWebAppData=…`), so a sign-in never has to wait for the SDK script to arrive.
+const LAUNCH = (() => { try { return typeof location !== "undefined" ? (location.hash || "").replace(/^#/, "") + "&" + (location.search || "").replace(/^\?/, "") : ""; } catch { return ""; } })();
+
+/**
+ * The launch's signed initData, read from the launch URL itself (`tgWebAppData`), or "" outside Telegram. It is the
+ * same string the SDK exposes as `WebApp.initData`, available before the SDK loads.
+ * @param launch the launch URL's hash and query (default: as captured at load)
+ */
+export function launchInitData(launch = LAUNCH) {
+  try { return new URLSearchParams(String(launch).replace(/^#/, "")).get("tgWebAppData") || ""; } catch { return ""; }
+}
+
 /** True when this page was opened as a Telegram Mini App (the launch marker is in the URL, available at once). */
 export function inTelegram() {
   try { return typeof location !== "undefined" && /tgWebApp/.test((location.hash || "") + (location.search || "")); }

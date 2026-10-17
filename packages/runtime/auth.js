@@ -92,6 +92,7 @@
 import { atom } from "nanostores";
 import { VPS_PROXY } from "./feed.js";
 import { gate } from "./gate.js";
+import { launchInitData } from "./tma.js";
 
 const GH = `${VPS_PROXY}/gh`;
 const SID_KEY = "ms:gh:sid";
@@ -398,6 +399,9 @@ export async function loginTelegram(initData, { adopt = true } = {}) {
   if (gate) { if (!adopt) return MOCK_LINK; session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
   let id = initData;
   if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch { } }
+  // At boot the SDK script is often still loading (tma.js injects it asynchronously): the launch URL carries the
+  // same signed string, so a first launch signs in instead of failing silently with no-telegram.
+  if (!id) id = launchInitData();
   if (!id) throw Object.assign(new Error("no-telegram"), { status: 0 });
   const j = await edgeAt(`${TG}/verify`, { initData: String(id) });
   const user = trimGoogleUser(j && j.user);

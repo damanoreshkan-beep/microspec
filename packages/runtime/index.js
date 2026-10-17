@@ -91,7 +91,7 @@ export function start(spec, arg2) {
   installTelemetry(spec.id);
   installUsage(S);
   initTelegram();
-  if (inTelegram()) import("./auth.js").then((a) => a.restore().then((s) => (s ? null : a.loginTelegram())).catch(() => {})).catch(() => {});
+  if (inTelegram()) import("./auth.js").then((a) => a.loginTelegram().catch(() => a.restore())).catch(() => {});
 
   const syncBarColour = () => {
     try {

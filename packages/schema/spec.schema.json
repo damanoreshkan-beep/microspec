@@ -131,9 +131,8 @@
       "description": "Configuration for tabs of type 'profile'.",
       "properties": {
         "account": {
-          "type": "string",
-          "enum": ["any", "github"],
-          "description": "OPTIONAL — an ACCOUNT card at the top of the profile (who is signed in: avatar, name, provider, sign out; the SignIn surface when nobody is). Implied as \"any\" (Google first, GitHub quiet) for any app whose tab `needs` includes \"auth\"; \"github\" makes GitHub the button — for an app that must ACT on GitHub."
+          "enum": ["any", "github", false],
+          "description": "OPTIONAL — an ACCOUNT card at the top of the profile (who is signed in: avatar, name, provider, sign out; the SignIn surface when nobody is). Implied as \"any\" (Google first, GitHub quiet) for any app whose tab `needs` includes \"auth\"; \"github\" makes GitHub the button — for an app that must ACT on GitHub; false shows no card at all — for an app that lives only inside a Telegram Mini App, where the launch IS the account and there is nothing to sign in or out of."
         },
         "icon": {
           "type": "string",

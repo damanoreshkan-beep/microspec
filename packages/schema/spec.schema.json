@@ -131,8 +131,8 @@
       "description": "Configuration for tabs of type 'profile'.",
       "properties": {
         "account": {
-          "enum": ["any", "github", false],
-          "description": "OPTIONAL — an ACCOUNT card at the top of the profile (who is signed in: avatar, name, provider, sign out; the SignIn surface when nobody is). Implied as \"any\" (Google first, GitHub quiet) for any app whose tab `needs` includes \"auth\"; \"github\" makes GitHub the button — for an app that must ACT on GitHub; false shows no card at all — for an app that lives only inside a Telegram Mini App, where the launch IS the account and there is nothing to sign in or out of."
+          "enum": ["any", "github", "telegram", false],
+          "description": "OPTIONAL — an ACCOUNT card at the top of the profile (who is signed in: avatar, name, provider, sign out; the SignIn surface when nobody is). Implied as \"any\" (Google first, GitHub quiet) for any app whose tab `needs` includes \"auth\"; \"github\" makes GitHub the button — for an app that must ACT on GitHub; \"telegram\" shows no card inside a Telegram Mini App (the launch IS the account) and the sign-in surface outside it, so a browser visitor signs in with the same Telegram account; false shows no card at all."
         },
         "icon": {
           "type": "string",
@@ -206,6 +206,21 @@
               "type": "string",
               "minLength": 1,
               "description": "Iconify icon for the source row."
+            }
+          }
+        },
+        "links": {
+          "type": "array",
+          "maxItems": 6,
+          "description": "OPTIONAL — rows that link out of the app: a product's other surfaces (its store, its landing). Each opens in the same tab when it is on the same origin, in a new one otherwise.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "url"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1, "description": "i18n key for the row label." },
+              "url": { "type": "string", "minLength": 1, "description": "A path on the product's origin (\"/store/\") or an absolute URL." },
+              "icon": { "type": "string", "minLength": 1, "description": "Iconify icon for the row." }
             }
           }
         }

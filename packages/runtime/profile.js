@@ -130,7 +130,10 @@ function ActKey({ a, shape }) {
 const SetRow = ({ id, icon, label, end, onClick, href, tone = "" }) => {
   const body = html`${Icon(icon, `text-xl shrink-0 ${tone}`)}<span class="flex-1 min-w-0 truncate font-medium text-left">${label}</span>${end}`;
   const cls = "flex items-center gap-3 px-4 min-h-[3.25rem] w-full";
-  return href ? html`<a id=${id} href=${href} target="_blank" rel="noopener" class=${`${cls} ms-press`}>${body}</a>`
+  // A link to the product's own origin stays in this window — inside a Telegram Mini App a new tab would throw the
+  // player out into the system browser; an external one opens beside it.
+  const own = (() => { try { return new URL(href, location.href).origin === location.origin; } catch { return false; } })();
+  return href ? html`<a id=${id} href=${href} target=${own ? undefined : "_blank"} rel=${own ? undefined : "noopener"} class=${`${cls} ms-press`}>${body}</a>`
     : onClick ? html`<button id=${id} type="button" class=${`${cls} ms-press`} onClick=${onClick}>${body}</button>`
     : html`<div id=${id} class=${cls}>${body}</div>`;
 };
@@ -141,8 +144,12 @@ export function Profile({ tab }) {
   const tone = useStore(A.S.tone);
   const material = materials.find((m) => m.id === materialId) || materials[0];
   const p = A.spec.profile || {};
-  // `account: false` — an app that lives only inside Telegram: the launch is the account, so no card, no sign-out.
-  const account = p.account === false ? null : p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
+  // `account: false` — no card at all. `account: "telegram"` — the app's players come through Telegram: inside a Mini
+  // App the launch is the account (no card, no sign-out); outside it the card offers the sign-in, with the providers
+  // the product's backend declares (backend.js SIGNIN).
+  const account = p.account === false || (p.account === "telegram" && inTelegram()) ? null
+    : p.account === "telegram" ? "any"
+    : p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
   const [adminHref, setAdminHref] = useState(null);
   useEffect(() => {
     if (!account) return;
@@ -178,8 +185,10 @@ export function Profile({ tab }) {
       class=${`h-8 min-w-11 px-3 rounded-full text-sm font-semibold transition ${loc === c ? "sf-lift2 bg-base-100" : "text-base-content/70"}`} onClick=${() => A.S.locale.set(c)}>${l}</button>`)}</div>`} />` : null,
     savedTab ? html`<${SetRow} icon="lucide:bookmark" label=${T(t, savedTab.titleKey || savedTab.label)} onClick=${() => A.S.tab.set(savedTab.id)} end=${html`<span class="badge badge-primary">${Object.keys(fav).length}</span>`} />` : null,
     p.permissions?.length ? html`<${SetRow} id="p-perms" icon="lucide:shield-check" label=${permLabels(loc).row} onClick=${() => A.S.screen.set("perms")} end=${chevron} />` : null,
-    adminHref ? html`<${SetRow} id="p-admin" icon="lucide:shield" tone="text-primary" label=${sys("adminRow", loc)} href=${adminHref} end=${arrow} />` : null,
+    // The admin row's name is the product's when its app dict says one ("adminRow"), else the runtime's.
+    adminHref ? html`<${SetRow} id="p-admin" icon="lucide:shield" tone="text-primary" label=${t?.adminRow || sys("adminRow", loc)} href=${adminHref} end=${arrow} />` : null,
     p.source ? html`<${SetRow} icon=${p.source.icon || "lucide:database"} label=${T(t, p.source.label)} href=${p.source.url} end=${arrow} />` : null,
+    ...(p.links || []).map((l, i) => html`<${SetRow} key=${"link" + i} id=${"p-link-" + i} icon=${l.icon || "lucide:link"} label=${T(t, l.label)} href=${l.url} end=${arrow} />`),
   ].filter(Boolean);
   return html`<div class="flex flex-col gap-[var(--ms-gap)] pt-1">
     ${account ? html`<${AccountSlot} github=${account === "github" ? "primary" : "quiet"} loc=${loc} />` : null}

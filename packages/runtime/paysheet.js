@@ -35,6 +35,8 @@
  *        wait: (signal) => Promise<{ status: "paid", coins, balance } | { status: "held", why } | { status: "expired" }> }) }
  * ```
  * `pay` may also answer `{status:"paid", coins, balance}`, `{status:"cancelled"}` or `{status:"error", message}`.
+ * A method may carry `aside: { label, note, href }` — one outbound link the sheet shows under the pay button and on
+ * the waiting screen (where a person finds out they have none of that currency): where to get it, and why now.
  *
  * @module
  */
@@ -99,6 +101,19 @@ function Countdown({ exp, loc }) {
   return exp ? html`<span data-pay-left class="font-mono tabular-nums">${sys("payLeft", loc).replace("{t}", mmss(s))}</span>` : null;
 }
 
+// a method's one outbound link (where to get the currency) — a quiet card, never a second primary button
+function Aside({ a }) {
+  return a && a.href ? html`<a href=${a.href} target="_blank" rel="noopener" data-pay-aside
+    class="w-full flex items-center gap-3 rounded-[var(--ms-r)] border border-base-content/10 px-3 py-2 text-left active:scale-[.99] transition-transform">
+    ${Icon("lucide:gift", "shrink-0 text-xl text-[var(--app-accent)]")}
+    <span class="flex-1 min-w-0">
+      <span class="block font-semibold text-[0.9rem] leading-tight">${a.label}</span>
+      ${a.note ? html`<span class="block text-[0.8rem] text-base-content/70 leading-snug">${a.note}</span>` : null}
+    </span>
+    ${Icon("lucide:arrow-up-right", "shrink-0 text-lg text-base-content/70")}
+  </a>` : null;
+}
+
 function CopyField({ f, loc }) {
   const [done, setDone] = useState(false);
   const copy = async () => { try { await navigator.clipboard.writeText(String(f.value)); setDone(true); setTimeout(() => setDone(false), 1400); } catch { /* the value stays selectable */ } };
@@ -117,7 +132,7 @@ function CopyField({ f, loc }) {
  * the module doc; `onPaid(outcome)` runs once the coins are in. `title` defaults to the system "Top up".
  * @param {{ open: boolean, onClose: () => void, locale?: string, title?: string, unit?: string,
  *   packs: Array<{id: string, amount: number, badge?: string}>,
- *   methods: Array<{id: string, label: string, icon?: string, available?: boolean, price: (pack: any) => string, pay: (pack: any, ctx: {signal: AbortSignal}) => Promise<any>}>,
+ *   methods: Array<{id: string, label: string, icon?: string, available?: boolean, price: (pack: any) => string, pay: (pack: any, ctx: {signal: AbortSignal}) => Promise<any>, aside?: {label: string, note?: string, href: string}}>,
  *   onPaid?: (outcome: any) => void, best?: string }} props
  * @returns {any}
  */
@@ -173,6 +188,7 @@ export function PaySheet({ open, onClose, locale, title, unit = "", packs, metho
     <button type="button" data-pay-go class="btn btn-primary w-full" disabled=${!method || !pack} onClick=${go}>
       ${method?.icon ? Icon(method.icon, "text-lg") : null}${sys("payDo", loc).replace("{price}", method && pack ? method.price(pack) : "")}
     </button>
+    <${Aside} a=${method?.aside} />
   </div>`;
 
   const starting = html`<div data-pay-starting class="flex flex-col gap-[var(--ms-gap)]">
@@ -187,6 +203,7 @@ export function PaySheet({ open, onClose, locale, title, unit = "", packs, metho
     <div class="flex items-center gap-2 text-[0.85rem] text-base-content/80" aria-live="polite">
       <span data-pay-dot></span><span>${sys("payWaiting", loc)}</span><span class="text-base-content/50">·</span><${Countdown} exp=${st.exp} loc=${loc} />
     </div>
+    <${Aside} a=${live.find((m) => m.id === st.method)?.aside} />
     <button type="button" class="btn btn-ghost btn-sm" onClick=${() => { ctl.current?.abort(); send({ type: "back" }); }}>${sys("payBack", loc)}</button>
   </div>`;
 

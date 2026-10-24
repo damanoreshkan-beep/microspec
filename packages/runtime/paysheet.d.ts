@@ -34,6 +34,8 @@
  *        wait: (signal) => Promise<{ status: "paid", coins, balance } | { status: "held", why } | { status: "expired" }> }) }
  * ```
  * `pay` may also answer `{status:"paid", coins, balance}`, `{status:"cancelled"}` or `{status:"error", message}`.
+ * A method may carry `aside: { label, note, href }` — one outbound link the sheet shows under the pay button and on
+ * the waiting screen (where a person finds out they have none of that currency): where to get it, and why now.
  *
  * @module
  */
@@ -62,7 +64,7 @@ export function payStep(state: {
  * the module doc; `onPaid(outcome)` runs once the coins are in. `title` defaults to the system "Top up".
  * @param {{ open: boolean, onClose: () => void, locale?: string, title?: string, unit?: string,
  *   packs: Array<{id: string, amount: number, badge?: string}>,
- *   methods: Array<{id: string, label: string, icon?: string, available?: boolean, price: (pack: any) => string, pay: (pack: any, ctx: {signal: AbortSignal}) => Promise<any>}>,
+ *   methods: Array<{id: string, label: string, icon?: string, available?: boolean, price: (pack: any) => string, pay: (pack: any, ctx: {signal: AbortSignal}) => Promise<any>, aside?: {label: string, note?: string, href: string}}>,
  *   onPaid?: (outcome: any) => void, best?: string }} props
  * @returns {any}
  */
@@ -86,6 +88,11 @@ export function PaySheet({ open, onClose, locale, title, unit, packs, methods, o
         pay: (pack: any, ctx: {
             signal: AbortSignal;
         }) => Promise<any>;
+        aside?: {
+            label: string;
+            note?: string;
+            href: string;
+        };
     }>;
     onPaid?: (outcome: any) => void;
     best?: string;

@@ -493,6 +493,55 @@ header.navbar {
   width: var(--ds-mascot-s, 0px); height: var(--ds-mascot-s, 0px);
   background: var(--ds-mascot, none) center / contain no-repeat;
 }
+/* THE PAY SHEET's hero (paysheet.js) — the brand's mascot on a soft accent glow, moved by `data-pay-state` alone:
+   she breathes while you choose, the glow pulses while a wallet is open, and she leaps in a ring of sparks when
+   the coins land. Size from --ds-mascot-s (a tree with no brand: an empty 0-height hero that still holds the glow).
+   Every colour is a token; every motion stops under prefers-reduced-motion. */
+[data-pay-hero] {
+  position: relative; display: grid; place-items: center;
+  height: calc(var(--ds-mascot-s, 0px) * 1.15 + 1rem); min-height: 3.5rem;
+  margin-block: calc(var(--ms-gap) * -0.5) 0;
+}
+[data-pay-glow] {
+  position: absolute; inset: 0; margin: auto;
+  width: calc(var(--ds-mascot-s, 3.5rem) * 1.2); aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--app-accent) 32%, transparent), transparent 72%);
+  filter: blur(6px); opacity: .7;
+}
+[data-pay-fox] { position: relative; animation: pay-float 4.2s ease-in-out infinite; }
+[data-pay-state="starting"] [data-pay-fox] { animation-duration: 1.6s; }
+[data-pay-state="await"] [data-pay-glow] { animation: pay-pulse 2.2s ease-in-out infinite; }
+[data-pay-state="paid"] [data-pay-fox] { animation: pay-leap .9s cubic-bezier(.2, .9, .3, 1.2) 1, pay-float 4.2s ease-in-out .9s infinite; }
+[data-pay-state="paid"] [data-pay-glow] { opacity: 1; background: radial-gradient(closest-side, color-mix(in oklch, var(--app-accent) 55%, transparent), transparent 75%); }
+[data-pay-state="held"] [data-pay-fox], [data-pay-state="expired"] [data-pay-fox], [data-pay-state="error"] [data-pay-fox] { animation: none; opacity: .75; filter: grayscale(.4); }
+[data-pay-burst] { position: absolute; inset: 0; margin: auto; width: 0; height: 0; }
+[data-pay-burst] i {
+  position: absolute; width: .4rem; height: .4rem; border-radius: 50%;
+  background: var(--app-accent); box-shadow: 0 0 .6rem var(--app-accent);
+  transform: rotate(calc(var(--i) * 30deg)) translateY(0) scale(.4); opacity: 0;
+  animation: pay-spark .95s cubic-bezier(.15, .7, .3, 1) calc(var(--i) * 18ms) 1 forwards;
+}
+[data-pay-dot] {
+  width: .5rem; height: .5rem; border-radius: 50%; background: var(--app-accent);
+  box-shadow: 0 0 0 0 color-mix(in oklch, var(--app-accent) 60%, transparent);
+  animation: pay-ping 1.6s ease-out infinite;
+}
+[data-pay-shimmer] {
+  background: linear-gradient(90deg, currentColor 30%, color-mix(in oklch, currentColor 35%, transparent) 50%, currentColor 70%) 0 0 / 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: pay-shine 1.4s linear infinite;
+}
+@keyframes pay-float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-5px) scale(1.015); } }
+@keyframes pay-pulse { 0%, 100% { opacity: .45; transform: scale(.94); } 50% { opacity: .95; transform: scale(1.06); } }
+@keyframes pay-leap { 0% { transform: translateY(0) scale(1); } 35% { transform: translateY(-18px) scale(1.08); } 70% { transform: translateY(2px) scale(.98); } 100% { transform: translateY(0) scale(1); } }
+@keyframes pay-spark { 0% { opacity: 0; transform: rotate(calc(var(--i) * 30deg)) translateY(0) scale(.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: rotate(calc(var(--i) * 30deg)) translateY(calc(var(--ds-mascot-s, 4rem) * -.8)) scale(1); } }
+@keyframes pay-ping { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--app-accent) 60%, transparent); } 100% { box-shadow: 0 0 0 .6rem transparent; } }
+@keyframes pay-shine { to { background-position: -220% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  [data-pay-fox], [data-pay-glow], [data-pay-dot], [data-pay-shimmer] { animation: none !important; }
+  [data-pay-burst] { display: none; }
+  [data-pay-shimmer] { color: inherit; background: none; }
+}
 /* The theme widget's chosen picture is RINGED in the accent, with a gap of page between (mirage's style
    sheet). A rule, not a Tailwind `ring-[var(--app-accent)]`: the build's class scanner drops an arbitrary
    var() utility, and a ring that exists only in the source is a ring nobody sees. */

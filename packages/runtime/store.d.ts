@@ -42,6 +42,10 @@
  *   onConfirm: async () => { await removeHabit(h.id); onClose(); },
  * });
  *
+ * // reel — the same sheet as a calm question: `tone: "primary"`, an own `icon` and an own `cancel` label
+ * S.confirm.set({ tone: "primary", icon: "lucide:shield-check", title: T(t, "ageTitle"), body: T(t, "ageBody"),
+ *   verb: T(t, "ageYes"), cancel: T(t, "ageNo"), onConfirm: () => openFull(S, { ...item, confirmAge: true }) });
+ *
  * // reel — the reversible half: delete optimistically, then offer Undo for 5 s
  * const forget = () => { undo(() => setSession(site, cur), siteName(site)); setSession(site, ""); close(); };
  * ```

@@ -216,12 +216,14 @@ export function ConfirmSheet() {
   const close = () => A.S.confirm.set(null);
   const go = () => { const fn = c?.onConfirm; close(); fn?.(); };
   const { boxRef, grip } = useSheetDrag(close);
+  // `tone: "primary"` is a question rather than a danger (an age gate, a consent): the same history-backed sheet, calm
+  const calm = c?.tone === "primary";
   return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8`}>${grip}
-    <h3 class="font-bold text-lg flex items-start gap-2">${Icon("lucide:triangle-alert", "text-error text-xl shrink-0 mt-0.5")}<span>${c?.title || ""}</span></h3>
+    <h3 class="font-bold text-lg flex items-start gap-2">${Icon(c?.icon || (calm ? "lucide:circle-help" : "lucide:triangle-alert"), `${calm ? "text-primary" : "text-error"} text-xl shrink-0 mt-0.5`)}<span>${c?.title || ""}</span></h3>
     ${c?.body ? html`<p class="text-sm text-base-content/70 mt-2 pl-8">${c.body}</p>` : null}
     <div class="flex gap-2 mt-5">
-      <button id="confirm-cancel" class="btn btn-ghost flex-1 rounded-2xl" onClick=${close}>${sys("cancel", loc)}</button>
-      <button id="confirm-go" data-haptic="bump" class="btn btn-error flex-1 rounded-2xl" onClick=${go}>${c?.verb || ""}</button>
+      <button id="confirm-cancel" class="btn btn-ghost flex-1 rounded-2xl" onClick=${close}>${c?.cancel || sys("cancel", loc)}</button>
+      <button id="confirm-go" data-haptic="bump" class=${`btn ${calm ? "btn-primary" : "btn-error"} flex-1 rounded-2xl`} onClick=${go}>${c?.verb || ""}</button>
     </div>
   </div><form method="dialog" class="modal-backdrop"><button>close</button></form></dialog>`;
 }

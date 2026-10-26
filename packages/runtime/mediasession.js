@@ -60,8 +60,10 @@
  * ## Invariants and pitfalls
  * - Call `setPlaying` inside a user gesture (the same tap as `start()`): the silent element's `play()` is
  *   subject to autoplay policy; a blocked play is swallowed and the app still sounds, but owns no session.
- * - `setPaused` marks the session paused but keeps the element playing, so the lock-screen play control can
- *   resume it. `release` is the full teardown — a session left behind is a phantom notification whose
+ * - `setPaused` pauses the silent element too: Chrome reads a session as playing while ANY element in it plays,
+ *   whatever `playbackState` says, so a silent loop left running keeps the pause button, the moving bar and the
+ *   audio path awake — the OS play control never appears and the battery drains. A visibility return
+ *   restarts it only while playing. `release` is the full teardown — a session left behind is a phantom notification whose
  *   buttons reach a page that is no longer playing. One live session per player: release the old one first.
  * - In the APK `shown` flips on the ASK, not on the reply: `release()` can land before a real bridge answers,
  *   and a skipped hide would leave a notification with inert buttons.
@@ -158,13 +160,13 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
     else if (plainHold) shell.call("bg.stop", {}).catch(() => {});
   };
 
-  const onVis = () => { if (live && document.visibilityState === "visible") { try { resumeCtx && resumeCtx(); } catch { } play(); } };
+  const onVis = () => { if (live && document.visibilityState === "visible") { try { resumeCtx && resumeCtx(); } catch { } if (isPlaying) play(); } };
   document.addEventListener("visibilitychange", onVis);
 
   return {
     supported: !!ms || nativeMedia,
     setPlaying(t) { play(); setMeta(t); setState("playing"); show(true); },
-    setPaused() { setState("paused"); show(false); },
+    setPaused() { pause(); setState("paused"); show(false); },
     meta(t) { setMeta(t); if (shown) show(isPlaying); },
     position(durationMs, positionMs, rate = 1) {
       if (!ms || typeof ms.setPositionState !== "function") return;

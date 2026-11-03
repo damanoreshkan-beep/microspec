@@ -37,6 +37,21 @@ export function inTelegram() {
   catch { return false; }
 }
 
+/**
+ * True when a real Telegram client hosts this page, the three ways Telegram's own SDK tells: the mobile proxy, the desktop
+ * `external.notify`, or an iframe (web clients, and frame-ancestors allows only Telegram). A `#tgWebAppData=` in the URL
+ * proves nothing: a plain link carrying a stranger's initData would sign this browser in as them (review 2026-11-03).
+ * @param win the window to read (default: this one)
+ */
+export function inTelegramHost(win = typeof window !== "undefined" ? window : undefined) {
+  try {
+    if (!win) return false;
+    if (win.TelegramWebviewProxy) return true;
+    if (win.external && "notify" in win.external) return true;
+    return win.parent != null && win.parent !== win;
+  } catch { return true; }   
+}
+
 /** The live SDK object, or null. */
 export function tg() { try { return (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) || null; } catch { return null; } }
 

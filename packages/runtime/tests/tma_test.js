@@ -1,5 +1,15 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { startTarget, outsideHref, launchInitData } from "../tma.js";
+import { startTarget, outsideHref, launchInitData, inTelegramHost } from "../tma.js";
+
+Deno.test("inTelegramHost: a real Telegram client says so; a link in a plain browser does not", () => {
+  const top = { external: {} }; top.parent = top;
+  assertEquals(inTelegramHost(top), false, "a plain browser tab, whatever its URL says");
+  assertEquals(inTelegramHost({ ...top, parent: top, TelegramWebviewProxy: {} }), true, "the mobile clients");
+  const desktop = { external: { notify() {} } }; desktop.parent = desktop;
+  assertEquals(inTelegramHost(desktop), true, "the desktop client");
+  assertEquals(inTelegramHost({ external: {}, parent: {} }), true, "an iframe: the web clients");
+  assertEquals(inTelegramHost(null), false);
+});
 
 Deno.test("launchInitData: the signed initData comes from the launch URL, before the SDK loads", () => {
   const initData = new URLSearchParams({ query_id: "AAE", user: JSON.stringify({ id: 1, first_name: "A" }), auth_date: "1700000000", hash: "abc" }).toString();

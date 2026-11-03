@@ -67,7 +67,7 @@ import { gate } from "./gate.js";
 import { loadMaterials, applyMaterial } from "./material.js";
 import { installTelemetry } from "./telemetry.js";
 import { installUsage } from "./usage.js";
-import { initTelegram, inTelegram } from "./tma.js";
+import { initTelegram, inTelegram, inTelegramHost } from "./tma.js";
 import { installUpdates } from "./update.js";
 import { installGrow } from "./grow.js";
 
@@ -91,7 +91,7 @@ export function start(spec, arg2) {
   installTelemetry(spec.id);
   installUsage(S);
   initTelegram();
-  if (inTelegram()) import("./auth.js").then((a) => a.loginTelegram().catch(() => a.restore())).catch(() => {});
+  if (inTelegram() && inTelegramHost()) import("./auth.js").then((a) => a.loginTelegram().catch(() => a.restore())).catch(() => {});
 
   const syncBarColour = () => {
     try {

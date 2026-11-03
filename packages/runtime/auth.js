@@ -196,13 +196,13 @@ export function login({ scope = SCOPE, adopt = true } = {}) {
     const url = `${GH}/authorize?scope=${encodeURIComponent(scope)}&origin=${encodeURIComponent(PWA_ORIGIN)}`;
     const w = 640, h = 720;
     const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
-    const popup = window.open(url, "gh-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+    const popup = window.open(url, `gh-oauth-${crypto.randomUUID()}`, `width=${w},height=${h},left=${left},top=${top}`);
     if (!popup) { reject(new Error("popup-blocked")); return; }
 
     let done = false;
     const finish = (fn, arg) => { if (done) return; done = true; cleanup(); fn(arg); };
     const onMsg = async (e) => {
-      if (e.origin !== EDGE_ORIGIN) return;
+      if (e.origin !== EDGE_ORIGIN || e.source !== popup) return;
       const d = e.data;
       if (!d || d.source !== "microspec-gh" || typeof d.sid !== "string") return;
       if (adopt) lsSet(SID_KEY, d.sid);
@@ -420,12 +420,12 @@ export function loginTelegramWeb({ adopt = true } = {}) {
     const url = `${TG}/oidc/start?origin=${encodeURIComponent(PWA_ORIGIN)}`;
     const w = 640, h = 720;
     const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
-    const popup = window.open(url, "tg-oidc", `width=${w},height=${h},left=${left},top=${top}`);
+    const popup = window.open(url, `tg-oidc-${crypto.randomUUID()}`, `width=${w},height=${h},left=${left},top=${top}`);
     if (!popup) { reject(new Error("popup-blocked")); return; }
     let done = false;
     const finish = (fn, arg) => { if (done) return; done = true; cleanup(); fn(arg); };
     const onMsg = (e) => {
-      if (e.origin !== EDGE_ORIGIN) return;
+      if (e.origin !== EDGE_ORIGIN || e.source !== popup) return;
       const d = e.data;
       if (!d || d.source !== "microspec-tg" || typeof d.sid !== "string") return;
       const user = trimGoogleUser(d.user);

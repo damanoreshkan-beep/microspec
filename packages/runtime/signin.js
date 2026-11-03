@@ -70,7 +70,7 @@ import { html } from "htm/preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { gate } from "./gate.js";
 import { googleClientId, loginGoogle, login, SCOPE, pairNew, pairPoll, adoptSession, loginTelegram, loginTelegramWeb } from "./auth.js";
-import { inTelegram } from "./tma.js";
+import { inTelegram, inTelegramHost } from "./tma.js";
 import { shell } from "./shell.js";
 import * as backend from "./backend.js";
 
@@ -126,7 +126,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   const fail = (e) => { setErr(t.failed); onError?.(e); };
   const finish = (s) => { setErr(""); onDone?.(s); };
 
-  const [tgTrying, setTgTrying] = useState(() => { try { return adopt && inTelegram() && !gate; } catch { return false; } });
+  const [tgTrying, setTgTrying] = useState(() => { try { return adopt && inTelegram() && inTelegramHost() && !gate; } catch { return false; } });
   useEffect(() => {
     if (!tgTrying) return;
     let live = true;
@@ -180,7 +180,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   };
   const viaTelegram = async () => {
     setBusy(true); setErr("");
-    const mini = !adopt && !gate && (() => { try { return inTelegram(); } catch { return false; } })();
+    const mini = !adopt && !gate && (() => { try { return inTelegram() && inTelegramHost(); } catch { return false; } })();
     try { finish(mini ? await loginTelegram(undefined, { adopt }) : await loginTelegramWeb({ adopt })); } catch (e) { if (e?.message !== "popup-closed") fail(e); } finally { setBusy(false); }
   };
 

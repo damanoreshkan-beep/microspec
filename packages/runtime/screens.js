@@ -99,6 +99,13 @@ export function SignInScreen() {
   const [mods, setMods] = useState(null);
   const pair = (() => { try { return new URLSearchParams(location.search).get("pair") || ""; } catch { return ""; } })();
   const [paired, setPaired] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const approve = async () => {
+    setAsking(false);
+    const s = mods.session.get();
+    const ok = s ? await mods.pairComplete(pair, s.sid).catch(() => false) : false;
+    setPaired(ok ? "ok" : "fail");
+  };
   useEffect(() => {
     let live = true;
     Promise.all([import("./signin.js"), import("./auth.js")]).then(([si, au]) => {
@@ -112,7 +119,7 @@ export function SignInScreen() {
     if (!mods) return;
     const onSession = async (s) => {
       if (!s) return;
-      if (pair) { const ok = await mods.pairComplete(pair, s.sid).catch(() => false); setPaired(ok ? "ok" : "fail"); return; }
+      if (pair) { setAsking(true); return; }
       A.S.screen.set(null);
     };
     if (mods.session.get()) onSession(mods.session.get());
@@ -126,6 +133,10 @@ export function SignInScreen() {
     <div data-signin class="px-4 pt-6 pb-8 flex flex-col items-center text-center gap-4 max-w-xl mx-auto">
       ${paired === "ok"
         ? html`${Icon("lucide:check-circle-2", "text-4xl text-success")}<p data-paired class="text-base font-semibold max-w-xs">${sys("pairDone", loc)}</p>`
+        : asking ? html`${Icon("lucide:shield-alert", "text-4xl text-warning")}
+          <p data-pair-confirm class="text-sm text-base-content/75 max-w-xs">${sys("pairConfirm", loc)}</p>
+          <button id="pair-approve" class="btn btn-primary rounded-2xl w-full max-w-xs" onClick=${approve}>${sys("pairApprove", loc)}</button>
+          <button id="pair-cancel" class="btn btn-ghost rounded-2xl w-full max-w-xs" onClick=${() => A.S.screen.set(null)}>${sys("cancel", loc)}</button>`
         : html`${Icon("lucide:lock-keyhole", "text-4xl text-primary")}
           <p class="text-sm text-base-content/75 max-w-xs">${sys(pair ? "pairBody" : "signInBody", loc)}</p>
           ${paired === "fail" ? html`<p role="alert" class="text-error text-sm">${sys("pairFail", loc)}</p>` : null}

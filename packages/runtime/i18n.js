@@ -159,6 +159,8 @@ export const SYS = {
   cancel: { en: "Cancel", uk: "Скасувати", ru: "Отмена" },
   signInTitle: { en: "Sign in", uk: "Увійти", ru: "Войти" },
   pairBody: { en: "Sign in here to sign in the app on your phone.", uk: "Увійди тут — і застосунок на телефоні увійде разом з тобою.", ru: "Войдите здесь — и приложение на телефоне войдёт вместе с вами." },
+  pairConfirm: { en: "An app asks to use your account. Confirm only if you opened it yourself just now.", uk: "Застосунок просить доступ до твого акаунта. Підтверджуй, лише якщо щойно сам його відкрив.", ru: "Приложение просит доступ к вашему аккаунту. Подтверждайте, только если сами только что его открыли." },
+  pairApprove: { en: "Confirm sign-in", uk: "Підтвердити вхід", ru: "Подтвердить вход" },
   pairDone: { en: "Signed in — go back to the app.", uk: "Готово — повернись у застосунок.", ru: "Готово — вернитесь в приложение." },
   pairFail: { en: "The app did not receive the sign-in — try again from the app.", uk: "Застосунок не отримав вхід — спробуй ще раз із застосунку.", ru: "Приложение не получило вход — попробуйте ещё раз из приложения." },
   signInBody: { en: "AI generation is for signed-in users — so the free quota goes to people, not bots.", uk: "AI-генерація доступна після входу — так безкоштовна квота дістається людям, а не ботам.", ru: "AI-генерация доступна после входа — так бесплатная квота достаётся людям, а не ботам." },

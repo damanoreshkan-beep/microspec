@@ -18,6 +18,7 @@ import "./tests/tone_test.js";
 import "./tests/update_test.js";
 import "./tests/listing_test.js";
 import "./tests/calendar_test.js";
+import "./tests/audioresume_test.js";
 import "./tests/pair_test.js";
 import "./tests/watch_test.js";
 import "./tests/candidates_test.js";

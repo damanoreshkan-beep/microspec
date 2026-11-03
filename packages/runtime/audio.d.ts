@@ -120,7 +120,7 @@ export function createEngine({ master, noise }?: {
         brown?: undefined;
     };
     strike: (freq: any, opts: any) => void;
-    resume: () => any;
+    resume: () => Promise<any>;
     close: () => void;
 };
 /**

@@ -172,7 +172,7 @@ export function createEngine({ master = 0.85, noise = true } = {}) {
   return {
     ctx, master: masterGain, buffers,
     strike: (freq, opts) => strike(ctx, masterGain, freq, opts),
-    resume: () => { try { return ctx.resume(); } catch { } },
+    resume: () => { try { return Promise.resolve(ctx.resume()).catch(() => {}); } catch { return Promise.resolve(); } },
     close: () => { try { ctx.close(); } catch { } },
   };
 }

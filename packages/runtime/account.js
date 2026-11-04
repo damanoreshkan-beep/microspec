@@ -124,6 +124,12 @@ async function call(op, body = {}) {
   if (!r.ok) throw Object.assign(new Error(j?.error || String(r.status)), { status: r.status });
   return j;
 }
+/**
+ * The words for a refused unlink: the backend's 409 names why, and each reason asks something different of the person.
+ * @param e the error `call` threw, its message the backend's `error`
+ * @returns the i18n key to show
+ */
+export const unlinkNote = (e) => ({ recent: "signinUnlinkRecent", founder: "signinUnlinkFounder" })[e?.message] || "signinUnlinkFailed";
 const mark = (p) => p === "google" ? html`<${GoogleG} />` : Icon(p === "telegram" ? "lucide:send" : "lucide:github", "text-lg");
 
 function Signins({ github, loc, onChange }) {
@@ -153,7 +159,7 @@ function Signins({ github, loc, onChange }) {
   const unlink = async (ident) => {
     setBusy(true);
     try { done(gate ? { ...list, identities: list.identities.filter((i) => i.ident !== ident) } : await call("unlink", { ident }), ""); }
-    catch { setNote("signinFailed"); } finally { setBusy(false); setAsk(""); }
+    catch (e) { setNote(unlinkNote(e)); } finally { setBusy(false); setAsk(""); }
   };
   const fmt = (n) => Number(n).toLocaleString(intlLocale(loc));
   const ids = list?.identities || [];
@@ -193,7 +199,7 @@ function Signins({ github, loc, onChange }) {
           <button type="button" onClick=${() => setAdding(false)} class="btn btn-ghost btn-sm rounded-full">${sys("signinCancel", loc)}</button>
         </div>`
         : !merge && list ? html`<button data-signin-add type="button" onClick=${() => { setAdding(true); setNote(""); }} class="btn rounded-full sf-raised w-full gap-2 ms-press">${Icon("lucide:plus", "text-lg")}${sys("signinAdd", loc)}</button>` : null}
-      ${note ? html`<p role="status" class=${`text-sm ${note === "signinFailed" ? "text-error" : "text-base-content/70"}`}>${sys(note, loc)}</p>` : null}
+      ${note ? html`<p role="status" class=${`text-sm ${note === "signinFailed" || note === "signinUnlinkFailed" ? "text-error" : "text-base-content/70"}`}>${sys(note, loc)}</p>` : null}
     </div>
   </div>`;
 }

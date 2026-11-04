@@ -1,8 +1,9 @@
 /**
  * # runtime/sealed.js — the envelope: one file, both ends, bare WebCrypto
  *
- * HPKE base mode (RFC 9180) hand-rolled on WebCrypto: DHKEM(P-256, HKDF-SHA256) / HKDF-SHA256 /
- * AES-256-GCM. Zero dependencies, no authorization anywhere — the server is authenticated to the client by
+ * ECIES on WebCrypto, in HPKE's shape but NOT RFC 9180: ECDH P-256, HKDF-SHA256, AES-256-GCM, with no RFC key
+ * schedule, so it does not interoperate with an HPKE library. The review of 2026-11-03 read it against the RFC
+ * and found no exploitable defect. Zero dependencies, no authorization anywhere — the server is authenticated to the client by
  * a pinned public key, the client stays anonymous. This exact file runs on BOTH sides: the browser imports it,
  * and the Deno backend imports a verbatim copy whose hash is asserted in its tests; WebCrypto is the same API
  * in both, which is the whole reason the port went to Deno. P-256 rather than X25519, deliberately: X25519

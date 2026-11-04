@@ -67,3 +67,9 @@ export function Account({ github, loc, onChange }: {
     loc: any;
     onChange: any;
 }): any;
+/**
+ * The words for a refused unlink: the backend's 409 names why, and each reason asks something different of the person.
+ * @param e the error `call` threw, its message the backend's `error`
+ * @returns the i18n key to show
+ */
+export function unlinkNote(e: any): any;

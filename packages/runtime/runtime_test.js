@@ -20,6 +20,7 @@ import "./tests/listing_test.js";
 import "./tests/calendar_test.js";
 import "./tests/audioresume_test.js";
 import "./tests/pair_test.js";
+import "./tests/unlink_test.js";
 import "./tests/watch_test.js";
 import "./tests/candidates_test.js";
 import "./tests/colour_test.js";

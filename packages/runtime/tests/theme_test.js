@@ -325,6 +325,25 @@ Deno.test('a "dark" island is glass over MEDIA — it casts alone, never the ext
   assert(/\bsf-frost\b/.test(dark[1]), 'tone="dark" must cast alone (.sf-frost), like every other glass-over-stage surface');
 });
 
+Deno.test(".ms-comb: every step offsets the first cell of each short row, and the steps tile the widths", async () => {
+  const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
+  assert(/\.ms-comb \{ container-type: inline-size; \}/.test(css), ".ms-comb no longer establishes the container its steps read");
+  assert(/\.ms-comb-cells > \* \{ grid-column: span 2;/.test(css), "a cell must span two half-cells");
+  const steps = [...css.matchAll(/@container \(([^{]*)\) \{\s*(\.ms-comb-[^{]*)\{ --comb-c: (\d+); \}\s*\2> :nth-child\((\d+)n\+(\d+)\) \{ grid-column: 2 \/ span 2; \}\s*\}/g)]
+    .map((m) => ({ q: m[1], lg: m[2].trim() === ".ms-comb-lg", c: +m[3], a: +m[4], b: +m[5] }));
+  assertEquals(steps.filter((s) => !s.lg).map((s) => s.c / 2), [3, 4, 5, 6], "the small comb is 3 · 4 · 5 · 6 across");
+  assertEquals(steps.filter((s) => s.lg).map((s) => s.c / 2), [3, 5], "the large comb is 3 across, then 5");
+  for (const s of steps) {
+    const n = s.c / 2;
+    assertEquals([s.a, s.b], [2 * n - 1, n + 1], `${n} across (${s.q}) offsets the wrong child`);
+  }
+  for (const lg of [false, true]) {
+    const edges = steps.filter((s) => s.lg === lg).map((s) => ({ min: +(/min-width: ([\d.]+)rem/.exec(s.q)?.[1] ?? 0), max: +(/max-width: ([\d.]+)rem/.exec(s.q)?.[1] ?? Infinity) }));
+    for (let i = 1; i < edges.length; i++) assert(Math.abs(edges[i].min - edges[i - 1].max - 0.01) < 1e-9, `the ${lg ? "large" : "small"} comb's steps ${i - 1} and ${i} do not meet`);
+    assert(edges[0].min === 0 && edges.at(-1).max === Infinity, "the comb's first step must start at zero and its last must be open");
+  }
+});
+
 Deno.test(".ms-cols asks its CONTAINER, not the window — and says its counts out loud", async () => {
   const css = await Deno.readTextFile(P("packages/runtime/runtime.css"));
   const at = css.indexOf(".ms-cols {");

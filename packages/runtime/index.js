@@ -89,7 +89,7 @@ export function start(spec, arg2) {
   setApp(app, opts.views || {});
   const { S, load } = app;
   installTelemetry(spec.id);
-  installUsage(S);
+  installUsage(S, spec.id);
   initTelegram();
   if (inTelegram() && inTelegramHost()) import("./auth.js").then((a) => a.loginTelegram().catch(() => a.restore())).catch(() => {});
 

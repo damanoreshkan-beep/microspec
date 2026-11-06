@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { hookOf, flushUsage, installUsage, CENSUS_MS, MAX_KEYS } from "../usage.js";
+import { hookOf, flushUsage, installUsage, CENSUS_MS, MAX_KEYS, bumpOpen, rankOpens, frequent, OPENS_KEY, HALF_LIFE_DAYS, REOPEN_MS } from "../usage.js";
 
 /** The smallest thing that behaves like the DOM nodes hookOf walks: tag, attributes, parentElement. */
 const node = (attrs, parent = null, tagName = "DIV") => ({
@@ -61,6 +61,41 @@ Deno.test("flushUsage + installUsage: inert without a document, and silent with 
   globalThis.fetch = () => { fetched++; return Promise.resolve(new Response("")); };
   try { installUsage(null); flushUsage(); } finally { globalThis.fetch = real; }
   assertEquals(fetched, 0, "a census with no taps sends nothing, and report() is a no-op in tests anyway");
+});
+
+const DAY = 86400000, T0 = 20000 * DAY + 3600000;
+
+Deno.test("bumpOpen + rankOpens: the app opened most leads, and the order is stable on a tie", () => {
+  let m = null;
+  for (const id of ["reel", "fonoteka", "fonoteka", "remix", "fonoteka", "reel"]) m = bumpOpen(m, id, T0);
+  assertEquals(rankOpens(m, T0), [{ id: "fonoteka", score: 3 }, { id: "reel", score: 2 }, { id: "remix", score: 1 }]);
+  m = bumpOpen(m, "arc", T0);
+  assertEquals(rankOpens(m, T0).slice(2).map((x) => x.id), ["arc", "remix"], "equal scores order by id, not by insertion");
+});
+
+Deno.test("bumpOpen + rankOpens: an open weighs half after the half-life, so this week's habit passes last month's", () => {
+  let m = null;
+  for (let i = 0; i < 4; i++) m = bumpOpen(m, "old", T0);
+  assertEquals(rankOpens(m, T0 + HALF_LIFE_DAYS * DAY)[0], { id: "old", score: 2 });
+  const later = T0 + 2 * HALF_LIFE_DAYS * DAY;
+  m = bumpOpen(m, "new", later); m = bumpOpen(m, "new", later);
+  assertEquals(rankOpens(m, later).map((x) => x.id), ["new", "old"], "4 opens a month ago = 1 today; 2 opens today lead");
+  assertEquals(m.old, [1, Math.floor(later / DAY)], "a bump rewrites every score as of today");
+});
+
+Deno.test("bumpOpen + rankOpens: a habit long gone is forgotten, and a broken record is read as empty", () => {
+  const m = bumpOpen(bumpOpen(null, "gone", T0), "here", T0 + 80 * DAY);
+  assertEquals(Object.keys(m), ["here"], "one open 80 days ago is under the floor and leaves the record");
+  assertEquals(rankOpens({ a: "x", b: [0, 1], c: [-2, 1], d: null }, T0), []);
+  assertEquals(rankOpens(null), []);
+  assertEquals(bumpOpen({ a: "x" }, "", T0), {}, "no app id, nothing gained");
+  assertEquals(frequent(), [], "outside a browser there is no record");
+});
+
+Deno.test("opens: the record's contract", () => {
+  assertEquals(OPENS_KEY, "ms:opens");
+  assertEquals(HALF_LIFE_DAYS, 14);
+  assertEquals(REOPEN_MS, 1800000);
 });
 
 Deno.test("budget: the roll-up is slow and the key count is capped", () => {

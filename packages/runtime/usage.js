@@ -29,6 +29,15 @@
  * text, never a prompt. The names are authored by us and mean nothing outside the farm, so a row carries no
  * user content at all; `telemetry.js` adds the same coarse context it adds to an error row.
  *
+ * ## What the phone keeps for itself
+ *
+ * The census above goes to the farm. A second, smaller record never leaves the device: every app notes its own
+ * OPEN under one origin-wide localStorage key ({@link OPENS_KEY}), as a score that halves every
+ * {@link HALF_LIFE_DAYS} days. All the apps of a product share an origin, so a launcher (the product's store)
+ * reads {@link frequent} and puts the apps this person actually uses first — with no account, no request and
+ * nothing to sync. A boot is an open; so is coming back after {@link REOPEN_MS} away, because an installed app
+ * lives in the background for days and would otherwise count once. Nothing is written under the gate.
+ *
  * ## Flush points
  *
  * On `visibilitychange` to hidden and on `pagehide` — the moments a phone actually ends a session — and on a
@@ -38,6 +47,7 @@
  * @module
  */
 import { report } from "./telemetry.js";
+import { gate } from "./gate.js";
 
 /** How often a long session rolls up even if it never goes to the background. */
 export const CENSUS_MS = 120000;
@@ -84,6 +94,55 @@ export function hookOf(node) {
   return fallback;
 }
 
+/** The origin-wide localStorage key of the opens record: `{ [appId]: [score, epochDay] }`. */
+export const OPENS_KEY = "ms:opens";
+/** Days after which an open weighs half: last month's habit fades, this week's leads. */
+export const HALF_LIFE_DAYS = 14;
+/** Away for this long, a return to the app is a new open. */
+export const REOPEN_MS = 30 * 60000;
+const DAY_MS = 86400000, FORGET = 0.05;
+const round3 = (n) => Math.round(n * 1000) / 1000;
+const fade = (v, today) => (Array.isArray(v) && v[0] > 0 ? v[0] * 2 ** (-Math.max(0, today - (+v[1] || 0)) / HALF_LIFE_DAYS) : 0);
+
+/**
+ * The opens record after one more open of `app`: every score is faded to today, the faint ones are forgotten
+ * (so the record cannot grow past the apps a person still uses), and `app` gains one. Pure.
+ * @param {Record<string, [number, number]> | null | undefined} map the record as stored
+ * @param {string} app the app that was opened
+ * @param {number} [now] epoch ms
+ * @returns {Record<string, [number, number]>} the new record
+ */
+export function bumpOpen(map, app, now = Date.now()) {
+  const today = Math.floor(now / DAY_MS), out = /** @type {Record<string, [number, number]>} */ ({});
+  for (const [id, v] of Object.entries(map || {})) { const s = fade(v, today); if (s >= FORGET) out[id] = [round3(s), today]; }
+  if (app) out[app] = [round3((out[app]?.[0] || 0) + 1), today];
+  return out;
+}
+
+/**
+ * The opens record as a ranking: scores faded to `now`, strongest first, ties by id so the order is stable. Pure.
+ * @param {Record<string, [number, number]> | null | undefined} map the record as stored
+ * @param {number} [now] epoch ms
+ * @returns {{ id: string, score: number }[]} the apps of the record, most used first
+ */
+export function rankOpens(map, now = Date.now()) {
+  const today = Math.floor(now / DAY_MS);
+  return Object.entries(map || {}).map(([id, v]) => ({ id, score: round3(fade(v, today)) })).filter((x) => x.score >= FORGET)
+    .sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : 1));
+}
+
+const readOpens = () => { try { const m = JSON.parse(localStorage.getItem(OPENS_KEY) || "{}"); return m && typeof m === "object" && !Array.isArray(m) ? m : {}; } catch { return {}; } };
+
+/**
+ * The apps this device opens, most used first — read from the origin-wide record every app of the product
+ * writes at its own boot. Empty on a first visit, in private storage, and outside a browser.
+ * @param {number} [now] epoch ms
+ * @returns {{ id: string, score: number }[]} app ids with their faded scores
+ */
+export function frequent(now = Date.now()) { return rankOpens(readOpens(), now); }
+
+const noteOpen = (app) => { if (!app || gate) return; try { localStorage.setItem(OPENS_KEY, JSON.stringify(bumpOpen(readOpens(), app))); } catch { } };
+
 /** Roll the census into one event and start a fresh one. Sends nothing when nothing happened. */
 export function flushUsage() {
   if (!dirty) return;
@@ -98,9 +157,10 @@ export function flushUsage() {
 /**
  * Install the census. `S` is the app's store: its `screen` atom is the state half of the answer — which
  * sheets and sub-screens were actually opened, which is the one thing a tap census cannot see (a screen can
- * be reached by a swipe or a back gesture as well as by a button).
+ * be reached by a swipe or a back gesture as well as by a button). `app` is the app's id: its open is noted in
+ * the device's own record ({@link frequent}) now, and again on a return after {@link REOPEN_MS} away.
  */
-export function installUsage(S) {
+export function installUsage(S, app = "") {
   if (installed || typeof document === "undefined") return;
   installed = true;
   startedAt = Date.now();
@@ -109,7 +169,12 @@ export function installUsage(S) {
 
   try { S?.screen?.listen?.((v) => bump(screens, v || "root")); } catch { }
 
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushUsage(); });
+  noteOpen(app);
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); flushUsage(); }
+    else if (hiddenAt && Date.now() - hiddenAt >= REOPEN_MS) { hiddenAt = 0; noteOpen(app); }
+  });
   addEventListener("pagehide", flushUsage);
   timer = setInterval(flushUsage, CENSUS_MS);
   if (timer && typeof timer === "object" && "unref" in timer) timer.unref?.();

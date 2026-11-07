@@ -123,6 +123,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
     if (f.startsWith(RT)) urls.add(`/_rt/${f.slice(RT.length)}`);
     else if (f.startsWith("rt/")) urls.add(`/_rt/${f.slice(3)}`);
     else if (f.startsWith(`${dir}/`) && f !== `${dir}/index.html`) urls.add(`./${f.slice(dir.length + 1)}`);
+    if (f.startsWith(RT) && f.endsWith(".js")) for (const ext of ["wasm", "frag"]) { const side = f.slice(0, -3) + "." + ext; if (exists(side)) urls.add(`/_rt/${side.slice(RT.length)}`); }
   }
 
   const imports = importMapOf(html);

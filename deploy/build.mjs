@@ -144,7 +144,7 @@ async function packageVersion() {
 const runtimeCommits = await gitCount("packages/runtime");
 const CORE = runtimeCommits ? "1." + runtimeCommits : (await packageVersion()) || "1.0";
 for await (const e of Deno.readDir(RTSRC)) {
-  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp") || e.name.endsWith(".avif");
+  const keep = (e.name.endsWith(".js") && !e.name.endsWith("_test.js")) || e.name.endsWith(".css") || e.name.endsWith(".json") || e.name.endsWith(".webp") || e.name.endsWith(".avif") || e.name.endsWith(".wasm") || e.name.endsWith(".frag");
   if (!keep || !(await isFileAt(RTSRC, e))) continue;
   if (e.name === "build.js") await Deno.writeTextFile(`${OUT}/_rt/build.js`, `export const BUILD = "${BUILD_SHA}";\nexport const CORE = "${CORE}";\n`);
   else await Deno.copyFile(`${RTSRC}/${e.name}`, `${OUT}/_rt/${e.name}`);

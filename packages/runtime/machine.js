@@ -32,7 +32,10 @@
  * | `buf_ptr` `buf_w` `buf_h` `buf_ch` | `() → i32` | the byte region the shader reads as `buf` (`w × h × ch`, ch 1 or 4), row 0 = top |
  *
  * ## What it exports
- * - {@link MachineStage} — the element: `{ wasm, shader, seed, params, cells = 6, onReady, onHud, hudHz = 4, zClass = "z-0" }`.
+ * - {@link MachineStage} — the element: `{ wasm, shader, seed, params, cells = 6, cam, onReady, onHud, onState, hudHz = 4, zClass = "z-0" }`.
+ *   `cam` is passed through to the stage as its PICTURE channel (a canvas, a bitmap, or a function returning one) —
+ *   how a machine that lays pictures (the comb's atlas) gets them to the shader; `onState(state)` reports
+ *   `loading → ready | failed | none` so the view can fall back to DOM where the machine cannot run.
  *   Renders the {@link GlStage} for `shader` fed from the machine's out block and byte region, plus a
  *   transparent `fixed inset-0` touch surface (`data-machine`, `touch-action: none`) that forwards every pointer
  *   to `touch`. `cells` is the CSS px per grid cell → `init(ceil(innerWidth / cells), ceil(innerHeight / cells), seed)`.
@@ -115,12 +118,13 @@ export async function loadMachine(bytes, { w, h, seed = 0 } = {}) {
  * @param props see the module note
  * @returns the stage canvas and the touch surface
  */
-export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, onReady, onHud, hudHz = 4, zClass = "z-0" }) {
+export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, cam, onReady, onHud, onState, hudHz = 4, zClass = "z-0" }) {
   const [state, setState] = useState(typeof WebAssembly === "undefined" ? "none" : "loading");
   const [err, setErr] = useState("");
   const [grid, setGrid] = useState("");
-  const m = useRef({ api: null, dead: false, raf: 0, sent: [], onHud, onReady }).current;
-  m.onHud = onHud; m.onReady = onReady;
+  const m = useRef({ api: null, dead: false, raf: 0, sent: [], onHud, onReady, onState }).current;
+  m.onHud = onHud; m.onReady = onReady; m.onState = onState;
+  useEffect(() => { m.onState?.(state); }, [state]);
 
   const chan = useRef(null);
   if (!chan.current) {
@@ -186,7 +190,7 @@ export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, onRead
     try { api.exports.touch(e.pointerId | 0, phase, x, y); } catch { }
   };
 
-  return html`<${GlStage} shader=${shader} seed=${seed} ink=${chan.current.ink} vary=${chan.current.vary} points=${chan.current.points} buf=${chan.current.buf} zClass=${zClass} />
+  return html`<${GlStage} shader=${shader} seed=${seed} ink=${chan.current.ink} vary=${chan.current.vary} points=${chan.current.points} buf=${chan.current.buf} cam=${cam} zClass=${zClass} />
     <div data-machine=${state} data-abi=${ABI} data-grid=${grid} data-err=${err || null} aria-hidden="true"
       class=${`fixed inset-0 ${zClass} select-none`} style="touch-action:none;-webkit-tap-highlight-color:transparent"
       onPointerDown=${touch(0)} onPointerMove=${touch(1)} onPointerUp=${touch(2)} onPointerCancel=${touch(3)}></div>`;

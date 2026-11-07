@@ -54,6 +54,7 @@ import "./tests/paysheet_test.js";
 import "./tests/camstage_test.js";
 import "./tests/godotstage_test.js";
 import "./tests/machine_test.js";
+import "./tests/comb_test.js";
 import "./tests/sensors_test.js";
 import "./tests/strip_test.js";
 import "./tests/shell_test.js";

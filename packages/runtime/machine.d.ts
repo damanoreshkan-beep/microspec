@@ -31,7 +31,10 @@
  * | `buf_ptr` `buf_w` `buf_h` `buf_ch` | `() → i32` | the byte region the shader reads as `buf` (`w × h × ch`, ch 1 or 4), row 0 = top |
  *
  * ## What it exports
- * - {@link MachineStage} — the element: `{ wasm, shader, seed, params, cells = 6, onReady, onHud, hudHz = 4, zClass = "z-0" }`.
+ * - {@link MachineStage} — the element: `{ wasm, shader, seed, params, cells = 6, cam, onReady, onHud, onState, hudHz = 4, zClass = "z-0" }`.
+ *   `cam` is passed through to the stage as its PICTURE channel (a canvas, a bitmap, or a function returning one) —
+ *   how a machine that lays pictures (the comb's atlas) gets them to the shader; `onState(state)` reports
+ *   `loading → ready | failed | none` so the view can fall back to DOM where the machine cannot run.
  *   Renders the {@link GlStage} for `shader` fed from the machine's out block and byte region, plus a
  *   transparent `fixed inset-0` touch surface (`data-machine`, `touch-action: none`) that forwards every pointer
  *   to `touch`. `cells` is the CSS px per grid cell → `init(ceil(innerWidth / cells), ceil(innerHeight / cells), seed)`.
@@ -82,14 +85,16 @@ export function loadMachine(bytes: any, { w, h, seed }?: {
  * @param props see the module note
  * @returns the stage canvas and the touch surface
  */
-export function MachineStage({ wasm, shader, seed, params, cells, onReady, onHud, hudHz, zClass }: {
+export function MachineStage({ wasm, shader, seed, params, cells, cam, onReady, onHud, onState, hudHz, zClass }: {
     wasm: any;
     shader: any;
     seed?: number;
     params: any;
     cells?: number;
+    cam: any;
     onReady: any;
     onHud: any;
+    onState: any;
     hudHz?: number;
     zClass?: string;
 }): any;

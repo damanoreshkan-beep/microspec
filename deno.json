@@ -1,6 +1,6 @@
 {
   "name": "@microspec/core",
-  "version": "1.2.158",
+  "version": "1.2.159",
   "//release": "A version bump here publishes to JSR — but ONLY on a PUSH event to main, and the merge does not always produce one. Measured across 2026-09-22: after-merge.yml dispatches publish.yml, and a workflow_dispatch run is attributed to github-actions[bot], which JSR refuses with `actorNotScopeMember` because the bot is not a member of the @microspec scope. Every green dispatch in the history was a no-op that found the version already on the registry, put there by a push run beside it. 1.2.81 and 1.2.82 both merged green and both stayed unpublished — one merged through the API, one squashed by auto-merge — while dreamstudio went on installing the previous core with no error anywhere near the change. THE CHECK, after every merge that bumps this number: `curl -s https://jsr.io/@microspec/core/meta.json | grep <version>`. If it is not there, push a commit touching this file to main from the command line; that is the one path that has ever published.",
   "license": "MIT",
   "publish": {
@@ -27,12 +27,14 @@
     "topojson-client": "npm:topojson-client@3",
     "linkedom": "npm:linkedom@0.18.5",
     "tailwindcss": "npm:tailwindcss@4.3.3",
-    "daisyui": "npm:daisyui@5"
+    "daisyui": "npm:daisyui@5",
+    "wabt": "npm:wabt@1.0.36"
   },
   "//": "Farm workspace root. The farm IS its own monorepo framework — Deno workspaces + a tiny affected orchestrator (tools/affected.mjs) — so there is NO Turborepo/Nx and NO node_modules. Packages below are workspace members; apps stay pure Deno (resolved at serve time by each index.html import map); CI verifies only the apps a change actually reaches.",
   "tasks": {
     "test": "deno test -A packages/runtime/runtime_test.js",
     "dts": "deno run -A tools/dts.mjs",
+    "wat": "deno run -A tools/wat.mjs",
     "docart": "deno run -A tools/art/docart.mjs",
     "demo": "deno run -A tools/demo.mjs",
     "affected": "deno run -A tools/affected.mjs",
@@ -104,6 +106,7 @@
     "./runtime/intake.js": "./packages/runtime/intake.js",
     "./runtime/lastgen.js": "./packages/runtime/lastgen.js",
     "./runtime/localize.js": "./packages/runtime/localize.js",
+    "./runtime/machine.js": "./packages/runtime/machine.js",
     "./runtime/material.js": "./packages/runtime/material.js",
     "./runtime/mediasession.js": "./packages/runtime/mediasession.js",
     "./runtime/melody.js": "./packages/runtime/melody.js",
@@ -170,6 +173,7 @@
     "./see": "./packages/gates/see.mjs",
     "./store-shots": "./packages/gates/store-shots.mjs",
     "./verify": "./packages/gates/verify.mjs",
+    "./wat": "./tools/wat.mjs",
     "./tests/runtime": "./packages/runtime/runtime_test.js",
     "./tests/mcp": "./tools/mcp/server_test.js",
     "./tests/8n8": "./tools/8n8/run_test.js"

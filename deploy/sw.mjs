@@ -38,9 +38,9 @@
  *   contain `from "…"` must not invent a dependency;
  * - the CDN URLs behind bare specifiers the closure imports statically (preact, htm, nanostores, motion),
  *   resolved through the page's own import map;
- * - the app's shaders (any `.wgsl` or `.frag` beside index.html) — they arrive by fetch(), so the closure
- *   is blind to them; discovered, not listed, because the third app to ship a shader would otherwise have
- *   gone offline-blank with every gate green.
+ * - the app's shaders and machines (any `.wgsl`, `.frag` or `.wasm` beside index.html) — they arrive by fetch(),
+ *   so the closure is blind to them; discovered, not listed, because the third app to ship a shader would
+ *   otherwise have gone offline-blank with every gate green.
  *
  * Deliberately NOT in it: the app's assets directory (card scans, wasm, sample kits, environment maps)
  * and anything reached only by a guarded dynamic `import("three")`. Those are cached on first use; the
@@ -138,7 +138,7 @@ export function manifestFor(id, { read: rd = read } = {}) {
 
   try {
     for (const e of Deno.readDirSync(dir)) {
-      if (e.isFile && /\.(wgsl|frag)$/.test(e.name)) urls.add(`./${e.name}`);
+      if (e.isFile && /\.(wgsl|frag|wasm)$/.test(e.name)) urls.add(`./${e.name}`);
     }
   } catch { }
 

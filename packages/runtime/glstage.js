@@ -25,7 +25,10 @@
  *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
  *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it. `tex2` is a
  *   MATERIAL texture (full resolution, mirrored-repeat, unit 2) a shader tiles over that picture; `preserve` keeps
- *   the drawing buffer so the app can save the live frame from the canvas.
+ *   the drawing buffer so the app can save the live frame from the canvas. `buf` is RAW BYTES (unit 3): a function
+ *   returning `{ data, w, h, ch, gen }` — a `Uint8Array` of `w × h × ch` bytes (ch 1 or 4), re-uploaded whenever
+ *   `gen` changes — bound as an INTEGER texture, so a shader reads the exact byte with `texelFetch` on a
+ *   `usampler2D`. It is how a `machine.js` stage shows its linear memory.
  * - {@link hasWebGL2} — the probe: true when this document can hand out a WebGL2 context, false wherever
  *   `getContext` throws or answers null.
  *
@@ -41,7 +44,9 @@
  * The shader declares `out vec4 o` and the uniforms `res: vec2 · time: float · seed: float · ink: vec4 ·
  * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette,
  * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`,
- * and `points: vec4[8]` + `pointCount: float` when it draws one thing per entry of the moving set.
+ * and `points: vec4[8]` + `pointCount: float` when it draws one thing per entry of the moving set, and
+ * `buf: usampler2D` + `bufSize: vec2` (w, h in texels; 0,0 until bound) when it reads raw bytes — row 0 is the
+ * FIRST row handed in, so a buffer laid out top-down reads with the DOM's y.
  *
  * ## How it fits
  * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` (the gate does not skip the stage — it only
@@ -74,9 +79,14 @@
  *   read every frame the way `ink`/`vary` are, and zero-filled past `pointCount` so a shader that loops to
  *   the compiled array size never reads a stale slot. `ink` and `vary` are four floats each and cannot carry
  *   a list, which is why a stage that wanted one well per neighbour previously had no channel at all.
+ * - `buf` is uploaded with `UNPACK_ALIGNMENT 1` (rows of any width), NEAREST, clamped, as `R8UI` or `RGBA8UI` —
+ *   an integer texture cannot be filtered, which is the point: a byte is a byte. A 1×1 zero texture is bound from
+ *   the first frame so a shader that samples `buf` never reads an unbound unit; `bufSize` says 0,0 until real
+ *   bytes arrive. The view is re-read every frame (a `WebAssembly.Memory` that grows detaches its old buffer).
  * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x` instead of easing it.
  * - The canvas reports itself: `data-haswebgl` yes/no, `data-render="webgl"` once a frame drew, `data-tex="yes"`
- *   once the palette is bound, `data-err` with the first 120 chars of a compile/link failure.
+ *   once the palette is bound, `data-buf="yes"` once raw bytes are bound, `data-err` with the first 120 chars of a
+ *   compile/link failure.
  * @module
  */
 import { html } from "htm/preact";
@@ -118,12 +128,14 @@ export const hasWebGL2 = () => {
  *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
  * @param preserve keep the drawing buffer after each frame, so the app can read the canvas (`toBlob`) — a
  *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
+ * @param buf      optional function returning `{ data: Uint8Array, w, h, ch: 1|4, gen }` (read every frame, uploaded
+ *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, buf, zClass = "-z-10" }) {
   const ref = useRef();
   const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null }).current;
-  state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam;
+  state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam; state.buf = buf;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -206,6 +218,27 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
           } catch { }
         };
         if (state.tex2Url) state.loadTex2(state.tex2Url);
+        const uBuf = U("buf"), uBufSize = U("bufSize");
+        const bufTex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, bufTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, 1, 1, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, new Uint8Array([0]));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        if (uBuf) gl.uniform1i(uBuf, 3);
+        let bufW = 0, bufH = 0, bufGen = null;
+        const uploadBuf = (b) => {
+          if (!b || !b.data || !(b.w > 0 && b.h > 0) || b.gen === bufGen) return;
+          const ch = b.ch === 4 ? 4 : 1;
+          if (b.data.length < b.w * b.h * ch) return;
+          try {
+            gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, bufTex);
+            gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+            gl.texImage2D(gl.TEXTURE_2D, 0, ch === 4 ? gl.RGBA8UI : gl.R8UI, b.w, b.h, 0, ch === 4 ? gl.RGBA_INTEGER : gl.RED_INTEGER, gl.UNSIGNED_BYTE, b.data, 0);
+            gl.activeTexture(gl.TEXTURE0);
+          } catch { return; }
+          bufW = b.w; bufH = b.h; bufGen = b.gen;
+          if (!canvas.dataset.buf) canvas.dataset.buf = "yes";
+        };
         gl.activeTexture(gl.TEXTURE0);
         const texture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -272,6 +305,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
           if (uTexAspect) gl.uniform2f(uTexAspect, texAspect, 0);
           if (uCam) { uploadCam(typeof state.cam === "function" ? state.cam() : state.cam); gl.uniform2f(uCamAspect, camAspect, camBound); }
           if (uTex2Aspect) gl.uniform2f(uTex2Aspect, tex2Aspect, tex2Bound);
+          if (uBuf) { uploadBuf(typeof state.buf === "function" ? state.buf() : state.buf); gl.uniform2f(uBufSize, bufW, bufH); }
           gl.drawArrays(gl.TRIANGLES, 0, 3);
           canvas.dataset.render = "webgl";
           state.raf = requestAnimationFrame(frame);

@@ -168,6 +168,13 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("deploy/sw.mjs"), "--check"],
   },
   {
+    id: "wat", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-11-07",
+    why: "A machine app ships a binary GENERATED from the WAT beside it (runtime/machine.js). The text is what " +
+      "is written and read, the bytes are what runs; --check reds a .wasm that no longer matches its .wat, " +
+      "so a binary can never drift from its source on main.",
+    run: () => ["deno", "run", "-A", at("tools/wat.mjs"), "--check"],
+  },
+  {
     id: "readme", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-08-26",
     why: "Each app's README is a one-screen card generated from its spec + i18n. Change the app's copy and " +
       "the page drifts, so the regeneration is a gate: --check fails when a README no longer matches its app.",

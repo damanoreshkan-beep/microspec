@@ -29,7 +29,7 @@
  *   the checkout, node_modules/@jsr/microspec__core/packages/runtime in a consumer), then the product's
  *   rt/ overlay copied on top: one flat, merged runtime the bundler resolves /_rt/ against.
  * - dist/<id>/ for every app with a spec.json — html, js and json rewritten /_rt/ to ../_rt/, spec.json
- *   stamped with the version unless the author pinned one, svg/png/webp/webmanifest/wgsl/frag copied,
+ *   stamped with the version unless the author pinned one, svg/png/webp/webmanifest/wgsl/frag/wasm copied,
  *   i18n/ and assets/ copied through. e2e.spec.mjs, .md and .bak files are skipped; any other extension is
  *   listed at the end as "matched no copy rule" rather than dropped — hero.wgsl once vanished that way.
  * - dist/<id>/icons/ from brand.svg + brand.json, icon.webp as the luminous master when the app has one;

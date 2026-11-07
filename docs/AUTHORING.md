@@ -138,7 +138,21 @@ Compose the shared runtime components instead of writing geometry/astronomy from
   with the same 16-float uniform contract as `hero.wgsl` plus one optional CORS texture (downsampled to a
   palette). PROBE-guarded, so CI's Chromium draws it and the shot shows the real field; the e2e guard is
   `data-haswebgl="yes" ⇒ data-render="webgl"`. Judge a GLSL stage on the VPS eye from a scratch page (see
-  `apps/persona/RESEARCH.md`) — `tools/art/hero.mjs` renders WGSL only.
+  `apps/persona/RESEARCH.md`) — `tools/art/hero.mjs` renders WGSL only. `GlStage` also takes `buf` — a function
+  returning `{ data: Uint8Array, w, h, ch, gen }` — bound as an INTEGER texture (`usampler2D buf`, `vec2 bufSize`),
+  so a shader `texelFetch`es exact bytes; that is how a machine shows its memory.
+
+- **`/_rt/machine.js` — a MACHINE app: the logic is a WebAssembly binary, the pixels a shader, JS the glue
+  + `apps/<id>/<id>.wat` + `<id>.frag` + i18n, and a view of a few lines:
+  `<MachineStage wasm=${new URL("x.wasm", import.meta.url)} shader=${new URL("x.frag", import.meta.url)}
+  params=${[kernel]} onHud=${(hud) => $hud.set(...)} />`. The host fetches the binary, checks ONE ABI (`abi()` = 1;
+  `init(w,h,seed)` · `step(dt,t)` · `touch(id,phase,x,y)` · `set(i,v)` · `out_ptr` · `hud_ptr` · `buf_ptr/w/h/ch` —
+  the table in the module doc), steps it on `requestAnimationFrame`, routes every pointer from a transparent
+  `fixed inset-0` surface (`data-machine`) into `touch`, feeds the stage's `ink`/`vary`/`points` from the machine's
+  OUT block and a byte region of its memory as `buf`. The WAT is written by the agent; `deno task wat` assembles it
+  with `wabt` inside Deno (no native toolchain) and the 8n8 node `wat --check` reds a `.wasm` that drifted from its
+  `.wat`. The build copies `.wasm`, `sw` precaches it. Reference consumer: **`rozriad`** (the bit field — a 2D
+  bitwise automaton in linear memory, touches burn bits, the HUD shows real linear-memory addresses).
 
 - **Link previews are generated, never hand-written.** The build renders `dist/<app>/og.png` (1200×630, from
   `brand.json` + `brand.svg` + the uk `title`/`profTagline`) and injects the Open Graph / Twitter-card block

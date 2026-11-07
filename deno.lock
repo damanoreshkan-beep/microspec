@@ -55,7 +55,8 @@
     "npm:preact@10.27.1": "10.27.1",
     "npm:tailwindcss@4.3.3": "4.3.3",
     "npm:topojson-client@3": "3.1.0",
-    "npm:typescript@5.6.3": "5.6.3"
+    "npm:typescript@5.6.3": "5.6.3",
+    "npm:wabt@1.0.36": "1.0.36"
   },
   "jsr": {
     "@astral/astral@0.5.6": {
@@ -447,6 +448,10 @@
     "undici-types@8.9.0": {
       "integrity": "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="
     },
+    "wabt@1.0.36": {
+      "integrity": "sha512-GAfEcFyvYRZ51xIZKeeCmIKytTz3ejCeEU9uevGNhEnqt9qXp3a8Q2O4ByZr6rKWcd8jV/Oj5cbDJFtmTYdchg==",
+      "bin": true
+    },
     "wasm-feature-detect@1.9.0": {
       "integrity": "sha512-zonE+xlIIYtxPy++L24ow0hAD8CICb4+FgPyROd3buyXIqsJvUEDkBgfCCoXOd1Hu3DUr0GOfnPIdcGV+YpNaA=="
     }
@@ -774,7 +779,8 @@
       "npm:nanostores@0.11.4",
       "npm:preact@10.27.1",
       "npm:tailwindcss@4.3.3",
-      "npm:topojson-client@3"
+      "npm:topojson-client@3",
+      "npm:wabt@1.0.36"
     ]
   }
 }

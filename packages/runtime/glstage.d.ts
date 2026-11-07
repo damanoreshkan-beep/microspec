@@ -24,7 +24,10 @@
  *   `cam` is a LIVE picture source (a `<video>` of the camera, a canvas, an image) uploaded at full resolution every
  *   frame it changes — the one channel that projects a picture instead of borrowing a palette from it. `tex2` is a
  *   MATERIAL texture (full resolution, mirrored-repeat, unit 2) a shader tiles over that picture; `preserve` keeps
- *   the drawing buffer so the app can save the live frame from the canvas.
+ *   the drawing buffer so the app can save the live frame from the canvas. `buf` is RAW BYTES (unit 3): a function
+ *   returning `{ data, w, h, ch, gen }` — a `Uint8Array` of `w × h × ch` bytes (ch 1 or 4), re-uploaded whenever
+ *   `gen` changes — bound as an INTEGER texture, so a shader reads the exact byte with `texelFetch` on a
+ *   `usampler2D`. It is how a `machine.js` stage shows its linear memory.
  * - {@link hasWebGL2} — the probe: true when this document can hand out a WebGL2 context, false wherever
  *   `getContext` throws or answers null.
  *
@@ -40,7 +43,9 @@
  * The shader declares `out vec4 o` and the uniforms `res: vec2 · time: float · seed: float · ink: vec4 ·
  * vary: vec4 · env: vec4`, plus `tex: sampler2D` and `texAspect: vec2` when it samples the palette,
  * `cam: sampler2D` + `camAspect: vec2` (x = width/height, y = 1 once a frame is bound) when it projects `cam`,
- * and `points: vec4[8]` + `pointCount: float` when it draws one thing per entry of the moving set.
+ * and `points: vec4[8]` + `pointCount: float` when it draws one thing per entry of the moving set, and
+ * `buf: usampler2D` + `bufSize: vec2` (w, h in texels; 0,0 until bound) when it reads raw bytes — row 0 is the
+ * FIRST row handed in, so a buffer laid out top-down reads with the DOM's y.
  *
  * ## How it fits
  * Imports `htm/preact`, `preact/hooks` and `gate` from `./gate.js` (the gate does not skip the stage — it only
@@ -73,9 +78,14 @@
  *   read every frame the way `ink`/`vary` are, and zero-filled past `pointCount` so a shader that loops to
  *   the compiled array size never reads a stale slot. `ink` and `vary` are four floats each and cannot carry
  *   a list, which is why a stage that wanted one well per neighbour previously had no channel at all.
+ * - `buf` is uploaded with `UNPACK_ALIGNMENT 1` (rows of any width), NEAREST, clamped, as `R8UI` or `RGBA8UI` —
+ *   an integer texture cannot be filtered, which is the point: a byte is a byte. A 1×1 zero texture is bound from
+ *   the first frame so a shader that samples `buf` never reads an unbound unit; `bufSize` says 0,0 until real
+ *   bytes arrive. The view is re-read every frame (a `WebAssembly.Memory` that grows detaches its old buffer).
  * - `prefers-reduced-motion: reduce` freezes `time` at 2 and snaps `env.x` instead of easing it.
  * - The canvas reports itself: `data-haswebgl` yes/no, `data-render="webgl"` once a frame drew, `data-tex="yes"`
- *   once the palette is bound, `data-err` with the first 120 chars of a compile/link failure.
+ *   once the palette is bound, `data-buf="yes"` once raw bytes are bound, `data-err` with the first 120 chars of a
+ *   compile/link failure.
  * @module
  */
 /**
@@ -93,9 +103,11 @@
  *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
  * @param preserve keep the drawing buffer after each frame, so the app can read the canvas (`toBlob`) — a
  *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
+ * @param buf      optional function returning `{ data: Uint8Array, w, h, ch: 1|4, gen }` (read every frame, uploaded
+ *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, tex2, preserve, zClass }: {
+export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, tex2, preserve, buf, zClass }: {
     shader: any;
     seed?: number;
     ink: any;
@@ -106,6 +118,7 @@ export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, t
     cam: any;
     tex2: any;
     preserve?: boolean;
+    buf: any;
     zClass?: string;
 }): any;
 /**

@@ -175,6 +175,12 @@ export const NODES = [
     run: () => ["deno", "run", "-A", at("tools/wat.mjs"), "--check"],
   },
   {
+    id: "wasm", kind: "script", phase: "gate", needs: ["demo"], scope: "farm", frozen: "2026-11-07",
+    why: "A machine binary written as bytes has no text to compare against, so the proof is the run: every apps/<id>/*.wasm must validate, speak ABI 1, keep its " +
+      "pointers inside its memory and survive touch/step/set without a trap — before the browser finds out.",
+    run: () => ["deno", "run", "-A", at("tools/wasm.mjs")],
+  },
+  {
     id: "readme", kind: "script", phase: "gate", needs: ["scaffold", "demo"], scope: "farm", frozen: "2026-08-26",
     why: "Each app's README is a one-screen card generated from its spec + i18n. Change the app's copy and " +
       "the page drifts, so the regeneration is a gate: --check fails when a README no longer matches its app.",

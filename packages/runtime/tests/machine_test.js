@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import { ABI, loadMachine, MachineStage } from "../machine.js";
 import { assemble } from "../../../tools/wat.mjs";
+import { proveMachine } from "../../../tools/wasm.mjs";
 
 const MINIMAL = `(module
   (memory (export "memory") 1)
@@ -68,6 +69,15 @@ Deno.test("the host refuses a module that does not speak the ABI, and an init th
   await assertRejects(() => loadMachine(bytes, { w: 1000, h: 1000 }), Error, "init refused");
   const bare = await assemble(`(module (memory (export "memory") 1))`, "bare.wat");
   await assertRejects(() => loadMachine(bare, { w: 4, h: 4 }), Error, 'no export "abi"');
+});
+
+Deno.test("the wasm proof passes the minimal machine and names what is wrong with the others", async () => {
+  assertEquals(await proveMachine(bytes), []);
+  const wrong = await assemble(MINIMAL.replace(`(i32.const ${ABI}))`, "(i32.const 9))"), "wrong.wat");
+  assert((await proveMachine(wrong))[0].includes("abi 9"));
+  assertEquals(await proveMachine(new Uint8Array([0, 97, 115, 109, 2, 0, 0, 0])), ["does not validate as WebAssembly"]);
+  const far = await assemble(MINIMAL.replace('(func (export "buf_ptr") (result i32) (i32.const 4096))', '(func (export "buf_ptr") (result i32) (i32.const 65530))'), "far.wat");
+  assert((await proveMachine(far)).some((p) => p.includes("byte region")));
 });
 
 Deno.test("MachineStage is a component", () => { assertEquals(typeof MachineStage, "function"); });

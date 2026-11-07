@@ -98,11 +98,12 @@ export async function loadMachine(bytes, { w, h, seed = 0 } = {}) {
   api.refresh = () => {
     if (api._buffer === x.memory.buffer) return api;
     const b = api._buffer = x.memory.buffer;
-    api.out = new Float32Array(b, x.out_ptr() >>> 0, OUT_LEN);
-    api.hud = new Int32Array(b, x.hud_ptr() >>> 0, HUD_LEN);
+    const region = (name, ptr, len) => { if (ptr + len > b.byteLength) throw new Error(`machine: ${name} ${ptr}+${len} outside the ${b.byteLength}-byte memory`); return ptr; };
+    api.out = new Float32Array(b, region("out block", x.out_ptr() >>> 0, OUT_LEN * 4), OUT_LEN);
+    api.hud = new Int32Array(b, region("hud block", x.hud_ptr() >>> 0, HUD_LEN * 4), HUD_LEN);
     const bw = x.buf_w() | 0, bh = x.buf_h() | 0, ch = x.buf_ch() | 0;
     api.bufW = bw; api.bufH = bh; api.bufCh = ch === 4 ? 4 : 1;
-    api.buf = new Uint8Array(b, x.buf_ptr() >>> 0, bw * bh * api.bufCh);
+    api.buf = new Uint8Array(b, region("byte region", x.buf_ptr() >>> 0, bw * bh * api.bufCh), bw * bh * api.bufCh);
     return api;
   };
   return api.refresh();

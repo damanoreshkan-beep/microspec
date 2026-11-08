@@ -36,6 +36,8 @@
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
  *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
  *   from the skeleton as their atlases bind.
+ *   `onBloom(item, { x, y, pitch })` fires when the resting cell opens into its large state — `x, y` the lens in CSS
+ *   px, `pitch` the lattice pitch — and `onBloom(null)` when a finger closes it; the host lays its caption there.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
@@ -326,7 +328,7 @@ const iconCols = (n) => (n <= 16 ? 4 : n <= 64 ? 8 : 16);
  * @param props see the module note
  * @returns the stage, the twin (or the fallback lattice)
  */
-export function Comb({ items = [], groups = [], cell, focus, zoom, loading = false, onOpen, onFocus, onSettle, onReady: onApi, top = 0, bottom = 0, zClass = "z-0" }) {
+export function Comb({ items = [], groups = [], cell, focus, zoom, loading = false, onOpen, onFocus, onSettle, onBloom, onReady: onApi, top = 0, bottom = 0, zClass = "z-0" }) {
   const gl = useMemo(() => (typeof document !== "undefined" ? hasWebGL2() : false), []);
   const [mode, setMode] = useState(gl ? "gl" : "dom");
   const [focusId, setFocusId] = useState("");
@@ -334,7 +336,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const [level, setLevel] = useState(1);
   const [size, setSize] = useState(() => [globalThis.innerWidth || 384, globalThis.innerHeight || 832]);
   const m = useRef({ api: null, icons: null, text: "", stopIcons: null, stopText: null, focusSeq: 0, tapSeq: 0, settleSeq: 0, goal: -1, sent: new Map(), items, groups, onOpen, onFocus, onSettle }).current;
-  m.items = items; m.groups = groups; m.onOpen = onOpen; m.onFocus = onFocus; m.onSettle = onSettle;
+  m.items = items; m.groups = groups; m.onOpen = onOpen; m.onFocus = onFocus; m.onSettle = onSettle; m.onBloom = onBloom;
   const dpr = typeof devicePixelRatio === "number" ? Math.min(4, devicePixelRatio) : 2;
   const texMax = useMemo(() => (mode === "gl" ? maxTex() : 2048), [mode]);
   const want = Math.ceil(0.9 * pitchOf(size[0], size[1]) * LEVELS[LEVELS.length - 1] * dpr);
@@ -406,6 +408,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const [text, setText] = useState("");
   const [win, setWin] = useState("");
   const windowOf = (it) => { const w = it?.window; return !w ? "" : typeof w === "string" ? w : (pal?.light ? w.light || w.dark : w.dark) || ""; };
+  useEffect(() => { if (!m.bloomed) return; const it = m.items[m.lastFocus]; if (it) setWin(windowOf(it)); }, [items]);
 
   useEffect(() => {
     const api = m.api; if (!api || focus == null) return;
@@ -420,6 +423,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const onState = (s) => { if (s === "failed" || s === "none") setMode("dom"); };
   const onHud = (hud) => {
     m.down = hud[9] === 1;
+    if (m.down && m.bloomed) { m.bloomed = false; m.onBloom?.(null); }
     if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
     if (hud[1] !== m.focusSeq) {
       m.focusSeq = hud[1]; m.lastFocus = hud[0];
@@ -434,7 +438,14 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
       if (!m.down && now - (m.toldAt || 0) > 120) { m.toldAt = now; if (m.tellTimer) { clearTimeout(m.tellTimer); m.tellTimer = 0; } tell(); }
       else if (!m.tellTimer) m.tellTimer = setTimeout(() => { m.tellTimer = 0; m.toldAt = performance.now(); tell(); }, 130);
     }
-    if (hud[8] !== m.settleSeq) { m.settleSeq = hud[8]; const it = m.items[hud[7]]; if (it) { setWin(windowOf(it)); m.onSettle?.(it, hud[7]); } }
+    if (hud[8] !== m.settleSeq) {
+      m.settleSeq = hud[8]; const it = m.items[hud[7]];
+      if (it) {
+        setWin(windowOf(it)); m.onSettle?.(it, hud[7]);
+        const o = m.api?.refresh?.().out; m.bloomed = true;
+        m.onBloom?.(it, { x: o ? o[2] : 0, y: o ? o[3] : 0, pitch: hud[6] });
+      }
+    }
     const lv = LEVELS.length - 1; if (lv !== level) setLevel(lv);
   };
   if (mode === "dom") {

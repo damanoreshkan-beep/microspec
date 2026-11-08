@@ -35,6 +35,8 @@
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
  *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
  *   from the skeleton as their atlases bind.
+ *   `onBloom(item, { x, y, pitch })` fires when the resting cell opens into its large state — `x, y` the lens in CSS
+ *   px, `pitch` the lattice pitch — and `onBloom(null)` when a finger closes it; the host lays its caption there.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
@@ -132,7 +134,7 @@ export function buildText(items: any, groups: any, plan: any, publish: any): () 
  * @param props see the module note
  * @returns the stage, the twin (or the fallback lattice)
  */
-export function Comb({ items, groups, cell, focus, zoom, loading, onOpen, onFocus, onSettle, onReady: onApi, top, bottom, zClass }: {
+export function Comb({ items, groups, cell, focus, zoom, loading, onOpen, onFocus, onSettle, onBloom, onReady: onApi, top, bottom, zClass }: {
     items?: any[];
     groups?: any[];
     cell: any;
@@ -142,6 +144,7 @@ export function Comb({ items, groups, cell, focus, zoom, loading, onOpen, onFocu
     onOpen: any;
     onFocus: any;
     onSettle: any;
+    onBloom: any;
     onReady: any;
     top?: number;
     bottom?: number;

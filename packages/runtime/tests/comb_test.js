@@ -103,8 +103,8 @@ Deno.test("the bloom: at rest the lens opens on the focused cell and a finger on
   assert(out(31) > 0.97, `bloom opened at rest: ${out(31)}`);
   const P = out(7), Z = out(27) || 1.35, lens = [out(2), out(3)], cam = [out(0), out(1)], bloom = out(31);
   const world = [-P / 2, -P * ROWH * 1], f = [out(22), out(23)];
-  const d = [world[0] - f[0], world[1] - f[1]], r = Math.hypot(...d), tt = Math.min(1, r / (3.4 * P));
-  const push = 0.45 * P * bloom * (1 - tt * tt * (3 - 2 * tt));
+  const d = [world[0] - f[0], world[1] - f[1]], r = Math.hypot(...d), tt = Math.min(1, r / (4.6 * P));
+  const push = 0.95 * P * bloom * (1 - tt * tt * (3 - 2 * tt));
   const shownW = [world[0] + d[0] / r * push, world[1] + d[1] / r * push];
   const shown = [(shownW[0] - cam[0]) * Z + lens[0], (shownW[1] - cam[1]) * Z + lens[1]];
   assert(push > 0.18 * P, `the neighbour is pushed out by ${(push / P).toFixed(2)} P`);

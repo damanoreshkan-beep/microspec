@@ -52,8 +52,8 @@ vec2 pushed(vec2 cw, int idx, float P) {
   if (bloom < 0.001 || focus < 0 || idx == focus) return cw;
   vec2 d = cw - points[3].zw;
   float r = max(0.001, length(d));
-  float t = clamp(r / (3.4 * P), 0.0, 1.0);
-  return cw + d * (0.45 * P * bloom * (1.0 - t * t * (3.0 - 2.0 * t)) / r);
+  float t = clamp(r / (4.6 * P), 0.0, 1.0);
+  return cw + d * (0.95 * P * bloom * (1.0 - t * t * (3.0 - 2.0 * t)) / r);
 }
 
 vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, float light) {
@@ -74,8 +74,8 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
   float dLens = length(cw - camW) * Z;
   float sc = 1.0 + LENS * (1.0 - smoothstep(0.0, LENS_R * P, dLens));
   float open = idx == focus ? clamp(points[5].w, 0.0, 1.0) : 0.0;
-  sc *= 1.0 + 0.2 * open;
-  float scText = sc / (1.0 + 0.2 * open) * (1.0 + 0.06 * open);
+  sc *= 1.0 + 1.6 * open;
+  float scText = sc / (1.0 + 1.6 * open) * (1.0 + 0.06 * open);
   float ring = max(abs(float(ax.x)), max(abs(float(ax.y)), abs(float(ax.x + ax.y))));
   float arrive = points[2].w > 0.5 ? 1.0 : clamp((appear - 55.0 * ring - 60.0) / 380.0, 0.0, 1.0);
   if (arrive <= 0.0) return vec4(0.0);
@@ -153,7 +153,7 @@ vec4 haloAt(int idx, vec2 cw, vec2 p, float P, float Z, vec2 camW, vec2 lens, fl
   float sc = 1.0 + LENS * (1.0 - smoothstep(0.0, LENS_R * P, length(cw - camW) * Z));
   if ((int(c.a) & 4) != 0) sc *= 1.0 + 0.06 * clamp(points[4].z, 0.0, 1.0);
   float bloomHere = clamp(points[5].w, 0.0, 1.0);
-  if (idx == int(vary.y)) sc *= 1.0 + 0.2 * bloomHere;
+  if (idx == int(vary.y)) sc *= 1.0 + 1.6 * bloomHere;
   float R = FORM * P * Z * sc;
   float dd = length(p - ((cw - camW) * Z + lens));
   float h = (1.0 - smoothstep(R * 0.95, R * 1.9, dd)) * smoothstep(R * 0.55, R * 1.0, dd);
@@ -235,7 +235,7 @@ void main() {
     uvec4 lc = texelFetch(buf, ivec2(li & 31, 17 + (li >> 5)), 0);
     vec3 ltint = vec3(lc.rgb) / 255.0;
     vec2 cs = (pushed(points[7].zw, li, P) - camW) * Z + lens;
-    float R = FORM * P * Z * (1.0 + LENS) * (1.0 + 0.2 * bloom);
+    float R = FORM * P * Z * (1.0 + LENS) * (1.0 + 1.6 * bloom);
     vec2 d = p0 - cs;
     float r = length(d), ang = fract(atan(d.y, d.x) / 6.2831853 + 0.5 + time * 0.012);
     float fb = ang * 48.0, ft = fract(fb);

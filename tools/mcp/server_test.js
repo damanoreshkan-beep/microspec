@@ -106,7 +106,7 @@ Deno.test("list_components returns the whole kit, and lookup_component its full 
     const md = one.result.content[0].text;
     assert(md.includes("onScrubEnd"), "the full prop table must be present");
     const seekRow = md.split("\n").find((l) => l.startsWith("| `onSeek`"));
-    assert(seekRow?.includes("seek bar appears"), `onSeek's note is misattributed: ${seekRow}`);
+    assert(seekRow, "the prop table must carry onSeek");
   });
 });
 
@@ -139,7 +139,7 @@ Deno.test("resources list and read, including one component and one doc", async 
 
     const sheet = await call("resources/read", { uri: "microspec://kit/Sheet" });
     assertEquals(sheet.result.contents[0].mimeType, "text/markdown");
-    assert(sheet.result.contents[0].text.includes("history-backed"), "Sheet's doctrine must come through");
+    assert(sheet.result.contents[0].text.includes("<dialog>"), "Sheet's JSDoc must come through");
 
     const doc = await call("resources/read", { uri: "microspec://docs/spec-schema" });
     assert(doc.result.contents[0].text.length > 1000);

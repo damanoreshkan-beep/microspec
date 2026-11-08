@@ -28,6 +28,7 @@
  * Regenerate with `deno task shell` after editing the catalogue — the 8n8 node `shell` reds a stale table.
  * @module
  */
+// Run `deno task shell` after changing the catalogue; `--check` gates it before every push.
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
 export const CATALOGUE_BRIDGE = 38;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried

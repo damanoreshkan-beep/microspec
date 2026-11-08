@@ -175,6 +175,20 @@ for (let i = 0; i < lines.length; i++) {
     continue;
   }
 
+  if (/^\s*\/\*\*/.test(line)) {
+    pending = [];
+    let j = i;
+    for (; j < lines.length; j++) {
+      pending.push(lines[j].replace(/^\s*\/\*\*\s?/, "").replace(/^\s*\*\s?/, "").replace(/\s*\*\/\s*$/, ""));
+      if (/\*\/\s*$/.test(lines[j])) break;
+    }
+    while (pending.length && pending[0].trim() === "") pending.shift();
+    while (pending.length && pending[pending.length - 1].trim() === "") pending.pop();
+    pendingEnd = j;
+    i = j;
+    continue;
+  }
+
   const m = line.match(EXPORT);
   if (!m) continue;
   const name = m[2];

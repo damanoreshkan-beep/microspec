@@ -281,6 +281,13 @@ void main() {
     float ring = (1.0 - smoothstep(0.0, 2.0 + 10.0 * k, dd)) * (1.0 - k) * (1.0 - k);
     acc.rgb += tint * ring * 0.9; acc.a = min(1.0, acc.a + ring * 0.9);
   }
+  if (bloom > 0.001 && vary.y >= 0.0) {
+    vec2 fc = (points[3].zw - camW) * Z + lens;
+    float Ro = FORM * P * Z * (1.0 + LENS) * (1.0 + 1.6 * bloom);
+    float dusk = bloom * smoothstep(fc.y + Ro * 0.85, fc.y + Ro + 48.0, p0.y);
+    acc *= 1.0 - 0.92 * dusk;
+    col = mix(col, ground, 0.75 * dusk);
+  }
   float top = points[4].x, bottom = points[4].y;
   float fade = smoothstep(top - 24.0, top + 64.0, p0.y) * (1.0 - smoothstep(H - bottom - 56.0, H - bottom + 12.0, p0.y));
   acc *= fade;

@@ -102,15 +102,20 @@ export function atlasPlan(n: any, size?: number, aspect?: number, want?: number)
 /** `#rrggbb` → the packed integer the machine's tables take. */
 export function rgbOf(hex: any): number;
 /**
- * The ICON atlas: every item's picture through its own organic form on a black ground (or the theme's material when
- * it has none), progressively — the forms first, then pictures as they land, at most three uploads.
- * @param items the comb's items
+ * The ICON atlas as a living painter: `update(items, publish)` redraws only the tiles whose id, picture or form
+ * changed, keeps decoded pictures, and publishes at most one bitmap in flight — a shelf whose covers land one by one
+ * costs one tile each, never a whole atlas.
  * @param plan `{ cols, tileW, size }` from {@link atlasPlan} (square tiles)
- * @param publish `(bitmap) => void`
  * @param fill the theme's material URL for a form without a picture, or ""
- * @returns `() => void` stop
+ * @returns `{ update(items, publish), stop() }`
  */
-export function buildIcons(items: any, plan: any, publish: any, fill?: string): () => void;
+export function iconPainter(plan: any, fill?: string): {
+    update: () => void;
+    stop: () => void;
+} | {
+    update: (items: any, publish: any) => Promise<void>;
+    stop: () => void;
+};
 /**
  * The TEXT atlas: every item's name (two lines) and line (three), and every group's caption, white on transparent,
  * in the page's font at the density the screen asks for; published once as a blob URL (the stage mipmaps it).

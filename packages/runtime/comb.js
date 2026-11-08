@@ -199,34 +199,36 @@ const ICON = 0.86, NAME_H = 0.314, NAME_FONT = 0.133, LINE_TOP = 0.33, LINE_H = 
 const FONT = "Geist, ui-sans-serif, system-ui, sans-serif", MONO = "'Geist Mono', ui-monospace, monospace";
 
 /**
- * The ICON atlas: every item's picture through its own organic form on a black ground (or the theme's material when
- * it has none), progressively — the forms first, then pictures as they land, at most three uploads.
- * @param items the comb's items
+ * The ICON atlas as a living painter: `update(items, publish)` redraws only the tiles whose id, picture or form
+ * changed, keeps decoded pictures, and publishes at most one bitmap in flight — a shelf whose covers land one by one
+ * costs one tile each, never a whole atlas.
  * @param plan `{ cols, tileW, size }` from {@link atlasPlan} (square tiles)
- * @param publish `(bitmap) => void`
  * @param fill the theme's material URL for a form without a picture, or ""
- * @returns `() => void` stop
+ * @returns `{ update(items, publish), stop() }`
  */
-export function buildIcons(items, plan, publish, fill = "") {
-  let alive = true, pending = 0, timer = 0;
+export function iconPainter(plan, fill = "") {
+  let alive = true, material = null, materialP = null, dirty = false, flying = false, publishFn = null;
   const cv = document.createElement("canvas");
   cv.width = cv.height = plan.size;
   const ctx = cv.getContext("2d");
-  if (!ctx) return () => {};
+  if (!ctx) return { update: () => {}, stop: () => {} };
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
   const side = ICON * plan.tileW, pad = (plan.tileW - side) / 2;
   const originOf = (i) => [(i % plan.cols) * plan.tileW + pad, Math.floor(i / plan.cols) * plan.tileW + pad];
-  const push = async () => { if (!alive) return; try { const bmp = await createImageBitmap(cv); if (alive) publish(bmp); } catch { if (alive) publish(cv); } };
-  const later = () => { if (timer) return; timer = setTimeout(() => { timer = 0; if (pending) push(); }, 700); };
-  let material = null;
   const scratch = document.createElement("canvas");
   const S = Math.max(2, Math.round(side * 2));
   scratch.width = scratch.height = S;
   const sc = scratch.getContext("2d");
   if (sc) { sc.imageSmoothingEnabled = true; sc.imageSmoothingQuality = "high"; }
+  const keys = new Map(), imgs = new Map();
+  const load = (src) => {
+    let p = imgs.get(src);
+    if (!p) { p = new Promise((res) => { const im = new Image(); im.decoding = "async"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); imgs.set(src, p); }
+    return p;
+  };
   const form = (i, it, img) => {
-    const [ox, oy] = originOf(i);
     if (!sc) return;
+    const [ox, oy] = originOf(i);
     sc.save();
     sc.globalCompositeOperation = "source-over";
     sc.clearRect(0, 0, S, S);
@@ -242,20 +244,29 @@ export function buildIcons(items, plan, publish, fill = "") {
     ctx.clearRect(ox, oy, side, side);
     ctx.drawImage(scratch, ox, oy, side, side);
   };
-  const load = (src) => new Promise((res) => { const im = new Image(); im.decoding = "async"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
-  const start = async () => {
-    if (fill) material = await load(fill);
-    if (!alive) return;
-    items.forEach((it, i) => form(i, it, null));
-    push();
-    items.forEach((it, i) => {
-      if (!it.icon) return;
-      pending++;
-      load(it.icon).then((img) => { if (!alive) return; if (img) form(i, it, img); if (--pending === 0) push(); else later(); });
-    });
+  const flush = async () => {
+    if (!alive || flying || !dirty) return;
+    dirty = false; flying = true;
+    try { const bmp = await createImageBitmap(cv); if (alive) publishFn?.(bmp); } catch { if (alive) publishFn?.(cv); }
+    flying = false;
+    if (dirty) flush();
   };
-  start();
-  return () => { alive = false; if (timer) clearTimeout(timer); };
+  const mark = () => { dirty = true; flush(); };
+  const update = async (items, publish) => {
+    publishFn = publish;
+    if (fill && !material) { materialP ??= load(fill); material = await materialP; if (!alive) return; }
+    let changed = false;
+    items.forEach((it, i) => {
+      const key = `${it.id}|${it.icon || ""}|${it.form || ""}`;
+      if (keys.get(i) === key) return;
+      keys.set(i, key); changed = true;
+      form(i, it, null);
+      if (it.icon) load(it.icon).then((img) => { if (!alive || keys.get(i) !== key || !img) return; form(i, it, img); mark(); });
+    });
+    for (const k of [...keys.keys()]) if (k >= items.length) { keys.delete(k); const [ox, oy] = originOf(k); ctx.clearRect(ox, oy, side, side); changed = true; }
+    if (changed) mark();
+  };
+  return { update, stop: () => { alive = false; } };
 }
 
 /**
@@ -378,12 +389,13 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const iconKey = items.map((it) => `${it.id}|${it.icon || ""}|${it.form || ""}`).join("\n") + `|${iconPlan.tileW}|${pal?.fill || ""}`;
   useEffect(() => {
     if (mode !== "gl" || !ready || !pal) return;
-    m.stopIcons?.();
-    if (!items.length) { m.icons = null; m.pendingIcons = null; return; }
+    if (!items.length) { m.painter?.stop(); m.painter = null; m.icons = null; m.pendingIcons = null; return; }
+    const pkey = `${iconPlan.size}|${iconPlan.cols}|${pal.fill || ""}`;
+    if (m.painterKey !== pkey) { m.painter?.stop(); m.painter = iconPainter(iconPlan, pal.fill); m.painterKey = pkey; }
     const publish = (bmp) => { m.pendingIcons = bmp; const land = () => { if (m.down) { setTimeout(land, 120); return; } m.icons = m.pendingIcons; }; land(); };
-    m.stopIcons = buildIcons(items, iconPlan, publish, pal.fill);
-    return () => { m.stopIcons?.(); m.stopIcons = null; };
+    m.painter.update(items, publish);
   }, [iconKey, mode, ready, !!pal]);
+  useEffect(() => () => { m.painter?.stop(); m.painter = null; }, []);
   const textKey = items.map((it) => `${it.id}|${it.name}|${it.subtitle || ""}`).join("\n") + "\n" + groups.map((g) => g.name).join("|") + `|${textPlan.tileW}`;
   useEffect(() => {
     if (mode !== "gl" || !ready) return;

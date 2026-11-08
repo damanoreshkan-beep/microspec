@@ -99,6 +99,14 @@ export function makeHelpers(page) {
     },
     wait: (ms) => sleep(ms),
     expect: (cond, msg) => { if (!cond) throw new Error(msg || "assertion failed"); },
+    until: async (expr, ms = 12000, step = 50) => {
+      const deadline = Date.now() + ms;
+      while (true) {
+        if (await ev((e) => { try { return !!(0, eval)(e); } catch { return false; } }, expr)) return true;
+        if (Date.now() >= deadline) return false;
+        await sleep(step);
+      }
+    },
     waitFor: async (re, ms = 12000, step = 500) => { let t = ""; for (let i = 0; i < Math.ceil(ms / step); i++) { t = await ev(() => document.body.innerText); if (re.test(t)) return true; await sleep(step); } return re.test(t); },
   };
   return { h, ev };

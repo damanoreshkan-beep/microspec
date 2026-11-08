@@ -37,7 +37,8 @@
  *   a form. `zoom` asks a level (0 overview · 1 default · 2 cards), the same levels a pinch snaps to.
  * - {@link spiral} — `(n) → [[q, r], …]`, the one-group lattice, the machine's own walk (the JS twin the tests hold it to).
  * - {@link atlasPlan} — `(n, size, aspect, want) → { cols, rows, tileW, tileH, size }` the tile grid for `n` tiles.
- * - {@link MARK}, {@link COMB_MAX} (217 — eight rings), {@link LEVELS} (0.8 · 1 · 1.35), {@link PARAM} (the `set` indices).
+ * - {@link MARK}, {@link COMB_MAX} (217 — eight rings), {@link LEVELS} (one level, 1.35 — the cards;
+ *   2026-11-08: the field is always at its largest, there is no smaller zoom), {@link PARAM} (the `set` indices).
  *
  * ## The contract
  * - The lattice is pointy-top hexagonal, stretched 1.3× vertically so a name fits under a form; the pitch is

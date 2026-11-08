@@ -110,15 +110,8 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
   return clamp(acc, 0.0, 1.0);
 }
 
-vec4 halo(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, float light) {
-  ivec2 site = ax + 8;
-  if (site.x < 0 || site.x > 16 || site.y < 0 || site.y > 16) return vec4(0.0);
-  uvec4 s = texelFetch(buf, site, 0);
-  if (s.a != 255u) return vec4(0.0);
-  int idx = int(s.r);
+vec4 haloAt(int idx, vec2 cw, vec2 p, float P, float Z, vec2 camW, vec2 lens, float light) {
   uvec4 c = texelFetch(buf, ivec2(idx & 31, 17 + (idx >> 5)), 0);
-  if (idx != int(vary.y) && (int(c.a) & 4) == 0) return vec4(0.0);
-  vec2 cw = vec2(P * (float(ax.x) + 0.5 * float(ax.y)), P * rowh * float(ax.y));
   float sc = 1.0 + LENS * (1.0 - smoothstep(0.0, LENS_R * P, length(cw - camW) * Z));
   if ((int(c.a) & 4) != 0) sc *= 1.0 + 0.06 * clamp(points[4].z, 0.0, 1.0);
   float R = FORM * P * Z * sc;
@@ -137,12 +130,7 @@ void main() {
   float light = clamp(env.x, 0.0, 1.0);
   vec3 ground = pal(31);
 
-  vec2 vel = points[7].xy;
-  float lag = 220.0 * smoothstep(0.0, 3.2 * P * Z, length(p - lens));
-  vec2 drift = vel * lag;
-  float dmax = 0.45 * P;
-  if (length(drift) > dmax) drift *= dmax / length(drift);
-  vec2 camW = cam0 - drift;
+  vec2 camW = cam0;
 
   vec2 w = (p - lens) / Z + camW;
   float r = w.y / (P * rowh);
@@ -183,20 +171,15 @@ void main() {
   float down = points[6].z;
   float fl = 0.0;
   if (down > 0.5) {
-    vec2 fs = (points[7].zw - camW) * Z + lens;
+    vec2 fs = (points[7].xy - camW) * Z + lens;
     float r = length(p - fs) / (1.15 * P * Z);
     fl = exp(-r * r);
     col = mix(col, pal(28), fl * mix(0.10, 0.06, light));
   }
 
   vec4 glow = vec4(0.0);
-  glow += halo(ax, p, P, Z, rowh, camW, lens, light);
-  glow += halo(ax + ivec2(1, 0), p, P, Z, rowh, camW, lens, light);
-  glow += halo(ax + ivec2(-1, 0), p, P, Z, rowh, camW, lens, light);
-  glow += halo(ax + ivec2(0, 1), p, P, Z, rowh, camW, lens, light);
-  glow += halo(ax + ivec2(0, -1), p, P, Z, rowh, camW, lens, light);
-  glow += halo(ax + ivec2(1, -1), p, P, Z, rowh, camW, lens, light);
-  glow += halo(ax + ivec2(-1, 1), p, P, Z, rowh, camW, lens, light);
+  if (vary.y >= 0.0) glow += haloAt(int(vary.y), points[3].zw, p, P, Z, camW, lens, light);
+  if (points[6].w >= 0.0 && int(points[6].w) != int(vary.y)) glow += haloAt(int(points[6].w), points[7].zw, p, P, Z, camW, lens, light);
   glow = clamp(glow, 0.0, 1.0);
   col = col * (1.0 - glow.a) + glow.rgb;
 

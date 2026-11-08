@@ -38,7 +38,8 @@
  *   a form. `zoom` asks a level (0 overview · 1 default · 2 cards), the same levels a pinch snaps to.
  * - {@link spiral} — `(n) → [[q, r], …]`, the one-group lattice, the machine's own walk (the JS twin the tests hold it to).
  * - {@link atlasPlan} — `(n, size, aspect, want) → { cols, rows, tileW, tileH, size }` the tile grid for `n` tiles.
- * - {@link MARK}, {@link COMB_MAX} (217 — eight rings), {@link LEVELS} (0.8 · 1 · 1.35), {@link PARAM} (the `set` indices).
+ * - {@link MARK}, {@link COMB_MAX} (217 — eight rings), {@link LEVELS} (one level, 1.35 — the cards;
+ *   2026-11-08: the field is always at its largest, there is no smaller zoom), {@link PARAM} (the `set` indices).
  *
  * ## The contract
  * - The lattice is pointy-top hexagonal, stretched 1.3× vertically so a name fits under a form; the pitch is
@@ -77,7 +78,7 @@ import { gate } from "./gate.js";
 /** Eight rings — 1 + 6 + 12 + … + 48 cells; the machine's site map is 17 × 17. */
 export const COMB_MAX = 217;
 /** The zoom levels a pinch snaps to: overview · default · cards. */
-export const LEVELS = Object.freeze([0.8, 1, 1.35]);
+export const LEVELS = Object.freeze([1.35]);
 /** The machine's `set(i, v)` indices; a cell's colour is `colour + i` (0xRRGGBB), its mark `mark + i`, its group `group + i`; a group's colour `groupColour + g`. */
 export const PARAM = Object.freeze({ count: 0, top: 1, bottom: 2, width: 3, height: 4, still: 5, iconCols: 6, iconTile: 7, textCols: 8, textTileW: 9, textTileH: 10, pulse: 11, iconAtlas: 12, textAtlas: 13, zoom: 14, goal: 15, colour: 16, mark: 256, group: 512, groupColour: 768 });
 /** A cell's mark bits: a dot for new/updated, `lit` for the one that plays. */
@@ -315,7 +316,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   m.items = items; m.groups = groups; m.onOpen = onOpen; m.onFocus = onFocus; m.onSettle = onSettle;
   const dpr = typeof devicePixelRatio === "number" ? Math.min(4, devicePixelRatio) : 2;
   const texMax = useMemo(() => (mode === "gl" ? maxTex() : 2048), [mode]);
-  const want = Math.ceil(0.9 * pitchOf(size[0], size[1]) * LEVELS[2] * dpr);
+  const want = Math.ceil(0.9 * pitchOf(size[0], size[1]) * LEVELS[LEVELS.length - 1] * dpr);
   const iconPlan = useMemo(() => { const cols = iconCols(items.length), tileW = Math.min(512, Math.floor(texMax / cols)); return { cols, rows: Math.max(1, Math.ceil(items.length / cols)), tileW, tileH: tileW, size: cols * tileW }; }, [items.length, texMax]);
   const textPlan = useMemo(() => atlasPlan(items.length + groups.length, Math.min(4096, texMax), TEXT_ASPECT, want), [items.length, groups.length, texMax, want]);
   const renderCell = cell || ((it, i) => html`<button key=${it.id} data-cell=${it.id} aria-label=${it.name} onClick=${() => onOpen?.(it, i)}>${it.name}</button>`);
@@ -331,9 +332,11 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   const [, setTick] = useState(0);
   useEffect(() => {
     if (mode !== "gl") return;
-    const read = () => { setPal(themePalette()); setTick((n) => n + 1); };
-    read();
-    const mo = new MutationObserver(read);
+    setPal(themePalette());
+    const mo = new MutationObserver((muts) => {
+      if (muts.some((x) => x.attributeName !== "style")) setPal(themePalette());
+      setTick((n) => n + 1);
+    });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-material", "style"] });
     return () => mo.disconnect();
   }, [mode]);
@@ -366,7 +369,8 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   useEffect(() => {
     if (mode !== "gl" || !ready || !pal) return;
     m.stopIcons?.();
-    m.stopIcons = buildIcons(items, iconPlan, (bmp) => { m.icons = bmp; }, pal.fill);
+    const publish = (bmp) => { m.pendingIcons = bmp; const land = () => { if (m.down) { setTimeout(land, 120); return; } m.icons = m.pendingIcons; }; land(); };
+    m.stopIcons = buildIcons(items, iconPlan, publish, pal.fill);
     return () => { m.stopIcons?.(); m.stopIcons = null; };
   }, [iconKey, mode, ready, !!pal]);
   const textKey = items.map((it) => `${it.id}|${it.name}|${it.subtitle || ""}`).join("\n") + "\n" + groups.map((g) => g.name).join("|") + `|${textPlan.tileW}`;
@@ -390,16 +394,22 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   const onReady = (api) => { m.api = api; setReady(true); onApi?.(api); };
   const onState = (s) => { if (s === "failed" || s === "none") setMode("dom"); };
   const onHud = (hud) => {
+    m.down = hud[9] === 1;
     if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
     if (hud[1] !== m.focusSeq) {
       m.focusSeq = hud[1]; m.lastFocus = hud[0];
-      const it = m.items[hud[0]];
-      setFocusId(it ? String(it.id) : "");
-      const g = hud[12] >= 0 ? m.groups[hud[12]] : null; setGroupId(g ? String(g.id) : "");
-      if (it) m.onFocus?.(it, hud[0]);
+      const tell = () => {
+        const it = m.items[m.lastFocus];
+        setFocusId(it ? String(it.id) : "");
+        const g = hud[12] >= 0 ? m.groups[hud[12]] : null; setGroupId(g ? String(g.id) : "");
+        if (it) m.onFocus?.(it, m.lastFocus);
+      };
+      const now = performance.now();
+      if (!m.down && now - (m.toldAt || 0) > 120) { m.toldAt = now; if (m.tellTimer) { clearTimeout(m.tellTimer); m.tellTimer = 0; } tell(); }
+      else if (!m.tellTimer) m.tellTimer = setTimeout(() => { m.tellTimer = 0; m.toldAt = performance.now(); tell(); }, 130);
     }
     if (hud[8] !== m.settleSeq) { m.settleSeq = hud[8]; const it = m.items[hud[7]]; if (it) m.onSettle?.(it, hud[7]); }
-    const lv = hud[13] < 900 ? 0 : hud[13] < 1175 ? 1 : 2; if (lv !== level) setLevel(lv);
+    const lv = LEVELS.length - 1; if (lv !== level) setLevel(lv);
   };
   if (mode === "dom") {
     return html`<div data-comb="dom" class="ms-comb"><div class="ms-comb-cells ms-comb-lg">${items.map((it, i) => renderCell(it, i, "dom"))}</div></div>`;
@@ -407,7 +417,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   const params = [items.length, top + cssPx("--hdr-h") + cssPx("--ms-safe-top"), bottom + cssPx("--dock-h") + cssPx("--island-h"), size[0], size[1], stillNow() ? 1 : 0,
     iconPlan.cols, iconPlan.tileW, textPlan.cols, textPlan.tileW, textPlan.tileH, 0, iconPlan.size, textPlan.size];
   return html`<div data-comb="gl" data-comb-ready=${ready ? "1" : null} data-comb-focus=${focusId || null} data-comb-group=${groupId || null} data-comb-zoom=${level} class="contents">
-    <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
+    <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} dprMax=${3} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
     <div data-comb-twin class="sr-only">${items.map((it, i) => renderCell(it, i, "gl"))}</div>
   </div>`;
 }

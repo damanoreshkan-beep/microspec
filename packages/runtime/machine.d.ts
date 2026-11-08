@@ -86,7 +86,7 @@ export function loadMachine(bytes: any, { w, h, seed }?: {
  * @param props see the module note
  * @returns the stage canvas and the touch surface
  */
-export function MachineStage({ wasm, shader, seed, params, cells, cam, tex2, onReady, onHud, onState, hudHz, zClass }: {
+export function MachineStage({ wasm, shader, seed, params, cells, cam, tex2, dprMax, onReady, onHud, onState, hudHz, zClass }: {
     wasm: any;
     shader: any;
     seed?: number;
@@ -94,6 +94,7 @@ export function MachineStage({ wasm, shader, seed, params, cells, cam, tex2, onR
     cells?: number;
     cam: any;
     tex2: any;
+    dprMax: any;
     onReady: any;
     onHud: any;
     onState: any;

@@ -5,7 +5,7 @@ import { atlasPlan, COMB_MAX, LEVELS, rgbOf, spiral } from "../comb.js";
 import { pkgRoot } from "../pkgroot.js";
 
 const bytes = await Deno.readFile(new URL("packages/runtime/comb.wasm", pkgRoot(import.meta.url, 3)));
-const ROWH = 0.8660254 * 1.3, POS = 0x1500, AX = 0x1C00, SITE = 0x400, CELL = 0xC80, CELL2 = 0x1000, GCOL = 0x1380, GCEN = 0x1400, HUD = 0x100;
+const ROWH = 0.8660254 * 1.85, POS = 0x1500, AX = 0x1C00, SITE = 0x400, CELL = 0xC80, CELL2 = 0x1000, GCOL = 0x1380, GCEN = 0x1400, HUD = 0x100;
 const boot = async (n, w = 384, h = 832, groups = null) => {
   const api = await loadMachine(bytes, { w, h, seed: 1 });
   api.exports.set(0, n); api.exports.set(1, 56); api.exports.set(2, 68);
@@ -80,7 +80,8 @@ Deno.test("the pitch answers the viewport: 84 on a watch, 120 on a desk, min(W,H
   assertEquals(out(7), 120);
   x.set(3, 384); x.set(4, 832); x.step(16, 48);
   assert(Math.abs(out(7) - 384 / 4.2) < 0.01);
-  assertEquals([out(2), out(3)], [192, 56 + (832 - 56 - 68) / 2], "the lens sits between the header and the dock");
+  for (let k = 0; k < 80; k++) x.step(16, 64 + 16 * k);
+  assert(Math.abs(out(2) - 192) < 0.05 && Math.abs(out(3) - (56 + (832 - 56 - 68) / 2)) < 0.05, `the lens sits between the header and the dock: ${out(2)}, ${out(3)}`);
   x.set(0, 999); x.step(16, 64);
   assertEquals(hud(5), COMB_MAX);
 });
@@ -101,7 +102,7 @@ Deno.test("a drag moves the world against the finger and the focus follows; a re
   x.touch(1, 0, 0.8, 0.5);
   for (let k = 1; k <= 10; k++) { t += 16; x.step(16, t); x.touch(1, 1, 0.8 - 0.05 * k, 0.5); }
   t += 16; x.step(16, t);
-  assert(out(0) > 150 && out(0) < 200, `cam followed the finger: ${out(0)}`);
+  assert(out(0) > 110 && out(0) < 200, `cam followed the finger (the drag is divided by the zoom): ${out(0)}`);
   assertEquals(hud(9), 1, "down");
   assert(hud(0) > 0, "the focus left the centre while dragging");
   x.touch(1, 2, 0.3, 0.5);
@@ -131,44 +132,36 @@ Deno.test("a tap inside a form opens it; between forms nothing; a finger that mo
   assertEquals(hud(2), -1, "the tap's bloom is over");
 });
 
-Deno.test("a pinch scales the field about its midpoint, ends every tap, and eases to the nearest level; the rows unfold for the cards", async () => {
+Deno.test("the field rests at the cards level; a pinch scales it about its midpoint, ends every tap, and eases back to that level", async () => {
   const { x, out, hud, f32 } = await boot(95);
   let t = 16;
-  const rowAt = () => f32()[POS / 4 + 2 * 3 + 1];   
+  assertEquals(hud(13), Math.round(LEVELS[0] * 1000), "the one level from the first step");
   const row1 = f32()[POS / 4 + 2 * 4 + 1];
-  assert(Math.abs(row1 - out(7) * ROWH) < 1e-3, "rows at the resting pitch");
+  assert(Math.abs(row1 - out(7) * ROWH) < 1e-3, "rows unfolded for the cards at rest");
   const midWorld = () => [(0.5 * 384 - out(2)) / (hud(13) / 1000) + out(0), (0.5 * 832 - out(3)) / (hud(13) / 1000) + out(1)];
   const before = midWorld();
   x.touch(1, 0, 0.4, 0.5); t += 16; x.step(16, t);
   x.touch(2, 0, 0.6, 0.5); t += 16; x.step(16, t);
   assertEquals(hud(14), 1, "pinching");
   for (let k = 1; k <= 8; k++) { x.touch(1, 1, 0.4 - 0.025 * k, 0.5); x.touch(2, 1, 0.6 + 0.025 * k, 0.5); t += 16; x.step(16, t); }
-  assert(hud(13) > 1300, `zoom grew: ${hud(13)}`);
-  assert(f32()[POS / 4 + 2 * 4 + 1] > row1 * 1.2, "the rows unfolded past 1.1");
+  assert(hud(13) > 1400, `zoom grew: ${hud(13)}`);
   const after = midWorld();
   assert(Math.abs(after[0] - before[0]) < 1 && Math.abs(after[1] - before[1]) < 1, `the world under the midpoint moved: ${before} → ${after}`);
   x.touch(2, 2, 0.8, 0.5); t += 16; x.step(16, t);
   assertEquals(hud(14), 0, "the pinch ended");
   assertEquals(hud(3), 0, "no tap came out of a pinch");
   for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
-  assertEquals(hud(13), Math.round(LEVELS[2] * 1000), "eased to the cards level");
-  assert(rowAt() !== undefined);
+  assertEquals(hud(13), Math.round(LEVELS[0] * 1000), "eased back to the one level");
+  assert(Math.abs(f32()[POS / 4 + 2 * 4 + 1] - row1) < 1e-2, "the rows are where they rest");
   x.set(14, 0); for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
   assertEquals(hud(13), Math.round(LEVELS[0] * 1000));
-  assert(Math.abs(f32()[POS / 4 + 2 * 4 + 1] - row1) < 1e-2, "the rows folded back at the overview");
-  x.set(14, 1); for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
-  assertEquals(hud(13), 1000);
-  const pinch = (open) => {
-    x.touch(1, 0, 152 / 384, 460 / 832); t += 16; x.step(16, t);
-    x.touch(2, 0, 232 / 384, 460 / 832); t += 16; x.step(16, t);
-    for (let k = 1; k <= 10; k++) { const d = 40 + (open ? k * 8 : -k * 3); x.touch(1, 1, (192 - d) / 384, 460 / 832); x.touch(2, 1, (192 + d) / 384, 460 / 832); t += 16; x.step(16, t); }
-    const d = 40 + (open ? 80 : -30);
-    x.touch(1, 2, (192 - d) / 384, 460 / 832); x.touch(2, 2, (192 + d) / 384, 460 / 832);
-    for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
-  };
-  pinch(true); assertEquals(hud(13), Math.round(LEVELS[2] * 1000), "the first pinch opens to the cards");
-  pinch(false); assertEquals(hud(13), Math.round(LEVELS[0] * 1000), "the second pinch closes to the overview");
-  assertEquals(hud(3), 0, "no tap came out of either pinch");
+  x.touch(1, 0, 152 / 384, 460 / 832); t += 16; x.step(16, t);
+  x.touch(2, 0, 232 / 384, 460 / 832); t += 16; x.step(16, t);
+  for (let k = 1; k <= 10; k++) { const d = 40 - k * 3; x.touch(1, 1, (192 - d) / 384, 460 / 832); x.touch(2, 1, (192 + d) / 384, 460 / 832); t += 16; x.step(16, t); }
+  assertEquals(hud(13), Math.round(LEVELS[0] * 1000), "no smaller zoom exists");
+  x.touch(1, 2, 182 / 384, 460 / 832); x.touch(2, 2, 202 / 384, 460 / 832);
+  for (let k = 0; k < 60; k++) { t += 16; x.step(16, t); }
+  assertEquals(hud(3), 0, "no tap came out of a pinch");
 });
 
 Deno.test("a fling past the comb's edge is pulled back: the lens never rests in the void", async () => {

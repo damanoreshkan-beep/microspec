@@ -132,7 +132,7 @@ export const hasWebGL2 = () => {
  *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, buf, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, buf, dprMax = DPR_CAP, zClass = "-z-10" }) {
   const ref = useRef();
   const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null }).current;
   state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam; state.buf = buf;
@@ -269,7 +269,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         if (state.texUrl) state.loadTex(state.texUrl);
 
         const size = () => {
-          const dpr = gate ? GATE_DPR : Math.min(DPR_CAP, devicePixelRatio || 1);
+          const dpr = gate ? GATE_DPR : Math.min(dprMax || DPR_CAP, devicePixelRatio || 1);
           const w = Math.max(1, Math.round((globalThis.innerWidth || 1) * dpr)), h = Math.max(1, Math.round((globalThis.innerHeight || 1) * dpr));
           if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
           gl.viewport(0, 0, w, h);

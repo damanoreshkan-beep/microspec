@@ -107,7 +107,7 @@
  *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, tex2, preserve, buf, zClass }: {
+export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, tex2, preserve, buf, dprMax, zClass }: {
     shader: any;
     seed?: number;
     ink: any;
@@ -119,6 +119,7 @@ export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, t
     tex2: any;
     preserve?: boolean;
     buf: any;
+    dprMax?: number;
     zClass?: string;
 }): any;
 /**

@@ -131,6 +131,7 @@ export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, cam, t
   if (!chan.current) {
     const view = () => (m.api ? m.api.refresh() : null);
     chan.current = {
+      live: () => { const a = view(); return a ? a.out[41] > 0.5 : true; },
       ink: () => { const a = view(); return a ? [a.out[0], a.out[1], a.out[2], a.out[3]] : [0.5, 0.5, 0, 0]; },
       vary: () => { const a = view(); return a ? [a.out[4], a.out[5], a.out[6], a.out[7]] : [0, 0, 0, 0]; },
       points: () => { const a = view(); if (!a) return []; const n = Math.max(0, Math.min(8, a.out[40] | 0)); return Array.from(a.out.subarray(8, 8 + n * 4)); },
@@ -162,9 +163,14 @@ export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, cam, t
           if (document.hidden || (gate && (tick++ & 1))) { last = now; return; }
           const dt = Math.min(DT_MAX, Math.max(0, now - last)); last = now;
           try {
+            const t1 = performance.now();
             if ((api.exports.step(dt, now) | 0) === 1) api.gen++;
+            m.stepUs = (m.stepUs || 0) * 0.9 + (performance.now() - t1) * 1000 * 0.1;
           } catch (e) { m.dead = true; setState("failed"); setErr(String(e?.message ?? e).slice(0, 120)); return; }
-          if (m.onHud && now - hudAt >= hudEvery) { hudAt = now; m.onHud(api.refresh().hud); }
+          if (m.onHud && now - hudAt >= hudEvery) {
+            hudAt = now; m.onHud(api.refresh().hud);
+            const s = m.surface; if (s) { s.dataset.step = (m.stepUs || 0).toFixed(1); s.dataset.live = api.refresh().out[41] > 0.5 ? "1" : "0"; }
+          }
         };
         m.raf = requestAnimationFrame(frame);
       } catch (e) {
@@ -191,8 +197,8 @@ export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, cam, t
     try { api.exports.touch(e.pointerId | 0, phase, x, y); } catch { }
   };
 
-  return html`<${GlStage} shader=${shader} seed=${seed} ink=${chan.current.ink} vary=${chan.current.vary} points=${chan.current.points} buf=${chan.current.buf} cam=${cam} tex2=${tex2} dprMax=${dprMax} zClass=${zClass} />
-    <div data-machine=${state} data-abi=${ABI} data-grid=${grid} data-err=${err || null} aria-hidden="true"
+  return html`<${GlStage} shader=${shader} seed=${seed} ink=${chan.current.ink} vary=${chan.current.vary} points=${chan.current.points} buf=${chan.current.buf} cam=${cam} tex2=${tex2} dprMax=${dprMax} live=${chan.current.live} zClass=${zClass} />
+    <div ref=${(el) => { m.surface = el; }} data-machine=${state} data-abi=${ABI} data-grid=${grid} data-err=${err || null} aria-hidden="true"
       class=${`fixed inset-0 ${zClass} select-none`} style="touch-action:none;-webkit-tap-highlight-color:transparent"
       onPointerDown=${touch(0)} onPointerMove=${touch(1)} onPointerUp=${touch(2)} onPointerCancel=${touch(3)}></div>`;
 }

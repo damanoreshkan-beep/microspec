@@ -339,6 +339,7 @@ export function Transport({
   onScrubStart, onScrub, onScrubEnd,
   
   form = false,
+  dense = false,
 }) {
   const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
   
@@ -364,7 +365,7 @@ export function Transport({
   
   const hero = size === "hero";
   const big = form
-    ? "tp-form w-[4.25rem] h-[4.25rem] @max-[300px]:w-14 @max-[300px]:h-14"
+    ? (dense ? "tp-form w-11 h-11" : "tp-form w-[4.25rem] h-[4.25rem] @max-[300px]:w-14 @max-[300px]:h-14")
     : hero
     ? "w-24 h-24 @max-[300px]:w-20 @max-[300px]:h-20 text-base-content sf-raised sf-e3"
     : size === "sm"
@@ -373,7 +374,14 @@ export function Transport({
   const side = "btn-sm";
   const max = Math.max(1000, dur || 0);
 
-  const head = (title != null || subtitle != null || lead || trail) ? html`
+  const head = dense ? (title != null || subtitle != null ? html`
+    <div class="flex flex-col px-1 leading-tight">
+      <div class="flex items-baseline gap-3">
+        ${title != null ? html`<div data-tp-title class="flex-1 min-w-0 text-[0.92rem] font-semibold truncate">${title}</div>` : null}
+        ${dur ? html`<span class="shrink-0 font-mono text-xs tabular-nums text-base-content/70"><span data-time>${clock(pos)}</span> · ${clock(dur)}</span>` : null}
+      </div>
+      ${subtitle != null ? html`<div class="font-mono text-[0.7rem] tabular-nums text-muted truncate">${subtitle}</div>` : null}
+    </div>` : null) : (title != null || subtitle != null || lead || trail) ? html`
     <div class="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-1">
       <span class="justify-self-start">${lead || null}</span>
       <div class="text-center min-w-0">
@@ -386,7 +394,7 @@ export function Transport({
   const p = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
   const scrub = onSeek && form ? html`
     <div class="flex flex-col">
-      <div data-tp-filament class="tp-filament">
+      <div data-tp-filament class=${`tp-filament ${dense ? "tp-filament-dense" : ""}`}>
         <i class="tp-fl-line"></i><i class="tp-fl-lit" style=${`scale:${p} 1`}></i>
         ${dur ? html`<i class="tp-fl-node" style=${`left:${p * 100}%`}></i>` : null}
         <input type="range" aria-label=${sys("aSeek", locale)} aria-valuetext=${`${clock(pos)} / ${clock(dur)}`}
@@ -397,7 +405,7 @@ export function Transport({
           onChange=${(e) => { onScrubEnd?.(); onSeek(Number(e.target.value)); }} />
       </div>
       ${
-        dur ? html`<div class="-mt-2 flex justify-between font-mono text-xs tabular-nums text-base-content/70">
+        dur && !dense ? html`<div class="-mt-2 flex justify-between font-mono text-xs tabular-nums text-base-content/70">
         <span data-time>${clock(pos)}</span><span>${clock(dur)}</span>
       </div>` : null}
     </div>` : onSeek ? html`
@@ -445,10 +453,10 @@ export function Transport({
 
   return html`
     
-    <div data-transport class=${`@container min-w-0 max-w-full flex flex-col gap-2 ${className}`}>
+    <div data-transport class=${`@container min-w-0 max-w-full flex flex-col ${dense ? "gap-0.5" : "gap-2"} ${className}`} data-dense=${dense ? "" : null}>
       ${head}
       ${scrub}
-      <div data-tp-row class="flex items-center justify-center gap-4 @max-[340px]:gap-1.5 @max-[300px]:gap-1 @max-[230px]:gap-0.5">
+      <div data-tp-row class=${`flex items-center justify-center ${dense ? "gap-2" : "gap-4"} @max-[340px]:gap-1.5 @max-[300px]:gap-1 @max-[230px]:gap-0.5`}>
         ${
           onShuffle ? html`
           <button id="shuffle" data-shuffle=${shuffle ? "on" : "off"} aria-label=${sys("aShuffle", locale)}
@@ -462,7 +470,7 @@ export function Transport({
           class=${form ? `ms-press shrink-0 ${big}` : `btn btn-primary btn-circle ${big} sf-e3`}
           aria-label=${sys(playing ? (stopIcon ? "aStop" : "aPause") : "aPlay", locale)} onClick=${onToggle}>
           ${form ? html`<svg aria-hidden="true" viewBox="0 0 1 1"><path ref=${playPath} d="M.5 0A.5 .5 0 1 1 .5 1A.5 .5 0 1 1 .5 0Z" /></svg>` : null}
-          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", hero || form ? "text-3xl" : "text-2xl")}
+          ${Icon(playing ? (stopIcon ? "lucide:square" : "lucide:pause") : "lucide:play", dense ? "text-xl" : hero || form ? "text-3xl" : "text-2xl")}
         </button>
         ${onNext ? html`
           <button id="next" class=${`btn btn-ghost btn-circle ${side} ${narrowHide}`} aria-label=${sys("aNext", locale)}

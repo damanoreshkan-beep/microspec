@@ -455,6 +455,8 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
 .tp-form:disabled { opacity: .4; }
 .tp-form:focus-visible { outline: 2px solid var(--color-base-content); outline-offset: 3px; border-radius: 50%; }
 .tp-filament { position: relative; height: var(--ms-ctl); }
+
+.tp-filament-dense { height: 1.625rem; }
 .tp-filament > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .tp-filament > i { position: absolute; left: 0; top: 50%; pointer-events: none; }
 .tp-fl-line { width: 100%; height: 1px; background: color-mix(in oklch, var(--color-base-content) 16%, transparent); }
@@ -499,17 +501,18 @@ textarea.input-lg, textarea.textarea-lg { min-height: 3rem; padding-block: calc(
   filter: drop-shadow(0 0 6px var(--lm-bloom-hi)); }
 [data-theme="signal-light"] .ac-rim path { stroke: var(--color-secondary); filter: none; }
 
+
 @keyframes msReveal { from { opacity: 0 } to { opacity: 1 } }
 .ms-reveal { animation: msReveal .28s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-reveal { animation: none; } }
 @keyframes msRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
 .ms-stagger > * { animation: msRise .32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 14) * 30ms); }
 @media (prefers-reduced-motion: reduce) { .ms-stagger > * { animation: none; } }
+
+
 @keyframes msWordIn { from { opacity: 0; filter: blur(3px) } to { opacity: 1; filter: none } }
 .ms-word-in { animation: msWordIn .42s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .ms-word-in { animation: none; } }
-
-
 @keyframes msDetailIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 .ms-detail-in { animation: msDetailIn .26s var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .ms-detail-in { animation: none; } }
@@ -560,6 +563,7 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 }
 .ms-shell { --sh-body: var(--color-base-300); box-shadow: var(--sf-drop); }
 
+
 .ms-screen {
   --sf-inset-face: var(--sh-tint, var(--color-base-200));
   width: 100%;
@@ -574,9 +578,8 @@ button, a, summary, [role="button"], label, input, select, textarea { touch-acti
 
 .ms-pad { padding: 4%; }
 .ms-pad-hub { width: 92%; height: 92%; }
+
 .ms-pad-key { border-radius: 12%; }
-
-
 .ms-menu { flex-wrap: wrap; justify-content: center; }
 .ms-sweep { animation: ms-sweep 4s linear infinite; }
 @keyframes ms-sweep { to { transform: rotate(360deg); } }

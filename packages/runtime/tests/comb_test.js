@@ -104,10 +104,10 @@ Deno.test("the bloom: at rest the lens opens on the focused cell and a finger on
   const P = out(7), Z = out(27) || 1.35, lens = [out(2), out(3)], cam = [out(0), out(1)], bloom = out(31);
   const world = [-P / 2, -P * ROWH * 1], f = [out(22), out(23)];
   const d = [world[0] - f[0], world[1] - f[1]], r = Math.hypot(...d), tt = Math.min(1, r / (3.4 * P));
-  const push = 0.7 * P * bloom * (1 - tt * tt * (3 - 2 * tt));
+  const push = 0.45 * P * bloom * (1 - tt * tt * (3 - 2 * tt));
   const shownW = [world[0] + d[0] / r * push, world[1] + d[1] / r * push];
   const shown = [(shownW[0] - cam[0]) * Z + lens[0], (shownW[1] - cam[1]) * Z + lens[1]];
-  assert(push > 0.3 * P, `the neighbour is pushed out by ${(push / P).toFixed(2)} P`);
+  assert(push > 0.18 * P, `the neighbour is pushed out by ${(push / P).toFixed(2)} P`);
   x.touch(1, 0, shown[0] / 384, shown[1] / 832); t += 16; x.step(16, t);
   assertEquals(hud(10), 1, "the finger on the pushed-out neighbour presses THAT neighbour");
   x.touch(1, 3, 0, 0); for (let k = 0; k < 90; k++) { t += 16; x.step(16, t); }
@@ -121,6 +121,23 @@ Deno.test("the bloom: at rest the lens opens on the focused cell and a finger on
   for (let k = 0; k < 20; k++) { t += 16; x.step(16, t); }
   assert(out(31) < 0.1, `a touch closes the lens: ${out(31)}`);
   x.touch(1, 2, shown[0] / 384, shown[1] / 832);
+});
+
+Deno.test("LIVE (out[41]): the field at rest says 0 so the stage may skip its draw; a finger, a fling, a host value, the bloom say 1", async () => {
+  const { x, out } = await boot(95);
+  let t = 16;
+  for (let k = 0; k < 200; k++) { t += 16; x.step(16, t); }   
+  assertEquals(out(41), 0, "nothing moves: no draw");
+  x.touch(1, 0, 0.5, 0.55); t += 16; x.step(16, t);
+  assertEquals(out(41), 1, "a finger is live");
+  x.touch(1, 1, 0.3, 0.55); t += 16; x.step(16, t); x.touch(1, 2, 0.3, 0.55); t += 16; x.step(16, t);
+  assertEquals(out(41), 1, "a fling is live");
+  for (let k = 0; k < 200; k++) { t += 16; x.step(16, t); }
+  assertEquals(out(41), 0, "settled again: no draw");
+  x.set(11, 0.5); t += 16; x.step(16, t);
+  assertEquals(out(41), 1, "a host's pulse is live for that frame");
+  t += 16; x.step(16, t);
+  assertEquals(out(41), 0);
 });
 
 Deno.test("a LIT cell (the song that plays) is found every step and its centre published; the step returns", async () => {

@@ -6,6 +6,7 @@ import { T, sys, appLocales, LOCALE_LABEL } from "./i18n.js";
 import { CORE, BUILD, appVersion } from "./version.js";
 import { refreshNow } from "./update.js";
 import { permLabels } from "./permissions.js";
+import { $perf, togglePerf } from "./perf.js";
 import { inTelegram, payStars, celebrate } from "./tma.js";
 import * as backend from "./backend.js";
 
@@ -133,6 +134,7 @@ export function Profile({ tab }) {
     : p.account === "telegram" ? "any"
     : p.account || (A.spec.tabs.some((x) => (x.needs || []).includes("auth")) ? "any" : null);
   const [adminHref, setAdminHref] = useState(null);
+  const perfOn = useStore($perf) === "1";
   useEffect(() => {
     if (!account) return;
     let live = true;
@@ -168,6 +170,7 @@ export function Profile({ tab }) {
     savedTab ? html`<${SetRow} icon="lucide:bookmark" label=${T(t, savedTab.titleKey || savedTab.label)} onClick=${() => A.S.tab.set(savedTab.id)} end=${html`<span class="badge badge-primary">${Object.keys(fav).length}</span>`} />` : null,
     p.permissions?.length ? html`<${SetRow} id="p-perms" icon="lucide:shield-check" label=${permLabels(loc).row} onClick=${() => A.S.screen.set("perms")} end=${chevron} />` : null,
     adminHref ? html`<${SetRow} id="p-admin" icon="lucide:shield" tone="text-primary" label=${t?.adminRow || sys("adminRow", loc)} href=${adminHref} end=${arrow} />` : null,
+    adminHref ? html`<${SetRow} id="p-perf" icon="lucide:activity" label=${sys("perfRow", loc)} onClick=${togglePerf} end=${html`<span class=${`badge ${perfOn ? "badge-primary" : "badge-ghost"}`}>${perfOn ? "ON" : "OFF"}</span>`} />` : null,
     p.source ? html`<${SetRow} icon=${p.source.icon || "lucide:database"} label=${T(t, p.source.label)} href=${p.source.url} end=${arrow} />` : null,
     ...(p.links || []).map((l, i) => html`<${SetRow} key=${"link" + i} id=${"p-link-" + i} icon=${l.icon || "lucide:link"} label=${T(t, l.label)} href=${l.url} end=${arrow} />`),
   ].filter(Boolean);

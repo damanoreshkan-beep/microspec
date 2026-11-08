@@ -132,10 +132,10 @@ export const hasWebGL2 = () => {
  *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, buf, dprMax = DPR_CAP, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, buf, dprMax = DPR_CAP, live, zClass = "-z-10" }) {
   const ref = useRef();
   const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null }).current;
-  state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam; state.buf = buf;
+  state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam; state.buf = buf; state.live = live;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -191,7 +191,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
             gl.activeTexture(gl.TEXTURE0);
           } catch { return; }
-          camLast = src; camTime = video ? src.currentTime : -1; camAspect = w / h;
+          camLast = src; camTime = video ? src.currentTime : -1; camAspect = w / h; state.uploaded = true;
           if (!camBound) { camBound = 1; canvas.dataset.cam = "yes"; }
         };
         const uTex2 = U("tex2"), uTex2Aspect = U("tex2Aspect");
@@ -213,7 +213,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.generateMipmap(gl.TEXTURE_2D);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
             gl.activeTexture(gl.TEXTURE0);
-            tex2Aspect = img.naturalWidth / (img.naturalHeight || 1); tex2Bound = 1;
+            tex2Aspect = img.naturalWidth / (img.naturalHeight || 1); tex2Bound = 1; state.uploaded = true;
             canvas.dataset.tex2 = "yes";
           } catch { }
         };
@@ -236,7 +236,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.texImage2D(gl.TEXTURE_2D, 0, ch === 4 ? gl.RGBA8UI : gl.R8UI, b.w, b.h, 0, ch === 4 ? gl.RGBA_INTEGER : gl.RED_INTEGER, gl.UNSIGNED_BYTE, b.data, 0);
             gl.activeTexture(gl.TEXTURE0);
           } catch { return; }
-          bufW = b.w; bufH = b.h; bufGen = b.gen;
+          bufW = b.w; bufH = b.h; bufGen = b.gen; state.uploaded = true;
           if (!canvas.dataset.buf) canvas.dataset.buf = "yes";
         };
         gl.activeTexture(gl.TEXTURE0);
@@ -279,11 +279,21 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         const still = matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
         const t0 = performance.now();
         const uni = new Float32Array(4);
-        let tick = 0;
+        let tick = 0, warm = 0, draws = 0, drawsAt = t0;
+        try { const x = gl.getExtension("WEBGL_debug_renderer_info"); canvas.dataset.gpu = String(x ? gl.getParameter(x.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)).slice(0, 64); } catch { }
         const frame = () => {
           if (state.dead) return;
           if (document.hidden || (gate && (tick++ & 1))) { state.raf = requestAnimationFrame(frame); return; }
           const now = performance.now();
+          if (typeof state.live === "function") {
+            const target0 = themeLight();
+            const moving = state.live() || state.uploaded || Math.abs(target0 - state.light) > 0.002 || warm < 3;
+            if (!moving) {
+              if (now - drawsAt >= 1000) { canvas.dataset.draws = String(draws); draws = 0; drawsAt = now; }
+              state.raf = requestAnimationFrame(frame); return;
+            }
+          }
+          state.uploaded = false; warm++;
           gl.uniform2f(uRes, canvas.width, canvas.height);
           gl.uniform1f(uTime, still ? 2 : (now - t0) / 1000);
           gl.uniform1f(uSeed, state.seed ?? 0);
@@ -308,6 +318,8 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
           if (uBuf) { uploadBuf(typeof state.buf === "function" ? state.buf() : state.buf); gl.uniform2f(uBufSize, bufW, bufH); }
           gl.drawArrays(gl.TRIANGLES, 0, 3);
           canvas.dataset.render = "webgl";
+          draws++;
+          if (now - drawsAt >= 1000) { canvas.dataset.draws = String(draws); draws = 0; drawsAt = now; }
           state.raf = requestAnimationFrame(frame);
         };
         frame();

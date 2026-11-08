@@ -241,6 +241,7 @@ export const SYS = {
   watchFailed: { en: "Couldn't save the alert", uk: "Не вдалося зберегти сповіщення", ru: "Не удалось сохранить уведомление" },
   apkRow: { en: "Download APK", uk: "Завантажити APK", ru: "Скачать APK" },
   adminRow: { en: "Farm admin", uk: "Адмінка ферми", ru: "Админка фермы" },
+  perfRow: { en: "FPS & load", uk: "FPS і навантаження", ru: "FPS и нагрузка" },
   signOut: { en: "Sign out", uk: "Вийти", ru: "Выйти" },
   signedOut: { en: "Not signed in", uk: "Ви не увійшли", ru: "Вы не вошли" },
   accountVia: { en: "via", uk: "через", ru: "через" },

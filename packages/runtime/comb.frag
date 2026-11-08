@@ -46,7 +46,7 @@ vec2 pushed(vec2 cw, int idx, float P) {
   vec2 d = cw - points[3].zw;
   float r = max(0.001, length(d));
   float t = clamp(r / (3.4 * P), 0.0, 1.0);
-  return cw + d * (0.7 * P * bloom * (1.0 - t * t * (3.0 - 2.0 * t)) / r);
+  return cw + d * (0.45 * P * bloom * (1.0 - t * t * (3.0 - 2.0 * t)) / r);
 }
 
 vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, float light) {
@@ -65,7 +65,9 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
   vec2 cw = pushed(vec2(P * (float(ax.x) + 0.5 * float(ax.y)), P * rowh * float(ax.y)), idx, P);
   float dLens = length(cw - camW) * Z;
   float sc = 1.0 + LENS * (1.0 - smoothstep(0.0, LENS_R * P, dLens));
-  if (idx == focus) sc *= 1.0 + 0.45 * clamp(points[5].w, 0.0, 1.0);
+  float open = idx == focus ? clamp(points[5].w, 0.0, 1.0) : 0.0;
+  sc *= 1.0 + 0.2 * open;
+  float scText = sc / (1.0 + 0.2 * open) * (1.0 + 0.06 * open);
   float ring = max(abs(float(ax.x)), max(abs(float(ax.y)), abs(float(ax.x + ax.y))));
   float arrive = points[2].w > 0.5 ? 1.0 : clamp((appear - 55.0 * ring - 60.0) / 380.0, 0.0, 1.0);
   if (arrive <= 0.0) return vec4(0.0);
@@ -102,7 +104,7 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
     }
   }
   if (textOn > 0.5) {
-    float Ws = 0.9 * P * Z * sc;
+    float Ws = 0.9 * P * Z * scText;
     float nameA = smoothstep(0.84, 0.94, Z);
     float lineA = smoothstep(1.12, 1.3, Z);
     vec2 su = vec2((d.x + Ws * 0.5) / Ws, (d.y - R - GAP * P * Z * sc) / (NAME_H * Ws));
@@ -125,11 +127,13 @@ vec4 haloAt(int idx, vec2 cw, vec2 p, float P, float Z, vec2 camW, vec2 lens, fl
   uvec4 c = texelFetch(buf, ivec2(idx & 31, 17 + (idx >> 5)), 0);
   float sc = 1.0 + LENS * (1.0 - smoothstep(0.0, LENS_R * P, length(cw - camW) * Z));
   if ((int(c.a) & 4) != 0) sc *= 1.0 + 0.06 * clamp(points[4].z, 0.0, 1.0);
-  if (idx == int(vary.y)) sc *= 1.0 + 0.45 * clamp(points[5].w, 0.0, 1.0);
+  float bloomHere = clamp(points[5].w, 0.0, 1.0);
+  if (idx == int(vary.y)) sc *= 1.0 + 0.2 * bloomHere;
   float R = FORM * P * Z * sc;
   float dd = length(p - ((cw - camW) * Z + lens));
   float h = (1.0 - smoothstep(R * 0.95, R * 1.9, dd)) * smoothstep(R * 0.55, R * 1.0, dd);
-  float a = h * mix(0.34, 0.22, light);
+  float corona = (idx == int(vary.y) && (int(c.a) & 4) != 0) ? bloomHere : 0.0;
+  float a = h * mix(0.34, 0.22, light) * (1.0 - 0.65 * corona);
   return vec4(vec3(c.rgb) / 255.0 * a, a);
 }
 
@@ -197,18 +201,19 @@ void main() {
     uvec4 lc = texelFetch(buf, ivec2(li & 31, 17 + (li >> 5)), 0);
     vec3 ltint = vec3(lc.rgb) / 255.0;
     vec2 cs = (pushed(points[7].zw, li, P) - camW) * Z + lens;
-    float R = FORM * P * Z * (1.0 + LENS) * (1.0 + 0.45 * bloom);
+    float R = FORM * P * Z * (1.0 + LENS) * (1.0 + 0.2 * bloom);
     vec2 d = p0 - cs;
-    float r = length(d), ang = atan(d.y, d.x) / 6.2831853 + 0.5;
-    float fb = ang * 12.0, b0 = floor(fb), ft = fract(fb);
-    float e0 = float(texelFetch(buf, ivec2(int(mod(b0, 12.0)), 33), 0).r) / 255.0;
-    float e1 = float(texelFetch(buf, ivec2(int(mod(b0 + 1.0, 12.0)), 33), 0).r) / 255.0;
-    float e = mix(e0, e1, smoothstep(0.0, 1.0, ft));
-    float ray = 1.0 - smoothstep(0.0, 0.5, abs(ft - 0.5) * 2.0 - 0.1);
-    float reach = R * (1.15 + 1.1 * e);
-    float body = (1.0 - smoothstep(R * 1.02, reach, r)) * smoothstep(R * 0.92, R * 1.08, r);
-    float tip = exp(-pow((r - reach) / (0.08 * R + 1.0), 2.0)) * e;
-    float a = bloom * (body * (0.10 + 0.35 * e) * (0.55 + 0.45 * ray) + tip * 0.55 * ray) * mix(1.0, 0.7, light);
+    float r = length(d), ang = fract(atan(d.y, d.x) / 6.2831853 + 0.5 + time * 0.012);
+    float fb = ang * 48.0, ft = fract(fb);
+    int q = int(mod(floor(fb), 24.0));
+    int band = q < 12 ? q : 23 - q;
+    float e = float(texelFetch(buf, ivec2(band, 33), 0).r) / 255.0;
+    e = clamp((e - 0.3) / 0.7, 0.0, 1.0);
+    float reach = R * (1.1 + 0.85 * e * e);
+    float ray = 1.0 - smoothstep(0.06, 0.26, abs(ft - 0.5));
+    float along = smoothstep(R * 0.98, R * 1.06, r) * (1.0 - smoothstep(reach * 0.9, reach, r));
+    float tip = exp(-pow((r - reach) / (0.045 * R + 1.0), 2.0)) * step(0.02, e);
+    float a = bloom * (along * ray * (0.3 + 0.55 * e) + tip * ray * 0.85) * mix(1.0, 0.75, light);
     col = col * (1.0 - a) + ltint * a;
   }
 

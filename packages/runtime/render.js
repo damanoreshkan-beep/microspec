@@ -84,6 +84,7 @@ import { authWall } from "./authwall.js";
 import { A, VIEWS, Empty } from "./render-ctx.js";
 import { Chart, ListView, SegmentBar, SortBar, TogglesBar } from "./list.js";
 import { Profile } from "./profile.js";
+import { PerfHud } from "./perf.js";
 import { WatchScreen, PermissionsScreen, SignInScreen, ApkScreen, DetailView, PlayerHost } from "./screens.js";
 import { FilterChips, FilterSheet, InstallModal, AppBar, QrModal, DockFade, CleanExit, Dock, Toast, ConfirmSheet } from "./chrome.js";
 import { ConverterView, DashboardView } from "./dash.js";
@@ -163,5 +164,6 @@ export function App() {
     <${ConfirmSheet} />
     ${clean ? html`<${CleanExit} />` : html`<${Dock} />`}
     <${Toast} />
+    <${PerfHud} />
   </${Fragment}>`;
 }

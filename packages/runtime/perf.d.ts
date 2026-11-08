@@ -1,0 +1,43 @@
+/**
+ * # runtime/perf.js — the admin's performance HUD: frames, load, the hardware, the battery
+ *
+ * "виведи для ролі адміна кнопку показувати fps та навантаження на систему, дані
+ * по залізу щоб продебажити і переробити вузли які сильно жеруть батарею, нам саме головне це зберегти заряд".
+ * A small mono panel over the page, for the admin only (the profile tab's row), that reads what the device
+ * admits to: the frame rate and the 95th-percentile frame time of this page, the long frames in the last two
+ * seconds, the JS heap (Chrome), the cores and the memory class, the battery's level, charge state and the
+ * time it says it has left, the GPU behind the stage canvas and how many frames a second the stage actually
+ * DRAWS (an idle stage draws none), the machine's step cost in µs. Nothing here is estimated: a field the
+ * platform does not report shows a dash.
+ *
+ * ## Import
+ * ```js
+ * import { PerfHud, $perf, togglePerf } from "./perf.js";   // render.js mounts the HUD, profile.js the row
+ * ```
+ *
+ * ## What it exports
+ * - {@link $perf} — a persistent atom, `"1"` when the HUD is on (`ms:perf` in localStorage).
+ * - {@link togglePerf} — flips it.
+ * - {@link PerfHud} — the panel; renders nothing while off. Two updates a second; `pointer-events: none`.
+ * - {@link sample} — `() → { fps, p95, long }` from the rAF samples so far (for a test or a view).
+ *
+ * @module
+ */
+/** Flip the HUD. */
+export function togglePerf(): void;
+/**
+ * The last ~2 s of frames: frames a second, the 95th-percentile frame time (ms) and how many frames ran long (> 32 ms).
+ * @returns {{ fps: number, p95: number, long: number }}
+ */
+export function sample(): {
+    fps: number;
+    p95: number;
+    long: number;
+};
+/**
+ * The panel over the page while `$perf` is on.
+ * @returns the HUD element, or null
+ */
+export function PerfHud(): any;
+/** The HUD's switch, remembered on the device. */
+export const $perf: any;

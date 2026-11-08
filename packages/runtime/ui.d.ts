@@ -178,7 +178,7 @@ export function Slider({ id, label, value, onInput, min, max, step, attr }: {
  * @param props see the destructured parameter list; `locale` selects the SYS strings for the labels
  * @returns the transport container (an `@container` that compacts on width and height)
  */
-export function Transport({ locale, playing, onToggle, onPrev, onNext, pos, dur, onSeek, repeat, onRepeat, shuffle, onShuffle, title, subtitle, lead, trail, stopIcon, size, disabled, className, actions, keep, moreOpen, onMore, onMoreClose, onScrubStart, onScrub, onScrubEnd, form, }: {
+export function Transport({ locale, playing, onToggle, onPrev, onNext, pos, dur, onSeek, repeat, onRepeat, shuffle, onShuffle, title, subtitle, lead, trail, stopIcon, size, disabled, className, actions, keep, moreOpen, onMore, onMoreClose, onScrubStart, onScrub, onScrubEnd, form, dense, }: {
     locale?: string;
     playing?: boolean;
     onToggle: any;
@@ -208,6 +208,7 @@ export function Transport({ locale, playing, onToggle, onPrev, onNext, pos, dur,
     onScrub: any;
     onScrubEnd: any;
     form?: boolean;
+    dense?: boolean;
 }): any;
 /**
  * The visible void between the chrome — the `flex-1 min-h-0` box a fit view's canvas centres in.

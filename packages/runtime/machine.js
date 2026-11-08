@@ -119,7 +119,7 @@ export async function loadMachine(bytes, { w, h, seed = 0 } = {}) {
  * @param props see the module note
  * @returns the stage canvas and the touch surface
  */
-export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, cam, tex2, tex3, dprMax, onReady, onHud, onState, hudHz = 4, zClass = "z-0" }) {
+export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, cam, tex2, tex3, aux, dprMax, onReady, onHud, onState, hudHz = 4, zClass = "z-0" }) {
   const [state, setState] = useState(typeof WebAssembly === "undefined" ? "none" : "loading");
   const [err, setErr] = useState("");
   const [grid, setGrid] = useState("");
@@ -197,7 +197,7 @@ export function MachineStage({ wasm, shader, seed = 0, params, cells = 6, cam, t
     try { api.exports.touch(e.pointerId | 0, phase, x, y); } catch { }
   };
 
-  return html`<${GlStage} shader=${shader} seed=${seed} ink=${chan.current.ink} vary=${chan.current.vary} points=${chan.current.points} buf=${chan.current.buf} cam=${cam} tex2=${tex2} tex3=${tex3} dprMax=${dprMax} live=${chan.current.live} zClass=${zClass} />
+  return html`<${GlStage} shader=${shader} seed=${seed} ink=${chan.current.ink} vary=${chan.current.vary} points=${chan.current.points} buf=${chan.current.buf} cam=${cam} tex2=${tex2} tex3=${tex3} aux=${aux} dprMax=${dprMax} live=${chan.current.live} zClass=${zClass} />
     <div ref=${(el) => { m.surface = el; }} data-machine=${state} data-abi=${ABI} data-grid=${grid} data-err=${err || null} aria-hidden="true"
       class=${`fixed inset-0 ${zClass} select-none`} style="touch-action:none;-webkit-tap-highlight-color:transparent"
       onPointerDown=${touch(0)} onPointerMove=${touch(1)} onPointerUp=${touch(2)} onPointerCancel=${touch(3)}></div>`;

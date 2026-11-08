@@ -19,6 +19,12 @@ const float LENS_R = 2.2;
 
 float back(float t) { float c1 = 1.70158, c3 = c1 + 1.0; float u = t - 1.0; return 1.0 + c3 * u * u * u + c1 * u * u; }
 
+float skel(vec2 d, float R, float ring) {
+  float disc = 1.0 - smoothstep(R * 0.80, R * 0.92, length(d));
+  float wave = 0.5 + 0.5 * sin(time * 2.4 - ring * 0.95);
+  return disc * (0.10 + 0.08 * wave);
+}
+
 vec3 pal(int slot) { return vec3(texelFetch(buf, ivec2(slot, 31), 0).rgb) / 255.0; }
 
 ivec2 hexRound(vec2 qr) {
@@ -62,6 +68,7 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
   int focus = int(vary.y); float appear = vary.z;
   int pressIdx = int(points[0].x); float pressT = points[0].y;
   float textOn = tex2Aspect.y;
+  float textFade = smoothstep(0.0, 0.5, env.z);
 
   vec2 cw = pushed(vec2(P * (float(ax.x) + 0.5 * float(ax.y)), P * rowh * float(ax.y)), idx, P);
   float dLens = length(cw - camW) * Z;
@@ -80,12 +87,17 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
   vec2 d = p - cs;
 
   vec4 acc = vec4(0.0);
+  float ready = camAspect.y > 0.5 ? smoothstep(0.0, 0.5, env.y) : 0.0;
+  if (ready < 1.0) {
+    float sk = skel(d, R, ring) * (1.0 - ready) * arrive;
+    acc.rgb += pal(30) * sk; acc.a += sk;
+  }
   float cols = max(1.0, points[1].z); float tile = max(1.0, points[1].w); float atlas = max(1.0, points[5].x);
   vec2 fu = d / (2.0 * R) + 0.5;
   if (fu.x > -0.05 && fu.x < 1.05 && fu.y > -0.05 && fu.y < 1.05) {
     vec2 uv = (vec2(mod(float(idx), cols), floor(float(idx) / cols)) * tile + (1.0 - ICON) * 0.5 * tile + fu * ICON * tile) / atlas;
     vec4 art = texture(cam, uv);
-    float a = art.a;
+    float a = art.a * ready;
     float win = (idx == focus && tex3Aspect.y > 0.5) ? smoothstep(0.08, 0.92, open) : 0.0;
     if (win > 0.0) {
       float asp = max(0.05, tex3Aspect.x);
@@ -123,13 +135,13 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
     vec2 su = vec2((d.x + Ws * 0.5) / Ws, (d.y - R - GAP * P * Z * sc) / (NAME_H * Ws));
     if (nameA > 0.0 && su.x >= 0.0 && su.x <= 1.0 && su.y >= 0.0 && su.y <= 1.0) {
       float g = glyphs(idx, su, 0.0, NAME_H);
-      float a = g * nameA * (idx == focus ? 1.0 - open * tex3Aspect.y : 0.86) * arrive;
+      float a = g * nameA * (idx == focus ? 1.0 - open * tex3Aspect.y : 0.86) * arrive * textFade;
       acc.rgb += pal(30) * a * (1.0 - acc.a); acc.a += a * (1.0 - acc.a);
     }
     vec2 lu = vec2(su.x, (d.y - R - GAP * P * Z * sc - LINE_TOP * Ws) / (LINE_H * Ws));
     if (lineA > 0.0 && lu.x >= 0.0 && lu.x <= 1.0 && lu.y >= 0.0 && lu.y <= 1.0) {
       float g = glyphs(idx, lu, LINE_TOP, LINE_H);
-      float a = g * lineA * 0.78 * arrive * (idx == focus ? 1.0 - open * tex3Aspect.y : 1.0);
+      float a = g * lineA * 0.78 * arrive * textFade * (idx == focus ? 1.0 - open * tex3Aspect.y : 1.0);
       acc.rgb += pal(30) * a * (1.0 - acc.a); acc.a += a * (1.0 - acc.a);
     }
   }
@@ -170,6 +182,15 @@ void main() {
   ivec2 ax = hexRound(vec2(q, r));
 
   vec3 col = ground;
+  if (vary.x < 0.5 && env.w > 0.5) {
+    float ringL = max(abs(float(ax.x)), max(abs(float(ax.y)), abs(float(ax.x + ax.y))));
+    if (ringL <= 2.0) {
+      vec2 cwL = vec2(P * (float(ax.x) + 0.5 * float(ax.y)), P * rowh * float(ax.y));
+      vec2 csL = (cwL - camW) * Z + lens;
+      float sk = skel(p - csL, FORM * P * Z, ringL);
+      col = mix(col, pal(30), sk);
+    }
+  }
   ivec2 site = ax + 8;
   if (site.x >= 0 && site.x <= 16 && site.y >= 0 && site.y <= 16) {
     uvec4 s = texelFetch(buf, site, 0);
@@ -184,7 +205,7 @@ void main() {
         float sdf = max(abs(dl.x), abs(dl.x) * 0.5 + abs(dl.y) * 0.8660254) - 0.5 * P;
         float inner = 1.0 - smoothstep(-0.5 * P, -0.04 * P, sdf);
         col = mix(ground, gcol, mix(0.06, 0.05, light) * inner);
-        float capA = (1.0 - smoothstep(0.84, 0.94, Z)) * tex2Aspect.y;
+        float capA = (1.0 - smoothstep(0.84, 0.94, Z)) * tex2Aspect.y * smoothstep(0.0, 0.5, env.z);
         if (capA > 0.0) {
           uvec4 ce = texelFetch(buf, ivec2(g, 32), 0);
           vec2 cen = vec2(float(ce.r | (ce.g << 8u)), float(ce.b | (ce.a << 8u))) - 32768.0;

@@ -128,16 +128,18 @@ export const hasWebGL2 = () => {
  *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
  * @param tex3     optional PICTURE texture URL (CORS-readable): full resolution, unit 4, clamped, swapped whole —
  *                 `tex3` / `tex3Aspect` (x = w/h, y = bound); null unbinds it
+ * @param aux      optional number or function — `env.w`, the app's own flag (a loading state); `env.y` / `env.z` are
+ *                 the seconds since `cam` / `tex2` first bound, so a shader can fade a skeleton into the picture
  * @param preserve keep the drawing buffer after each frame, so the app can read the canvas (`toBlob`) — a
  *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
  * @param buf      optional function returning `{ data: Uint8Array, w, h, ch: 1|4, gen }` (read every frame, uploaded
  *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, tex3, preserve = false, buf, dprMax = DPR_CAP, live, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, tex3, aux, preserve = false, buf, dprMax = DPR_CAP, live, zClass = "-z-10" }) {
   const ref = useRef();
   const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null, tex3Url: null }).current;
-  state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam; state.buf = buf; state.live = live;
+  state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam; state.buf = buf; state.live = live; state.aux = aux;
 
   useEffect(() => {
     const canvas = ref.current;
@@ -179,7 +181,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         if (uCam) gl.uniform1i(uCam, 1);
-        let camAspect = 1, camBound = 0, camLast = null, camTime = -1;
+        let camAspect = 1, camBound = 0, camBoundAt = 0, camLast = null, camTime = -1;
         const sizeOfSrc = (s) => [s.videoWidth || s.naturalWidth || s.width || 0, s.videoHeight || s.naturalHeight || s.height || 0];
         const uploadCam = (src) => {
           if (!src) return;
@@ -194,7 +196,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.activeTexture(gl.TEXTURE0);
           } catch { return; }
           camLast = src; camTime = video ? src.currentTime : -1; camAspect = w / h; state.uploaded = true;
-          if (!camBound) { camBound = 1; canvas.dataset.cam = "yes"; }
+          if (!camBound) { camBound = 1; camBoundAt = performance.now(); canvas.dataset.cam = "yes"; }
         };
         const uTex2 = U("tex2"), uTex2Aspect = U("tex2Aspect");
         const tex2Tex = gl.createTexture();
@@ -203,7 +205,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
         if (uTex2) gl.uniform1i(uTex2, 2);
-        let tex2Aspect = 1, tex2Bound = 0;
+        let tex2Aspect = 1, tex2Bound = 0, tex2BoundAt = 0;
         state.loadTex2 = async (url) => {
           if (!url) { tex2Bound = 0; return; }
           try {
@@ -215,7 +217,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             gl.generateMipmap(gl.TEXTURE_2D);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
             gl.activeTexture(gl.TEXTURE0);
-            tex2Aspect = img.naturalWidth / (img.naturalHeight || 1); tex2Bound = 1; state.uploaded = true;
+            tex2Aspect = img.naturalWidth / (img.naturalHeight || 1); if (!tex2Bound) tex2BoundAt = performance.now(); tex2Bound = 1; state.uploaded = true;
             canvas.dataset.tex2 = "yes";
           } catch { }
         };
@@ -313,7 +315,9 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
           const now = performance.now();
           if (typeof state.live === "function") {
             const target0 = themeLight();
-            const moving = state.live() || state.uploaded || Math.abs(target0 - state.light) > 0.002 || warm < 3;
+            const auxNow = typeof state.aux === "function" ? state.aux() : (state.aux || 0);
+            const fading = (camBound && now - camBoundAt < 800) || (tex2Bound && now - tex2BoundAt < 800) || auxNow > 0.5;
+            const moving = state.live() || state.uploaded || fading || Math.abs(target0 - state.light) > 0.002 || warm < 3;
             if (!moving) {
               if (now - drawsAt >= 1000) { canvas.dataset.draws = String(draws); draws = 0; drawsAt = now; }
               state.raf = requestAnimationFrame(frame); return;
@@ -329,7 +333,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
           uni.set(vary?.length === 4 ? vary : [0, 0, 0, 0]); if (uVary) gl.uniform4fv(uVary, uni);
           const target = themeLight();
           state.light = still ? target : state.light + (target - state.light) * 0.13;
-          if (uEnv) gl.uniform4f(uEnv, state.light, 0, 0, 0);
+          if (uEnv) gl.uniform4f(uEnv, state.light, camBound ? (now - camBoundAt) / 1000 : 0, tex2Bound ? (now - tex2BoundAt) / 1000 : 0, typeof state.aux === "function" ? state.aux() : (state.aux || 0));
           if (uPoints) {
             const p = typeof state.points === "function" ? state.points() : state.points;
             const n = p ? Math.min(POINTS, p.length >> 2) : 0;

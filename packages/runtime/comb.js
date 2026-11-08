@@ -34,6 +34,8 @@
  *   renders ONE cell as DOM: the accessible twin behind the canvas (visually hidden, so a screen reader, the keyboard
  *   and the gate's e2e reach every item) and the visible fallback on the core's `.ms-comb` lattice wherever WebGL2 is
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
+ *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
+ *   from the skeleton as their atlases bind.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
@@ -313,7 +315,7 @@ const iconCols = (n) => (n <= 16 ? 4 : n <= 64 ? 8 : 16);
  * @param props see the module note
  * @returns the stage, the twin (or the fallback lattice)
  */
-export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFocus, onSettle, onReady: onApi, top = 0, bottom = 0, zClass = "z-0" }) {
+export function Comb({ items = [], groups = [], cell, focus, zoom, loading = false, onOpen, onFocus, onSettle, onReady: onApi, top = 0, bottom = 0, zClass = "z-0" }) {
   const gl = useMemo(() => (typeof document !== "undefined" ? hasWebGL2() : false), []);
   const [mode, setMode] = useState(gl ? "gl" : "dom");
   const [focusId, setFocusId] = useState("");
@@ -377,6 +379,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   useEffect(() => {
     if (mode !== "gl" || !ready || !pal) return;
     m.stopIcons?.();
+    if (!items.length) { m.icons = null; m.pendingIcons = null; return; }
     const publish = (bmp) => { m.pendingIcons = bmp; const land = () => { if (m.down) { setTimeout(land, 120); return; } m.icons = m.pendingIcons; }; land(); };
     m.stopIcons = buildIcons(items, iconPlan, publish, pal.fill);
     return () => { m.stopIcons?.(); m.stopIcons = null; };
@@ -428,7 +431,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   const params = [items.length, top + cssPx("--hdr-h") + cssPx("--ms-safe-top"), bottom + cssPx("--dock-h") + cssPx("--island-h"), size[0], size[1], stillNow() ? 1 : 0,
     iconPlan.cols, iconPlan.tileW, textPlan.cols, textPlan.tileW, textPlan.tileH, 0, iconPlan.size, textPlan.size];
   return html`<div data-comb="gl" data-comb-ready=${ready ? "1" : null} data-comb-focus=${focusId || null} data-comb-group=${groupId || null} data-comb-zoom=${level} class="contents">
-    <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} tex3=${win || null} dprMax=${3} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
+    <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} tex3=${win || null} aux=${loading ? 1 : 0} dprMax=${3} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
     <div data-comb-twin class="sr-only">${items.map((it, i) => renderCell(it, i, "gl"))}</div>
   </div>`;
 }

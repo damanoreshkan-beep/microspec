@@ -65,6 +65,14 @@ export function makeHelpers(page) {
     type:  (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); }, s, v),
     select: (s, v) => ev((s, v) => { const e = document.querySelector(s); e.value = v; e.dispatchEvent(new Event("change", { bubbles: true })); }, s, v),
     click: (s) => ev((s) => document.querySelector(s)?.click(), s),
+    drag: (s, dx = 24, dy = 12) => ev((s, dx, dy) => {
+      const e = document.querySelector(s);
+      if (!e) return false;
+      const r = e.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const at = (type, cx, cy) => e.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, isPrimary: true, pointerType: "touch", clientX: cx, clientY: cy }));
+      at("pointerdown", x, y); at("pointermove", x + dx / 2, y + dy / 2); at("pointermove", x + dx, y + dy); at("pointerup", x + dx, y + dy);
+      return true;
+    }, s, dx, dy),
     tap: (s) => ev((s) => {
       const e = document.querySelector(s);
       if (!e) return false;

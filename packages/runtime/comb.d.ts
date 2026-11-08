@@ -33,6 +33,8 @@
  *   renders ONE cell as DOM: the accessible twin behind the canvas (visually hidden, so a screen reader, the keyboard
  *   and the gate's e2e reach every item) and the visible fallback on the core's `.ms-comb` lattice wherever WebGL2 is
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
+ *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
+ *   from the skeleton as their atlases bind.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
@@ -125,12 +127,13 @@ export function buildText(items: any, groups: any, plan: any, publish: any): () 
  * @param props see the module note
  * @returns the stage, the twin (or the fallback lattice)
  */
-export function Comb({ items, groups, cell, focus, zoom, onOpen, onFocus, onSettle, onReady: onApi, top, bottom, zClass }: {
+export function Comb({ items, groups, cell, focus, zoom, loading, onOpen, onFocus, onSettle, onReady: onApi, top, bottom, zClass }: {
     items?: any[];
     groups?: any[];
     cell: any;
     focus: any;
     zoom: any;
+    loading?: boolean;
     onOpen: any;
     onFocus: any;
     onSettle: any;

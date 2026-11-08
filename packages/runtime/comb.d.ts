@@ -34,7 +34,12 @@
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
- *   a form. `zoom` asks a level (0 overview · 1 default · 2 cards), the same levels a pinch snaps to.
+ *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
+ *   app drives every frame without a render: fonoteka sets `PARAM.pulse` (0..1, the bass envelope at the audio clock —
+ *   the lit cell breathes) and `PARAM.band + b` (twelve bands of the song's spectrum, core breath.js `spectrumOf`).
+ *   THE BLOOM — a cell's two states: once the field rests on a cell (no finger, 450 ms) it OPENS — grows 1.45×, every
+ *   other cell is pushed away along its line from the focus (a translation, never a squeeze), and the cell that plays
+ *   wears its spectrum as a corona of light around its form; any touch closes it (110 ms).
  * - {@link spiral} — `(n) → [[q, r], …]`, the one-group lattice, the machine's own walk (the JS twin the tests hold it to).
  * - {@link atlasPlan} — `(n, size, aspect, want) → { cols, rows, tileW, tileH, size }` the tile grid for `n` tiles.
  * - {@link MARK}, {@link COMB_MAX} (217 — eight rings), {@link LEVELS} (one level, 1.35 — the cards;
@@ -158,6 +163,7 @@ export const PARAM: Readonly<{
     mark: 256;
     group: 512;
     groupColour: 768;
+    band: 1024;
 }>;
 /** A cell's mark bits: a dot for new/updated, `lit` for the one that plays. */
 export const MARK: Readonly<{

@@ -100,6 +100,61 @@ export async function envelopeOfBlob(blob, hz = BREATH_HZ) {
   return envelopeOf(audio.getChannelData(0), audio.sampleRate, hz);
 }
 
+/** The spectrum's frame rate, frames a second. */
+export const SPECTRUM_HZ = 20;
+/** The spectrum's band count — twelve, log-spaced 55 Hz … 7 kHz. */
+export const SPECTRUM_BANDS = 12;
+
+/**
+ * Mono PCM → the song's SPECTRUM: `bands` energies a frame, SPECTRUM_HZ frames a second, one byte each. Band
+ * centres are log-spaced from 55 Hz to 7 kHz (or the Nyquist, whichever is lower), each measured by Goertzel over
+ * the frame, followed on a fast-rise /
+ * slow-fall path per band and normalised per band to its 95th percentile, so a quiet band moves as much as a
+ * loud one and the picture is the song's SHAPE, not its mastering. Computed ONCE per song, offline.
+ * @param {Float32Array | number[]} pcm mono samples, -1..1
+ * @param {number} rate sample rate in Hz
+ * @param {{ bands?: number, hz?: number }} [opts]
+ * @returns {Uint8Array} `frames × bands` bytes, frame-major
+ */
+export function spectrumOf(pcm, rate, { bands = SPECTRUM_BANDS, hz = SPECTRUM_HZ } = {}) {
+  const step = Math.max(1, Math.round(rate / hz)), n = Math.floor(pcm.length / step);
+  const top = Math.min(7000, rate * 0.45), lo = 55;
+  const coef = Array.from({ length: bands }, (_, b) => 2 * Math.cos(2 * Math.PI * (lo * Math.pow(top / lo, b / Math.max(1, bands - 1))) / rate));
+  const raw = new Float32Array(n * bands);
+  for (let f = 0; f < n; f++) {
+    const base = f * step;
+    for (let b = 0; b < bands; b++) {
+      const c = coef[b];
+      let s0 = 0, s1 = 0, s2 = 0;
+      for (let i = 0; i < step; i++) { s0 = pcm[base + i] + c * s1 - s2; s2 = s1; s1 = s0; }
+      raw[f * bands + b] = Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - c * s1 * s2)) / step;
+    }
+  }
+  const out = new Uint8Array(n * bands);
+  for (let b = 0; b < bands; b++) {
+    let v = 0;
+    const col = new Float32Array(n);
+    for (let f = 0; f < n; f++) { const t = raw[f * bands + b]; v += (t > v ? 0.6 : 0.2) * (t - v); col[f] = v; }
+    const p95 = n ? Float32Array.from(col).sort()[Math.min(n - 1, Math.floor(n * 0.95))] : 0;
+    if (p95 > 1e-7) for (let f = 0; f < n; f++) out[f * bands + b] = Math.round(255 * Math.min(1, col[f] / p95));
+  }
+  return out;
+}
+
+/**
+ * Decode an audio file (22.05 kHz mono) and return its spectrum. Browser only (OfflineAudioContext).
+ * @param {Blob} blob an audio file (the copy kept on the phone)
+ * @param {{ bands?: number, hz?: number }} [opts]
+ * @returns {Promise<Uint8Array>} `frames × bands` bytes
+ */
+export async function spectrumOfBlob(blob, opts = {}) {
+  const buf = await blob.arrayBuffer();
+  let ctx;
+  try { ctx = new OfflineAudioContext(1, 1, 22050); } catch { ctx = new OfflineAudioContext(1, 1, 44100); }
+  const audio = await ctx.decodeAudioData(buf);
+  return spectrumOf(audio.getChannelData(0), audio.sampleRate, opts);
+}
+
 const still = () => gate || (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
 /**

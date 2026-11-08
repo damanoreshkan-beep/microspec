@@ -1,8 +1,22 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { envelopeOf, breathe, BREATH_HZ } from "../breath.js";
+import { envelopeOf, breathe, BREATH_HZ, spectrumOf, SPECTRUM_HZ, SPECTRUM_BANDS } from "../breath.js";
 
 const RATE = 8000;
 const kick = (seconds, freq = 60) => Float32Array.from({ length: RATE * seconds }, (_, i) => ((i / RATE) % 1 < 0.5 ? Math.sin(2 * Math.PI * freq * i / RATE) : 0));
+
+Deno.test("spectrum — frames × bands bytes; a low tone lights the low bands, a high tone the high ones; silence is dark", () => {
+  const rate = 22050, secs = 2;
+  const song = Float32Array.from({ length: rate * secs }, (_, i) => Math.sin(2 * Math.PI * (i < rate ? 80 : 4000) * i / rate));
+  const sp = spectrumOf(song, rate);
+  assertEquals(sp.length % SPECTRUM_BANDS, 0);
+  assert(Math.abs(sp.length / SPECTRUM_BANDS - secs * SPECTRUM_HZ) <= 1, `${sp.length / SPECTRUM_BANDS} frames for ${secs} s`);
+  const frame = (f) => Array.from(sp.slice(f * SPECTRUM_BANDS, (f + 1) * SPECTRUM_BANDS));
+  const peak = (arr) => arr.indexOf(Math.max(...arr));
+  assert(peak(frame(10)) <= 2, `the 80 Hz second peaks low: band ${peak(frame(10))}`);
+  assert(peak(frame(30)) >= 8, `the 4 kHz second peaks high: band ${peak(frame(30))}`);
+  const quiet = spectrumOf(new Float32Array(rate), rate);
+  assertEquals(Math.max(...quiet), 0, "silence is dark in every band");
+});
 
 Deno.test("breath — one frame per 1/BREATH_HZ s, bytes 0..255", () => {
   const env = envelopeOf(kick(4), RATE);

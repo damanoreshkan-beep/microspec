@@ -71,6 +71,31 @@ export function envelopeOf(pcm: Float32Array | number[], rate: number, hz?: numb
  */
 export function envelopeOfBlob(blob: Blob, hz?: number): Promise<Uint8Array>;
 /**
+ * Mono PCM → the song's SPECTRUM: `bands` energies a frame, SPECTRUM_HZ frames a second, one byte each. Band
+ * centres are log-spaced from 55 Hz to 7 kHz (or the Nyquist, whichever is lower), each measured by Goertzel over
+ * the frame, followed on a fast-rise /
+ * slow-fall path per band and normalised per band to its 95th percentile, so a quiet band moves as much as a
+ * loud one and the picture is the song's SHAPE, not its mastering. Computed ONCE per song, offline.
+ * @param {Float32Array | number[]} pcm mono samples, -1..1
+ * @param {number} rate sample rate in Hz
+ * @param {{ bands?: number, hz?: number }} [opts]
+ * @returns {Uint8Array} `frames × bands` bytes, frame-major
+ */
+export function spectrumOf(pcm: Float32Array | number[], rate: number, { bands, hz }?: {
+    bands?: number;
+    hz?: number;
+}): Uint8Array;
+/**
+ * Decode an audio file (22.05 kHz mono) and return its spectrum. Browser only (OfflineAudioContext).
+ * @param {Blob} blob an audio file (the copy kept on the phone)
+ * @param {{ bands?: number, hz?: number }} [opts]
+ * @returns {Promise<Uint8Array>} `frames × bands` bytes
+ */
+export function spectrumOfBlob(blob: Blob, opts?: {
+    bands?: number;
+    hz?: number;
+}): Promise<Uint8Array>;
+/**
  * The envelope as ONE compositor animation of `scale` on `el`, its clock pinned to `audio`: it plays, pauses,
  * seeks and changes rate with the element, and corrects a drift over 150 ms on `timeupdate` (~4 Hz).
  * A no-op (returns a no-op stop) when still, with no Web Animations, or with an empty envelope.
@@ -95,3 +120,7 @@ export function breathe(el: {
 }): () => void;
 /** Envelope frames per second. */
 export const BREATH_HZ: 10;
+/** The spectrum's frame rate, frames a second. */
+export const SPECTRUM_HZ: 20;
+/** The spectrum's band count — twelve, log-spaced 55 Hz … 7 kHz. */
+export const SPECTRUM_BANDS: 12;

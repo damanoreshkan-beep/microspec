@@ -126,15 +126,17 @@ export const hasWebGL2 = () => {
  *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
  * @param tex2     optional MATERIAL texture URL (CORS-readable): full resolution, unit 2, mirrored-repeat, so a
  *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
+ * @param tex3     optional PICTURE texture URL (CORS-readable): full resolution, unit 4, clamped, swapped whole —
+ *                 `tex3` / `tex3Aspect` (x = w/h, y = bound); null unbinds it
  * @param preserve keep the drawing buffer after each frame, so the app can read the canvas (`toBlob`) — a
  *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
  * @param buf      optional function returning `{ data: Uint8Array, w, h, ch: 1|4, gen }` (read every frame, uploaded
  *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, preserve = false, buf, dprMax = DPR_CAP, live, zClass = "-z-10" }) {
+export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, cam, tex2, tex3, preserve = false, buf, dprMax = DPR_CAP, live, zClass = "-z-10" }) {
   const ref = useRef();
-  const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null }).current;
+  const state = useRef({ raf: 0, dead: false, gl: null, light: themeLight(), texUrl: null, tex2Url: null, tex3Url: null }).current;
   state.seed = seed; state.ink = ink; state.vary = vary; state.points = points; state.texReady = texReady; state.cam = cam; state.buf = buf; state.live = live;
 
   useEffect(() => {
@@ -218,6 +220,30 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
           } catch { }
         };
         if (state.tex2Url) state.loadTex2(state.tex2Url);
+        const uTex3 = U("tex3"), uTex3Aspect = U("tex3Aspect");
+        const tex3Tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, tex3Tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        if (uTex3) gl.uniform1i(uTex3, 4);
+        let tex3Aspect = 1, tex3Bound = 0;
+        state.loadTex3 = async (url) => {
+          if (!url) { tex3Bound = 0; state.uploaded = true; return; }
+          try {
+            const img = new Image(); img.crossOrigin = "anonymous"; img.decoding = "async"; img.src = url;
+            await img.decode();
+            if (state.dead || state.tex3Url !== url) return;
+            gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, tex3Tex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+            gl.activeTexture(gl.TEXTURE0);
+            tex3Aspect = img.naturalWidth / (img.naturalHeight || 1); tex3Bound = 1; state.uploaded = true;
+            canvas.dataset.tex3 = "yes";
+          } catch { }
+        };
+        if (state.tex3Url) state.loadTex3(state.tex3Url);
         const uBuf = U("buf"), uBufSize = U("bufSize");
         const bufTex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, bufTex);
@@ -315,6 +341,7 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
           if (uTexAspect) gl.uniform2f(uTexAspect, texAspect, 0);
           if (uCam) { uploadCam(typeof state.cam === "function" ? state.cam() : state.cam); gl.uniform2f(uCamAspect, camAspect, camBound); }
           if (uTex2Aspect) gl.uniform2f(uTex2Aspect, tex2Aspect, tex2Bound);
+          if (uTex3Aspect) gl.uniform2f(uTex3Aspect, tex3Aspect, tex3Bound);
           if (uBuf) { uploadBuf(typeof state.buf === "function" ? state.buf() : state.buf); gl.uniform2f(uBufSize, bufW, bufH); }
           gl.drawArrays(gl.TRIANGLES, 0, 3);
           canvas.dataset.render = "webgl";
@@ -347,6 +374,10 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
     state.tex2Url = tex2 || null;
     if (state.loadTex2) state.loadTex2(state.tex2Url);
   }, [tex2]);
+  useEffect(() => {
+    state.tex3Url = tex3 || null;
+    if (state.loadTex3) state.loadTex3(state.tex3Url);
+  }, [tex3]);
 
   return html`<canvas ref=${ref} data-stage aria-hidden="true"
     class=${`fixed inset-0 ${zClass} w-full h-full pointer-events-none`}></canvas>`;

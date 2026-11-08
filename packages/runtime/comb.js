@@ -25,7 +25,8 @@
  * ## What it exports
  * - {@link Comb} — the display: `{ items, groups, cell, focus, zoom, onOpen, onFocus, onSettle, onReady, top = 0,
  *   bottom = 0, zClass = "z-0" }`. `items` is the ordered set, GROUP-MAJOR, index 0 at the centre:
- *   `{ id, name, subtitle?, icon?, color?, mark?, form?, group? }` — `subtitle` the card's line (a slogan, a first
+ *   `{ id, name, subtitle?, icon?, window?, color?, mark?, form?, group? }` — `window` a picture URL (or
+ *   `{ dark, light }`) that fills the open cell's form when the lens rests on it; `subtitle` the card's line (a slogan, a first
  *   sentence), `icon` a same-origin picture URL (null = the theme's material fills the form), `color` the halo's and
  *   the lit rim's — a palette name (`"accent"` · `"secondary"` · `"ink"`, resolved from the live theme) or a
  *   `#rrggbb` (default: the accent), `mark` from {@link MARK}, `form` a shape.js name (default `shapeOf(id)`),
@@ -162,6 +163,7 @@ function themePalette() {
   const v = (n) => (root ? getComputedStyle(root).getPropertyValue(n).trim() : "");
   const light = root?.getAttribute("data-theme")?.endsWith("-light");
   return {
+    light: !!light,
     accent: cssRgb(v("--app-accent") || "#F2B84B", 0xf2b84b),
     accent2: cssRgb(v("--color-secondary") || v("--app-accent-2") || "#5CE4DC", 0x5ce4dc),
     ink: cssRgb(v("--color-base-content") || (light ? "#111" : "#F2EEE6"), light ? 0x111111 : 0xf2eee6),
@@ -387,6 +389,8 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
     return () => { m.stopText?.(); m.stopText = null; };
   }, [textKey, mode, ready]);
   const [text, setText] = useState("");
+  const [win, setWin] = useState("");
+  const windowOf = (it) => { const w = it?.window; return !w ? "" : typeof w === "string" ? w : (pal?.light ? w.light || w.dark : w.dark) || ""; };
 
   useEffect(() => {
     const api = m.api; if (!api || focus == null) return;
@@ -404,6 +408,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
     if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
     if (hud[1] !== m.focusSeq) {
       m.focusSeq = hud[1]; m.lastFocus = hud[0];
+      setWin("");
       const tell = () => {
         const it = m.items[m.lastFocus];
         setFocusId(it ? String(it.id) : "");
@@ -414,7 +419,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
       if (!m.down && now - (m.toldAt || 0) > 120) { m.toldAt = now; if (m.tellTimer) { clearTimeout(m.tellTimer); m.tellTimer = 0; } tell(); }
       else if (!m.tellTimer) m.tellTimer = setTimeout(() => { m.tellTimer = 0; m.toldAt = performance.now(); tell(); }, 130);
     }
-    if (hud[8] !== m.settleSeq) { m.settleSeq = hud[8]; const it = m.items[hud[7]]; if (it) m.onSettle?.(it, hud[7]); }
+    if (hud[8] !== m.settleSeq) { m.settleSeq = hud[8]; const it = m.items[hud[7]]; if (it) { setWin(windowOf(it)); m.onSettle?.(it, hud[7]); } }
     const lv = LEVELS.length - 1; if (lv !== level) setLevel(lv);
   };
   if (mode === "dom") {
@@ -423,7 +428,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, onOpen, onFoc
   const params = [items.length, top + cssPx("--hdr-h") + cssPx("--ms-safe-top"), bottom + cssPx("--dock-h") + cssPx("--island-h"), size[0], size[1], stillNow() ? 1 : 0,
     iconPlan.cols, iconPlan.tileW, textPlan.cols, textPlan.tileW, textPlan.tileH, 0, iconPlan.size, textPlan.size];
   return html`<div data-comb="gl" data-comb-ready=${ready ? "1" : null} data-comb-focus=${focusId || null} data-comb-group=${groupId || null} data-comb-zoom=${level} class="contents">
-    <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} dprMax=${3} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
+    <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} tex3=${win || null} dprMax=${3} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
     <div data-comb-twin class="sr-only">${items.map((it, i) => renderCell(it, i, "gl"))}</div>
   </div>`;
 }

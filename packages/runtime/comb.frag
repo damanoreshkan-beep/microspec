@@ -7,6 +7,7 @@ uniform vec4 points[8]; uniform float pointCount;
 uniform usampler2D buf; uniform vec2 bufSize;
 uniform sampler2D cam; uniform vec2 camAspect;
 uniform sampler2D tex2; uniform vec2 tex2Aspect;
+uniform sampler2D tex3; uniform vec2 tex3Aspect;
 
 const float FORM = 0.31;
 const float GAP = 0.04;
@@ -85,6 +86,18 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
     vec2 uv = (vec2(mod(float(idx), cols), floor(float(idx) / cols)) * tile + (1.0 - ICON) * 0.5 * tile + fu * ICON * tile) / atlas;
     vec4 art = texture(cam, uv);
     float a = art.a;
+    float win = (idx == focus && tex3Aspect.y > 0.5) ? smoothstep(0.08, 0.92, open) : 0.0;
+    if (win > 0.0) {
+      float asp = max(0.05, tex3Aspect.x);
+      vec2 cu = (fu - 0.5) * 0.96 + 0.5;
+      vec2 wu = asp < 1.0 ? vec2(cu.x, 0.06 + cu.y * asp) : vec2(0.5 - 0.5 / asp + cu.x / asp, cu.y);
+      vec3 cap = texture(tex3, wu).rgb;
+      float rr = length(fu - 0.5) * 2.0;
+      float reach = win * 1.3;
+      float iris = 1.0 - smoothstep(reach - 0.16, reach, rr);
+      float seam = exp(-pow((rr - reach) / 0.05, 2.0)) * (1.0 - win) * 4.0 * win;
+      art.rgb = mix(art.rgb, cap, iris) + tint * seam * 0.6;
+    }
     float e = fwidth(a);
     float rim = clamp(smoothstep(0.02, 0.3, e) * (1.0 - smoothstep(0.0, 1.0, abs(a - 0.5) * 2.2)) * 1.4, 0.0, 1.0);
     bool lit = (idx == focus) || (idx == pressIdx) || ((mark & 4) != 0);
@@ -110,13 +123,13 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
     vec2 su = vec2((d.x + Ws * 0.5) / Ws, (d.y - R - GAP * P * Z * sc) / (NAME_H * Ws));
     if (nameA > 0.0 && su.x >= 0.0 && su.x <= 1.0 && su.y >= 0.0 && su.y <= 1.0) {
       float g = glyphs(idx, su, 0.0, NAME_H);
-      float a = g * nameA * (idx == focus ? 1.0 : 0.86) * arrive;
+      float a = g * nameA * (idx == focus ? 1.0 - open * tex3Aspect.y : 0.86) * arrive;
       acc.rgb += pal(30) * a * (1.0 - acc.a); acc.a += a * (1.0 - acc.a);
     }
     vec2 lu = vec2(su.x, (d.y - R - GAP * P * Z * sc - LINE_TOP * Ws) / (LINE_H * Ws));
     if (lineA > 0.0 && lu.x >= 0.0 && lu.x <= 1.0 && lu.y >= 0.0 && lu.y <= 1.0) {
       float g = glyphs(idx, lu, LINE_TOP, LINE_H);
-      float a = g * lineA * 0.78 * arrive;
+      float a = g * lineA * 0.78 * arrive * (idx == focus ? 1.0 - open * tex3Aspect.y : 1.0);
       acc.rgb += pal(30) * a * (1.0 - acc.a); acc.a += a * (1.0 - acc.a);
     }
   }

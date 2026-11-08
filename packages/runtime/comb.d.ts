@@ -24,7 +24,8 @@
  * ## What it exports
  * - {@link Comb} — the display: `{ items, groups, cell, focus, zoom, onOpen, onFocus, onSettle, onReady, top = 0,
  *   bottom = 0, zClass = "z-0" }`. `items` is the ordered set, GROUP-MAJOR, index 0 at the centre:
- *   `{ id, name, subtitle?, icon?, color?, mark?, form?, group? }` — `subtitle` the card's line (a slogan, a first
+ *   `{ id, name, subtitle?, icon?, window?, color?, mark?, form?, group? }` — `window` a picture URL (or
+ *   `{ dark, light }`) that fills the open cell's form when the lens rests on it; `subtitle` the card's line (a slogan, a first
  *   sentence), `icon` a same-origin picture URL (null = the theme's material fills the form), `color` the halo's and
  *   the lit rim's — a palette name (`"accent"` · `"secondary"` · `"ink"`, resolved from the live theme) or a
  *   `#rrggbb` (default: the accent), `mark` from {@link MARK}, `form` a shape.js name (default `shapeOf(id)`),

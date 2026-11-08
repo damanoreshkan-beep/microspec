@@ -102,13 +102,15 @@
  *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
  * @param tex2     optional MATERIAL texture URL (CORS-readable): full resolution, unit 2, mirrored-repeat, so a
  *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
+ * @param tex3     optional PICTURE texture URL (CORS-readable): full resolution, unit 4, clamped, swapped whole —
+ *                 `tex3` / `tex3Aspect` (x = w/h, y = bound); null unbinds it
  * @param preserve keep the drawing buffer after each frame, so the app can read the canvas (`toBlob`) — a
  *                 shutter that saves the live frame; costs a copy per frame, so only a stage that captures asks
  * @param buf      optional function returning `{ data: Uint8Array, w, h, ch: 1|4, gen }` (read every frame, uploaded
  *                 when `gen` changes) — raw bytes as an integer texture, `buf` / `bufSize` in the shader
  * @param zClass   the stacking class; default sits UNDER in-flow content inside a positioned dialog
  */
-export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, tex2, preserve, buf, dprMax, live, zClass }: {
+export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, tex2, tex3, preserve, buf, dprMax, live, zClass }: {
     shader: any;
     seed?: number;
     ink: any;
@@ -118,6 +120,7 @@ export function GlStage({ shader, seed, ink, vary, points, tex, texReady, cam, t
     texReady: any;
     cam: any;
     tex2: any;
+    tex3: any;
     preserve?: boolean;
     buf: any;
     dprMax?: number;

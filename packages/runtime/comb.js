@@ -198,7 +198,7 @@ const FONT = "Geist, ui-sans-serif, system-ui, sans-serif", MONO = "'Geist Mono'
  * @returns `() => void` stop
  */
 export function buildIcons(items, plan, publish, fill = "") {
-  let alive = true, pending = 0, timer = 0, mid = 0;
+  let alive = true, pending = 0, timer = 0;
   const cv = document.createElement("canvas");
   cv.width = cv.height = plan.size;
   const ctx = cv.getContext("2d");
@@ -207,17 +207,29 @@ export function buildIcons(items, plan, publish, fill = "") {
   const side = ICON * plan.tileW, pad = (plan.tileW - side) / 2;
   const originOf = (i) => [(i % plan.cols) * plan.tileW + pad, Math.floor(i / plan.cols) * plan.tileW + pad];
   const push = async () => { if (!alive) return; try { const bmp = await createImageBitmap(cv); if (alive) publish(bmp); } catch { if (alive) publish(cv); } };
-  const later = () => { if (mid || timer) return; timer = setTimeout(() => { timer = 0; mid = 1; push(); }, 700); };
+  const later = () => { if (timer) return; timer = setTimeout(() => { timer = 0; if (pending) push(); }, 700); };
   let material = null;
+  const scratch = document.createElement("canvas");
+  const S = Math.max(2, Math.round(side * 2));
+  scratch.width = scratch.height = S;
+  const sc = scratch.getContext("2d");
+  if (sc) { sc.imageSmoothingEnabled = true; sc.imageSmoothingQuality = "high"; }
   const form = (i, it, img) => {
     const [ox, oy] = originOf(i);
-    ctx.save();
-    ctx.translate(ox, oy); ctx.scale(side, side);
-    ctx.clip(new Path2D(pathOf(it.form || shapeOf(it.id))));
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 1, 1);
-    if (img) ctx.drawImage(img, 0, 0, 1, 1);
-    else if (material) { const s = Math.max(1 / material.width, 1 / material.height) * 1.25; ctx.drawImage(material, 0.5 - material.width * s / 2, 0.5 - material.height * s / 2, material.width * s, material.height * s); }
-    ctx.restore();
+    if (!sc) return;
+    sc.save();
+    sc.globalCompositeOperation = "source-over";
+    sc.clearRect(0, 0, S, S);
+    sc.fillStyle = "#000"; sc.fillRect(0, 0, S, S);
+    if (img) sc.drawImage(img, 0, 0, S, S);
+    else if (material) { const s = Math.max(S / material.width, S / material.height) * 1.25; sc.drawImage(material, S / 2 - material.width * s / 2, S / 2 - material.height * s / 2, material.width * s, material.height * s); }
+    sc.globalCompositeOperation = "destination-in";
+    sc.scale(S, S);
+    sc.fillStyle = "#fff";
+    sc.fill(new Path2D(pathOf(it.form || shapeOf(it.id))));
+    sc.restore();
+    ctx.clearRect(ox, oy, side, side);
+    ctx.drawImage(scratch, ox, oy, side, side);
   };
   const load = (src) => new Promise((res) => { const im = new Image(); im.decoding = "async"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
   const start = async () => {

@@ -36,7 +36,7 @@ vec4 textTile(int i) {
 float glyphs(int i, vec2 uv, float top, float height) {
   vec4 t = textTile(i);
   vec2 a = t.xy + vec2(uv.x, (top + uv.y * height) * (t.z / t.w) ) * t.zw;
-  return texture(tex2, a).a;
+  return max(0.0, (texture(tex2, a).a - 0.06) / 0.94);
 }
 
 vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, float light) {

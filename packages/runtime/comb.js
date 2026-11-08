@@ -222,8 +222,9 @@ export function buildIcons(items, plan, publish, fill = "") {
     sc.globalCompositeOperation = "source-over";
     sc.clearRect(0, 0, S, S);
     sc.fillStyle = "#000"; sc.fillRect(0, 0, S, S);
-    if (img) sc.drawImage(img, 0, 0, S, S);
-    else if (material) { const s = Math.max(S / material.width, S / material.height) * 1.25; sc.drawImage(material, S / 2 - material.width * s / 2, S / 2 - material.height * s / 2, material.width * s, material.height * s); }
+    const fit = (im, grow = 1) => { const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; const s = Math.max(S / w, S / h) * grow; sc.drawImage(im, S / 2 - w * s / 2, S / 2 - h * s / 2, w * s, h * s); };
+    if (img) fit(img);
+    else if (material) fit(material, 1.25);
     sc.globalCompositeOperation = "destination-in";
     sc.scale(S, S);
     sc.fillStyle = "#fff";

@@ -96,6 +96,17 @@ Deno.test("colours and marks land in the cell table; the byte region is dirty on
   assertEquals(rgbOf("not a colour"), 0x8a8a8a);
 });
 
+Deno.test("a LIT cell (the song that plays) is found every step and its centre published; the step returns", async () => {
+  const { x, out, hud, f32 } = await boot(9);
+  x.set(256 + 5, 4);
+  const t0 = performance.now(); x.step(16, 32); assert(performance.now() - t0 < 50, "step returned at once");
+  assertEquals(out(35), 5, "litIdx published");
+  assertEquals([out(38), out(39)], [f32()[POS / 4 + 10], f32()[POS / 4 + 11]], "the lit cell's centre published");
+  x.set(256 + 5, 0); x.step(16, 48);
+  assertEquals(out(35), -1);
+  assert(hud(0) >= 0);
+});
+
 Deno.test("a drag moves the world against the finger and the focus follows; a release flings and settles exactly on a cell", async () => {
   const { x, out, hud } = await boot(95);
   let t = 16;

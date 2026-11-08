@@ -23,7 +23,7 @@
  *
  * ## What it exports
  * - {@link holdAudio} — `holdAudio({ title, artist, artwork, onPlay, onPause, onPrev, onNext, resumeCtx })` → a
- *   handle `{ supported, setPlaying(title?), setPaused(), meta(title), position(durationMs, positionMs, rate?),
+ *   handle `{ supported, setPlaying(title?), setPaused(), meta(title, artist?, artwork?), position(durationMs, positionMs, rate?),
  *   release() }`; a no-op stub with `supported: false` where `document` or `Audio` is absent.
  * - {@link silentWav} — `silentWav(ms = 250, rate = 8000)` → a `data:audio/wav;base64,…` URI of 16-bit mono PCM
  *   silence (empty payload where `btoa` is absent). Pure, so the unit gate asserts the RIFF/WAVE header.
@@ -109,7 +109,7 @@ export function holdAudio({ title, artist, artwork, onPlay, onPause, onPrev, onN
     supported: any;
     setPlaying(t: any): void;
     setPaused(): void;
-    meta(t: any): void;
+    meta(t: any, a: any, art: any): void;
     position(durationMs: any, positionMs: any, rate?: number): void;
     release(): void;
 };

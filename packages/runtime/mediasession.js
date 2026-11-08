@@ -24,7 +24,7 @@
  *
  * ## What it exports
  * - {@link holdAudio} — `holdAudio({ title, artist, artwork, onPlay, onPause, onPrev, onNext, resumeCtx })` → a
- *   handle `{ supported, setPlaying(title?), setPaused(), meta(title), position(durationMs, positionMs, rate?),
+ *   handle `{ supported, setPlaying(title?), setPaused(), meta(title, artist?, artwork?), position(durationMs, positionMs, rate?),
  *   release() }`; a no-op stub with `supported: false` where `document` or `Audio` is absent.
  * - {@link silentWav} — `silentWav(ms = 250, rate = 8000)` → a `data:audio/wav;base64,…` URI of 16-bit mono PCM
  *   silence (empty payload where `btoa` is absent). Pure, so the unit gate asserts the RIFF/WAVE header.
@@ -112,16 +112,18 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
   const noop = { supported: false, setPlaying() {}, setPaused() {}, meta() {}, release() {} };
   if (typeof document === "undefined" || typeof Audio === "undefined") return noop;
 
-  let el = null, live = true, curTitle = title;
+  let el = null, live = true, curTitle = title, curArtist = artist, curArt = artwork;
   const ensureEl = () => { if (!el) { el = new Audio(silentWav()); el.loop = true; el.preload = "auto"; el.volume = 1; } return el; };
   const play = () => { try { const p = ensureEl().play(); if (p && p.catch) p.catch(() => {}); } catch { } };
   const pause = () => { try { el && el.pause(); } catch { } };
 
   const ms = typeof navigator !== "undefined" && "mediaSession" in navigator ? navigator.mediaSession : null;
-  const setMeta = (t) => {
+  const setMeta = (t, a, art) => {
     curTitle = t != null ? t : curTitle;
+    if (a !== undefined) curArtist = a || "microspec";
+    if (art !== undefined) curArt = art || null;
     if (!ms || typeof MediaMetadata === "undefined") return;
-    try { ms.metadata = new MediaMetadata({ title: curTitle, artist, album: "microspec", artwork: artwork ? [{ src: artwork, sizes: "512x512", type: "image/png" }] : [] }); } catch { }
+    try { ms.metadata = new MediaMetadata({ title: curTitle, artist: curArtist, album: "microspec", artwork: curArt ? [{ src: curArt, sizes: "512x512", type: "image/png" }] : [] }); } catch { }
   };
   const handler = (name, fn) => { if (!ms) return; try { ms.setActionHandler(name, fn ? () => { try { fn(); } catch { } } : null); } catch { } };
   const setState = (s) => { if (ms) try { ms.playbackState = s; } catch { } };
@@ -137,7 +139,7 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
     isPlaying = !!playingNow;
     if (nativeMedia) {
       shown = true;
-      shell.call("media.show", { title: curTitle || "microspec", artist, album: "microspec", playing: !!playingNow, prev: !!onPrev, next: !!onNext })
+      shell.call("media.show", { title: curTitle || "microspec", artist: curArtist, album: "microspec", playing: !!playingNow, prev: !!onPrev, next: !!onNext })
         .catch(() => { });
       if (!unsub) {
         unsub = shell.subscribe("media.command", {}, (v) => {
@@ -150,7 +152,7 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
     if (!plainHold) return;
     if (!playingNow) { if (shown) { shown = false; shell.call("bg.stop", {}).catch(() => {}); } return; }
     shown = true;
-    shell.call("bg.start", { title: curTitle || "microspec", body: artist }).catch(() => { shown = false; });
+    shell.call("bg.start", { title: curTitle || "microspec", body: curArtist }).catch(() => { shown = false; });
   };
   const hide = () => {
     if (unsub) { try { unsub(); } catch { } unsub = null; }
@@ -167,7 +169,7 @@ export function holdAudio({ title = "microspec", artist = "microspec", artwork =
     supported: !!ms || nativeMedia,
     setPlaying(t) { play(); setMeta(t); setState("playing"); show(true); },
     setPaused() { pause(); setState("paused"); show(false); },
-    meta(t) { setMeta(t); if (shown) show(isPlaying); },
+    meta(t, a, art) { setMeta(t, a, art); if (shown) show(isPlaying); },
     position(durationMs, positionMs, rate = 1) {
       if (!ms || typeof ms.setPositionState !== "function") return;
       const duration = Math.max(0, (durationMs || 0) / 1000);

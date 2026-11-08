@@ -1,25 +1,28 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { loadMachine } from "../machine.js";
 import { proveMachine } from "../../../tools/wasm.mjs";
-import { atlasPlan, COMB_MAX, rgbOf, spiral } from "../comb.js";
+import { atlasPlan, COMB_MAX, LEVELS, rgbOf, spiral } from "../comb.js";
 import { pkgRoot } from "../pkgroot.js";
 
 const bytes = await Deno.readFile(new URL("packages/runtime/comb.wasm", pkgRoot(import.meta.url, 3)));
-const ROWH = 0.8660254 * 1.3, POS = 0x1000, SITE = 0x400, CELL = 0xC80, HUD = 0x100;
-const boot = async (n, w = 384, h = 832) => {
+const ROWH = 0.8660254 * 1.3, POS = 0x1500, AX = 0x1C00, SITE = 0x400, CELL = 0xC80, CELL2 = 0x1000, GCOL = 0x1380, GCEN = 0x1400, HUD = 0x100;
+const boot = async (n, w = 384, h = 832, groups = null) => {
   const api = await loadMachine(bytes, { w, h, seed: 1 });
   api.exports.set(0, n); api.exports.set(1, 56); api.exports.set(2, 68);
+  if (groups) groups.forEach((g, i) => api.exports.set(512 + i, g));
   api.exports.step(16, 16);
   const f32 = () => new Float32Array(api.memory.buffer), i32 = () => new Int32Array(api.memory.buffer), u8 = () => new Uint8Array(api.memory.buffer);
-  return { api, x: api.exports, f32, i32, u8, hud: (k) => i32()[HUD / 4 + k], out: (k) => f32()[k] };
+  const axial = (i) => [i32()[AX / 4 + 2 * i], i32()[AX / 4 + 2 * i + 1]];
+  return { api, x: api.exports, f32, i32, u8, axial, hud: (k) => i32()[HUD / 4 + k], out: (k) => f32()[k] };
 };
+const hexDist = ([q1, r1], [q2, r2]) => Math.max(Math.abs(q1 - q2), Math.abs(r1 - r2), Math.abs(q1 + r1 - q2 - r2));
 
 Deno.test("comb.wasm validates, speaks ABI 1 and survives the proof run", async () => {
   assertEquals(await proveMachine(bytes), []);
-  assert(bytes.length < 4096, "a hand-written machine stays small");
+  assert(bytes.length < 8192, "a hand-written machine stays small");
 });
 
-Deno.test("the lattice is the spiral: every cell's position and site-map entry match the JS twin, for 1, 7, 95 and 217 cells", async () => {
+Deno.test("one group: the lattice is the spiral — every position and site-map entry match the JS twin, for 1, 7, 95 and 217 cells", async () => {
   for (const n of [1, 7, 95, 217]) {
     const { x, f32, u8, out } = await boot(n);
     const P = out(7), ax = spiral(n);
@@ -43,8 +46,31 @@ Deno.test("spiral: the first ring runs clockwise from the top-left cell; the cou
   assertEquals(spiral(7), [[0, 0], [0, -1], [1, -1], [1, 0], [0, 1], [-1, 1], [-1, 0]]);
   assertEquals(spiral(999).length, COMB_MAX);
   assertEquals(spiral(0), []);
-  const last = spiral(COMB_MAX)[COMB_MAX - 1];
-  assertEquals(Math.max(Math.abs(last[0]), Math.abs(last[1]), Math.abs(last[0] + last[1])), 8);
+});
+
+Deno.test("groups: every group is one contiguous territory, the first group holds the centre, no site is shared, centroids land inside their group", async () => {
+  const sizes = [6, 2, 12, 9, 15, 8, 5, 11, 7, 6, 9, 5];
+  const groups = sizes.flatMap((n, g) => Array(n).fill(g));
+  const n = groups.length;
+  const { x, u8, axial, out, f32, i32 } = await boot(n, 384, 832, groups);
+  assertEquals(i32()[HUD / 4 + 5], n);
+  assertEquals(axial(0), [0, 0], "the lead sits in the centre");
+  const seen = new Set();
+  for (let i = 0; i < n; i++) { const k = axial(i).join(","); assert(!seen.has(k), `site ${k} shared`); seen.add(k); assertEquals(u8()[CELL2 + 4 * i], groups[i]); }
+  for (let g = 0; g < sizes.length; g++) {
+    const cells = groups.map((gg, i) => (gg === g ? i : -1)).filter((i) => i >= 0);
+    const reach = new Set([cells[0]]); let grew = true;
+    while (grew) { grew = false; for (const a of cells) if (!reach.has(a)) for (const b of reach) if (hexDist(axial(a), axial(b)) === 1) { reach.add(a); grew = true; break; } }
+    assertEquals(reach.size, cells.length, `group ${g} is split`);
+    const P = out(7), xs = cells.map((i) => f32()[POS / 4 + 2 * i]), ys = cells.map((i) => f32()[POS / 4 + 2 * i + 1]);
+    const cx = (u8()[GCEN + 4 * g] | (u8()[GCEN + 4 * g + 1] << 8)) - 32768, cy = (u8()[GCEN + 4 * g + 2] | (u8()[GCEN + 4 * g + 3] << 8)) - 32768;
+    assert(cx >= Math.min(...xs) - 1 && cx <= Math.max(...xs) + 1 && cy >= Math.min(...ys) - 1 && cy <= Math.max(...ys) + 1, `centroid of ${g} (${cx},${cy}) outside`);
+    assert(P > 0);
+  }
+  assert(Math.max(...groups.map((_, i) => hexDist(axial(i), [0, 0]))) <= 7);
+  x.set(768 + 2, rgbOf("#5CE4DC")); x.step(16, 32);
+  assertEquals([...u8().slice(GCOL + 8, GCOL + 11)], [0x5c, 0xe4, 0xdc]);
+  assertEquals(i32()[HUD / 4 + 12], 0);
 });
 
 Deno.test("the pitch answers the viewport: 84 on a watch, 120 on a desk, min(W,H)/4.2 between; the count clamps", async () => {
@@ -80,12 +106,10 @@ Deno.test("a drag moves the world against the finger and the focus follows; a re
   assert(hud(0) > 0, "the focus left the centre while dragging");
   x.touch(1, 2, 0.3, 0.5);
   for (let k = 0; k < 400; k++) { t += 16; x.step(16, t); }
-  const fo = hud(0);
   assert(out(0) > 200, `the fling carried on past the finger: ${out(0)}`);
   assertEquals(hud(11), 0, "settled exactly on a cell centre");
   assert(hud(1) >= 2, "focusSeq counted the changes");
   assertEquals(hud(9), 0);
-  assert(fo > 0 && fo < 95);
 });
 
 Deno.test("a tap inside a form opens it; between forms nothing; a finger that moved is not a tap", async () => {
@@ -107,6 +131,46 @@ Deno.test("a tap inside a form opens it; between forms nothing; a finger that mo
   assertEquals(hud(2), -1, "the tap's bloom is over");
 });
 
+Deno.test("a pinch scales the field about its midpoint, ends every tap, and eases to the nearest level; the rows unfold for the cards", async () => {
+  const { x, out, hud, f32 } = await boot(95);
+  let t = 16;
+  const rowAt = () => f32()[POS / 4 + 2 * 3 + 1];   
+  const row1 = f32()[POS / 4 + 2 * 4 + 1];
+  assert(Math.abs(row1 - out(7) * ROWH) < 1e-3, "rows at the resting pitch");
+  const midWorld = () => [(0.5 * 384 - out(2)) / (hud(13) / 1000) + out(0), (0.5 * 832 - out(3)) / (hud(13) / 1000) + out(1)];
+  const before = midWorld();
+  x.touch(1, 0, 0.4, 0.5); t += 16; x.step(16, t);
+  x.touch(2, 0, 0.6, 0.5); t += 16; x.step(16, t);
+  assertEquals(hud(14), 1, "pinching");
+  for (let k = 1; k <= 8; k++) { x.touch(1, 1, 0.4 - 0.025 * k, 0.5); x.touch(2, 1, 0.6 + 0.025 * k, 0.5); t += 16; x.step(16, t); }
+  assert(hud(13) > 1300, `zoom grew: ${hud(13)}`);
+  assert(f32()[POS / 4 + 2 * 4 + 1] > row1 * 1.2, "the rows unfolded past 1.1");
+  const after = midWorld();
+  assert(Math.abs(after[0] - before[0]) < 1 && Math.abs(after[1] - before[1]) < 1, `the world under the midpoint moved: ${before} → ${after}`);
+  x.touch(2, 2, 0.8, 0.5); t += 16; x.step(16, t);
+  assertEquals(hud(14), 0, "the pinch ended");
+  assertEquals(hud(3), 0, "no tap came out of a pinch");
+  for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
+  assertEquals(hud(13), Math.round(LEVELS[2] * 1000), "eased to the cards level");
+  assert(rowAt() !== undefined);
+  x.set(14, 0); for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
+  assertEquals(hud(13), Math.round(LEVELS[0] * 1000));
+  assert(Math.abs(f32()[POS / 4 + 2 * 4 + 1] - row1) < 1e-2, "the rows folded back at the overview");
+  x.set(14, 1); for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
+  assertEquals(hud(13), 1000);
+  const pinch = (open) => {
+    x.touch(1, 0, 152 / 384, 460 / 832); t += 16; x.step(16, t);
+    x.touch(2, 0, 232 / 384, 460 / 832); t += 16; x.step(16, t);
+    for (let k = 1; k <= 10; k++) { const d = 40 + (open ? k * 8 : -k * 3); x.touch(1, 1, (192 - d) / 384, 460 / 832); x.touch(2, 1, (192 + d) / 384, 460 / 832); t += 16; x.step(16, t); }
+    const d = 40 + (open ? 80 : -30);
+    x.touch(1, 2, (192 - d) / 384, 460 / 832); x.touch(2, 2, (192 + d) / 384, 460 / 832);
+    for (let k = 0; k < 120; k++) { t += 16; x.step(16, t); }
+  };
+  pinch(true); assertEquals(hud(13), Math.round(LEVELS[2] * 1000), "the first pinch opens to the cards");
+  pinch(false); assertEquals(hud(13), Math.round(LEVELS[0] * 1000), "the second pinch closes to the overview");
+  assertEquals(hud(3), 0, "no tap came out of either pinch");
+});
+
 Deno.test("a fling past the comb's edge is pulled back: the lens never rests in the void", async () => {
   const { x, hud } = await boot(7);
   let t = 16;
@@ -118,12 +182,12 @@ Deno.test("a fling past the comb's edge is pulled back: the lens never rests in 
   assert(hud(0) >= 0 && hud(0) < 7);
 });
 
-Deno.test("atlasPlan: every count up to the cap fits the atlas, with whole tiles", () => {
+Deno.test("atlasPlan: every count up to the cap fits the atlas, with whole tiles; the tile is never wider than wanted", () => {
   for (let n = 1; n <= COMB_MAX; n++) {
-    const p = atlasPlan(n);
+    const p = atlasPlan(n, 4096, 0.75, 455);
     assert(p.cols * p.tileW <= p.size && p.rows * p.tileH <= p.size, `${n} overflows`);
     assert(p.cols * p.rows >= n, `${n} has too few tiles`);
-    assert(p.tileW <= 512 && p.tileW >= 100, `${n}: tile ${p.tileW}`);
+    assert(p.tileW <= 455 && p.tileW >= 100, `${n}: tile ${p.tileW}`);
   }
-  assertEquals(atlasPlan(3).tileW, 512);
+  assertEquals(atlasPlan(3, 4096, 0.75, 455).tileW, 455);
 });

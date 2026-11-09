@@ -425,7 +425,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const onState = (s) => { if (s === "failed" || s === "none") setMode("dom"); };
   const onHud = (hud) => {
     m.down = hud[9] === 1;
-    { const b = m.api?.refresh?.().out?.[31] ?? 0; const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = String(q); } }
+    { const o = m.api?.refresh?.().out; const b = o ? o[31] : -1; const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = `${q}|${o ? o.length : "none"}|${o ? o[41] : "-"}|${hud[9]}`; } }
     if (m.bloomed) {
       const b = m.api?.refresh?.().out?.[31] ?? 0;
       if (b > 0.5) m.bloomSeen = true;

@@ -36,8 +36,9 @@
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
  *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
  *   from the skeleton as their atlases bind.
- *   `onBloom(item, { x, y, pitch })` fires when the resting cell opens into its large state — `x, y` the lens in CSS
- *   px, `pitch` the lattice pitch — and `onBloom(null)` when a finger closes it; the host lays its caption there.
+ *   `onBloom(item, { x, y, pitch })` fires when the resting cell has grown past half its large state — `x, y` the
+ *   lens in CSS px, `pitch` the lattice pitch — and `onBloom(null)` when it shrinks back or a finger lands; the host
+ *   lays its caption there.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
@@ -425,11 +426,11 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const onState = (s) => { if (s === "failed" || s === "none") setMode("dom"); };
   const onHud = (hud) => {
     m.down = hud[9] === 1;
-    { const b = m.api?.refresh?.().out?.[31] ?? 0; const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = String(q); } }
-    if (m.bloomed) {
-      const b = m.api?.refresh?.().out?.[31] ?? 0;
-      if (b > 0.5) m.bloomSeen = true;
-      if (m.down || (m.bloomSeen && b < 0.5)) { m.bloomed = false; m.bloomSeen = false; setOpened(false); m.onBloom?.(null); }
+    {
+      const o = m.api?.refresh?.().out; const b = o ? o[31] : 0;
+      const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = String(q); }
+      if (!m.bloomed && b > 0.5 && hud[0] >= 0) { const it = m.items[hud[0]]; if (it) { m.bloomed = true; setOpened(true); m.onBloom?.(it, { x: o[2], y: o[3], pitch: hud[6] }); } }
+      if (m.bloomed && (m.down || b < 0.5)) { m.bloomed = false; setOpened(false); m.onBloom?.(null); }
     }
     if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
     if (hud[1] !== m.focusSeq) {
@@ -447,11 +448,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
     }
     if (hud[8] !== m.settleSeq) {
       m.settleSeq = hud[8]; const it = m.items[hud[7]];
-      if (it) {
-        setWin(windowOf(it)); m.onSettle?.(it, hud[7]);
-        const o = m.api?.refresh?.().out; m.bloomed = true; m.bloomSeen = false; setOpened(true);
-        m.onBloom?.(it, { x: o ? o[2] : 0, y: o ? o[3] : 0, pitch: hud[6] });
-      }
+      if (it) { setWin(windowOf(it)); m.onSettle?.(it, hud[7]); }
     }
     const lv = LEVELS.length - 1; if (lv !== level) setLevel(lv);
   };

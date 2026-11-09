@@ -35,8 +35,9 @@
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
  *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
  *   from the skeleton as their atlases bind.
- *   `onBloom(item, { x, y, pitch })` fires when the resting cell opens into its large state — `x, y` the lens in CSS
- *   px, `pitch` the lattice pitch — and `onBloom(null)` when a finger closes it; the host lays its caption there.
+ *   `onBloom(item, { x, y, pitch })` fires when the resting cell has grown past half its large state — `x, y` the
+ *   lens in CSS px, `pitch` the lattice pitch — and `onBloom(null)` when it shrinks back or a finger lands; the host
+ *   lays its caption there.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the

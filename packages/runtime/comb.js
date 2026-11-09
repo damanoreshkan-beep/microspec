@@ -428,7 +428,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
     m.down = hud[9] === 1;
     {
       const o = m.api?.refresh?.().out; const b = o ? o[31] : 0;
-      const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = `${q}|nd${hud[11]}|goal${hud[15]}|down${hud[9]}|f${hud[0]}|s${hud[7]}`; }
+      const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = String(q); }
       if (!m.bloomed && b > 0.5 && hud[0] >= 0) { const it = m.items[hud[0]]; if (it) { m.bloomed = true; setOpened(true); m.onBloom?.(it, { x: o[2], y: o[3], pitch: hud[6] }); } }
       if (m.bloomed && (m.down || b < 0.5)) { m.bloomed = false; setOpened(false); m.onBloom?.(null); }
     }

@@ -425,6 +425,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const onState = (s) => { if (s === "failed" || s === "none") setMode("dom"); };
   const onHud = (hud) => {
     m.down = hud[9] === 1;
+    { const b = m.api?.refresh?.().out?.[31] ?? 0; const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = String(q); } }
     if (m.bloomed) {
       const b = m.api?.refresh?.().out?.[31] ?? 0;
       if (b > 0.5) m.bloomSeen = true;
@@ -459,7 +460,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   }
   const params = [items.length, top + cssPx("--hdr-h") + cssPx("--ms-safe-top"), bottom + cssPx("--dock-h") + cssPx("--island-h"), size[0], size[1], stillNow() ? 1 : 0,
     iconPlan.cols, iconPlan.tileW, textPlan.cols, textPlan.tileW, textPlan.tileH, 0, iconPlan.size, textPlan.size];
-  return html`<div data-comb="gl" data-comb-ready=${ready ? "1" : null} data-comb-focus=${focusId || null} data-comb-group=${groupId || null} data-comb-zoom=${level} data-comb-open=${opened ? "1" : null} class="contents">
+  return html`<div ref=${(el) => { m.root = el; }} data-comb="gl" data-comb-ready=${ready ? "1" : null} data-comb-focus=${focusId || null} data-comb-group=${groupId || null} data-comb-zoom=${level} data-comb-open=${opened ? "1" : null} class="contents">
     <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} tex3=${win || null} aux=${loading ? 1 : 0} dprMax=${3} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
     <div data-comb-twin class="sr-only">${items.map((it, i) => renderCell(it, i, "gl"))}</div>
   </div>`;

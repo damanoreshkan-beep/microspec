@@ -150,12 +150,15 @@ export function start(spec, arg2) {
   const openCount = () => overlays.reduce((n, o) => n + depthOf(o), 0);
   const anyOpen = () => openCount() > 0;
   let depth = 0, fromPop = false, selfBack = 0, exitArmed = false, exitTimer;
+  const tell = () => { const r = document.documentElement; r.dataset.msOverlays = String(depth); r.dataset.msOverlayPending = String(selfBack); };
   for (const [a] of overlays) a.listen(() => {
     const n = openCount();
-    if (fromPop) { depth = n; return; }
+    if (fromPop) { depth = n; tell(); return; }
     if (n > depth) { const d = n - depth; depth = n; for (let i = 0; i < d; i++) history.pushState({ msOverlay: 1 }, ""); }
     else if (n < depth) { const d = depth - n; depth = n; if (history.state?.msOverlay) { selfBack++; history.go(-d); } }
+    tell();
   });
+  tell();
   try {
     const q = new URLSearchParams(location.search);
     const want = q.get("screen");
@@ -165,7 +168,7 @@ export function start(spec, arg2) {
 
   history.pushState({ msRoot: 1 }, "");
   addEventListener("popstate", () => {
-    if (selfBack) { selfBack--; return; }
+    if (selfBack) { selfBack--; tell(); return; }
     if (anyOpen()) {
       for (let i = overlays.length - 1; i >= 0; i--) {
         const [, close] = overlays[i];
@@ -174,6 +177,7 @@ export function start(spec, arg2) {
         depth = openCount();
         break;
       }
+      tell();
       return;
     }
     if (exitArmed) { clearTimeout(exitTimer); exitArmed = false; history.back(); return; }

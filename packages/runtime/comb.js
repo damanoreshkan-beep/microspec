@@ -423,7 +423,11 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const onState = (s) => { if (s === "failed" || s === "none") setMode("dom"); };
   const onHud = (hud) => {
     m.down = hud[9] === 1;
-    if (m.down && m.bloomed) { m.bloomed = false; m.onBloom?.(null); }
+    if (m.bloomed) {
+      const b = m.api?.refresh?.().out?.[31] ?? 0;
+      if (b > 0.5) m.bloomSeen = true;
+      if (m.down || (m.bloomSeen && b < 0.5)) { m.bloomed = false; m.bloomSeen = false; m.onBloom?.(null); }
+    }
     if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
     if (hud[1] !== m.focusSeq) {
       m.focusSeq = hud[1]; m.lastFocus = hud[0];
@@ -442,7 +446,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
       m.settleSeq = hud[8]; const it = m.items[hud[7]];
       if (it) {
         setWin(windowOf(it)); m.onSettle?.(it, hud[7]);
-        const o = m.api?.refresh?.().out; m.bloomed = true;
+        const o = m.api?.refresh?.().out; m.bloomed = true; m.bloomSeen = false;
         m.onBloom?.(it, { x: o ? o[2] : 0, y: o ? o[3] : 0, pitch: hud[6] });
       }
     }

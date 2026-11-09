@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 66 actions (bridge 38).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 67 actions (bridge 39).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -47,7 +47,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 66 actions (bridge 38).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 67 actions (bridge 39).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -58,7 +58,7 @@
  * @module
  */
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE: 38;
+export const CATALOGUE_BRIDGE: 39;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
  *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
  *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
@@ -559,6 +559,38 @@ export const ACTIONS: {
         mock: {
             opened: boolean;
             page: string;
+        };
+    };
+    "system.audit": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            at: number;
+            accessibility: any[];
+            admins: any[];
+            listeners: any[];
+            keyboards: string[];
+            keyboard: string;
+            vpn: boolean;
+            apps: ({
+                pkg: string;
+                system: boolean;
+                installer: string;
+                installed: number;
+                updated: number;
+                a11y: boolean;
+                granted: string[];
+            } | {
+                pkg: string;
+                system: boolean;
+                installed: number;
+                updated: number;
+                a11y: boolean;
+                installer?: undefined;
+                granted?: undefined;
+            })[];
         };
     };
     "system.battery": {

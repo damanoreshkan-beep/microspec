@@ -1,10 +1,11 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 38,
+  "bridgeVersion": 39,
   "flavours": {
     "godot": ["godot"],
     "mesh": ["mesh"],
-    "flash": ["flash"]
+    "flash": ["flash"],
+    "audit": ["os"]
   },
   "actions": [
     {
@@ -1510,6 +1511,14 @@
           "port": {
             "type": "integer",
             "description": "0 lets the OS choose."
+          },
+          "loopback": {
+            "type": "boolean",
+            "description": "Bind 127.0.0.1 only, so nothing off this device can connect. Refused while a server bound to the network is running."
+          },
+          "once": {
+            "type": "boolean",
+            "description": "Close the server after the first resource it serves, and drop every resource."
           }
         }
       },
@@ -2003,6 +2012,64 @@
       "mock": {
         "opened": true,
         "page": "app"
+      }
+    },
+    {
+      "id": "system.audit",
+      "capability": "audit",
+      "kind": "call",
+      "minBridge": 39,
+      "android": [],
+      "summary": "What on this device can watch it: enabled accessibility services, device admins, notification listeners, keyboards, an active VPN, and every installed app with its installer, dates and granted permissions. Read only. Carried by the os flavour alone.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "result": {
+        "type": "object",
+        "required": ["at", "accessibility", "admins", "keyboards", "vpn", "apps"],
+        "additionalProperties": false,
+        "properties": {
+          "at": { "type": "integer", "description": "When the report was read, ms since the epoch." },
+          "accessibility": { "type": "array", "items": { "type": "string" }, "description": "Enabled accessibility services, as component ids." },
+          "admins": { "type": "array", "items": { "type": "string" }, "description": "Active device admins, as component ids." },
+          "listeners": { "type": "array", "items": { "type": "string" }, "description": "Enabled notification listeners. Absent when this Android refuses the read." },
+          "keyboards": { "type": "array", "items": { "type": "string" }, "description": "Enabled input methods, as component ids." },
+          "keyboard": { "type": "string", "description": "The current default input method." },
+          "vpn": { "type": "boolean", "description": "The active network runs through a VPN." },
+          "apps": {
+            "type": "array",
+            "description": "Every installed app.",
+            "items": {
+              "type": "object",
+              "required": ["pkg", "system"],
+              "additionalProperties": false,
+              "properties": {
+                "pkg": { "type": "string" },
+                "system": { "type": "boolean", "description": "Part of the system image, updated or not." },
+                "installer": { "type": "string", "description": "The package that installed it. Absent when Android records none." },
+                "installed": { "type": "integer", "description": "First install, ms since the epoch." },
+                "updated": { "type": "integer", "description": "Last update, ms since the epoch." },
+                "a11y": { "type": "boolean", "description": "Declares an accessibility service, enabled or not." },
+                "granted": { "type": "array", "items": { "type": "string" }, "description": "Granted permissions, without the android.permission prefix. Non-system apps only." }
+              }
+            }
+          }
+        }
+      },
+      "mock": {
+        "at": 1760000000000,
+        "accessibility": [],
+        "admins": [],
+        "listeners": [],
+        "keyboards": ["com.example.keyboard/.Ime"],
+        "keyboard": "com.example.keyboard/.Ime",
+        "vpn": false,
+        "apps": [
+          { "pkg": "com.example.app", "system": false, "installer": "com.android.vending", "installed": 1750000000000, "updated": 1755000000000, "a11y": false, "granted": ["INTERNET"] },
+          { "pkg": "com.android.settings", "system": true, "installed": 1700000000000, "updated": 1700000000000, "a11y": false }
+        ]
       }
     },
     {

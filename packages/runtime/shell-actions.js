@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 66 actions (bridge 38).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 67 actions (bridge 39).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -30,7 +30,7 @@
  */
 // Run `deno task shell` after changing the catalogue; `--check` gates it before every push.
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE = 38;
+export const CATALOGUE_BRIDGE = 39;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
  *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
  *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
@@ -43,6 +43,9 @@ export const FLAVOUR_OF = {
   ],
   "flash": [
     "flash"
+  ],
+  "audit": [
+    "os"
   ]
 };
 /** The flavour names a spec's profile.apk may ask for, from FLAVOUR_OF — the ONE list, never a literal. */
@@ -619,6 +622,43 @@ export const ACTIONS = {
     "mock": {
       "opened": true,
       "page": "app"
+    }
+  },
+  "system.audit": {
+    "capability": "audit",
+    "kind": "call",
+    "minBridge": 39,
+    "android": [],
+    "mock": {
+      "at": 1760000000000,
+      "accessibility": [],
+      "admins": [],
+      "listeners": [],
+      "keyboards": [
+        "com.example.keyboard/.Ime"
+      ],
+      "keyboard": "com.example.keyboard/.Ime",
+      "vpn": false,
+      "apps": [
+        {
+          "pkg": "com.example.app",
+          "system": false,
+          "installer": "com.android.vending",
+          "installed": 1750000000000,
+          "updated": 1755000000000,
+          "a11y": false,
+          "granted": [
+            "INTERNET"
+          ]
+        },
+        {
+          "pkg": "com.android.settings",
+          "system": true,
+          "installed": 1700000000000,
+          "updated": 1700000000000,
+          "a11y": false
+        }
+      ]
     }
   },
   "system.battery": {

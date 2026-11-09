@@ -68,7 +68,8 @@
  *   GPU allows) with mipmaps, so the type is crisp at every zoom. The icon atlas uploads progressively (names
  *   first, at most two more uploads), the text atlas once per locale.
  * - `data-comb` on the wrapper: `gl` or `dom`; `data-comb-focus` the item under the lens, `data-comb-group` its
- *   group's id, `data-comb-zoom` the level, `data-comb-ready` once the machine runs.
+ *   group's id, `data-comb-zoom` the level, `data-comb-open` while a cell is in its large state, `data-comb-ready`
+ *   once the machine runs.
  *
  * ## Why
  * Every set of like things in the farm wanted the same thing — the comb — and a CSS lattice could only ever be a

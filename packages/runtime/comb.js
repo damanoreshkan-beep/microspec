@@ -69,7 +69,8 @@
  *   GPU allows) with mipmaps, so the type is crisp at every zoom. The icon atlas uploads progressively (names
  *   first, at most two more uploads), the text atlas once per locale.
  * - `data-comb` on the wrapper: `gl` or `dom`; `data-comb-focus` the item under the lens, `data-comb-group` its
- *   group's id, `data-comb-zoom` the level, `data-comb-ready` once the machine runs.
+ *   group's id, `data-comb-zoom` the level, `data-comb-open` while a cell is in its large state, `data-comb-ready`
+ *   once the machine runs.
  *
  * ## Why
  * Every set of like things in the farm wanted the same thing — the comb — and a CSS lattice could only ever be a
@@ -334,6 +335,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const [focusId, setFocusId] = useState("");
   const [groupId, setGroupId] = useState("");
   const [level, setLevel] = useState(1);
+  const [opened, setOpened] = useState(false);
   const [size, setSize] = useState(() => [globalThis.innerWidth || 384, globalThis.innerHeight || 832]);
   const m = useRef({ api: null, icons: null, text: "", stopIcons: null, stopText: null, focusSeq: 0, tapSeq: 0, settleSeq: 0, goal: -1, sent: new Map(), items, groups, onOpen, onFocus, onSettle }).current;
   m.items = items; m.groups = groups; m.onOpen = onOpen; m.onFocus = onFocus; m.onSettle = onSettle; m.onBloom = onBloom;
@@ -426,7 +428,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
     if (m.bloomed) {
       const b = m.api?.refresh?.().out?.[31] ?? 0;
       if (b > 0.5) m.bloomSeen = true;
-      if (m.down || (m.bloomSeen && b < 0.5)) { m.bloomed = false; m.bloomSeen = false; m.onBloom?.(null); }
+      if (m.down || (m.bloomSeen && b < 0.5)) { m.bloomed = false; m.bloomSeen = false; setOpened(false); m.onBloom?.(null); }
     }
     if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
     if (hud[1] !== m.focusSeq) {
@@ -446,7 +448,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
       m.settleSeq = hud[8]; const it = m.items[hud[7]];
       if (it) {
         setWin(windowOf(it)); m.onSettle?.(it, hud[7]);
-        const o = m.api?.refresh?.().out; m.bloomed = true; m.bloomSeen = false;
+        const o = m.api?.refresh?.().out; m.bloomed = true; m.bloomSeen = false; setOpened(true);
         m.onBloom?.(it, { x: o ? o[2] : 0, y: o ? o[3] : 0, pitch: hud[6] });
       }
     }
@@ -457,7 +459,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   }
   const params = [items.length, top + cssPx("--hdr-h") + cssPx("--ms-safe-top"), bottom + cssPx("--dock-h") + cssPx("--island-h"), size[0], size[1], stillNow() ? 1 : 0,
     iconPlan.cols, iconPlan.tileW, textPlan.cols, textPlan.tileW, textPlan.tileH, 0, iconPlan.size, textPlan.size];
-  return html`<div data-comb="gl" data-comb-ready=${ready ? "1" : null} data-comb-focus=${focusId || null} data-comb-group=${groupId || null} data-comb-zoom=${level} class="contents">
+  return html`<div data-comb="gl" data-comb-ready=${ready ? "1" : null} data-comb-focus=${focusId || null} data-comb-group=${groupId || null} data-comb-zoom=${level} data-comb-open=${opened ? "1" : null} class="contents">
     <${MachineStage} wasm=${WASM()} shader=${FRAG()} seed=${0.37} cells=${1} params=${params} cam=${() => m.icons} tex2=${text || null} tex3=${win || null} aux=${loading ? 1 : 0} dprMax=${3} onReady=${onReady} onState=${onState} onHud=${onHud} hudHz=${60} zClass=${zClass} />
     <div data-comb-twin class="sr-only">${items.map((it, i) => renderCell(it, i, "gl"))}</div>
   </div>`;

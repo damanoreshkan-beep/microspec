@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 67 actions (bridge 39).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 75 actions (bridge 40).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -30,7 +30,7 @@
  */
 // Run `deno task shell` after changing the catalogue; `--check` gates it before every push.
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE = 39;
+export const CATALOGUE_BRIDGE = 40;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
  *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
  *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
@@ -45,6 +45,9 @@ export const FLAVOUR_OF = {
     "flash"
   ],
   "audit": [
+    "os"
+  ],
+  "control": [
     "os"
   ]
 };
@@ -659,6 +662,88 @@ export const ACTIONS = {
           "a11y": false
         }
       ]
+    }
+  },
+  "control.brightness": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [
+      "WRITE_SETTINGS"
+    ],
+    "mock": {
+      "percent": 40
+    }
+  },
+  "control.volume": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [],
+    "mock": {
+      "stream": "music",
+      "percent": 60
+    }
+  },
+  "control.torch": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [],
+    "mock": {
+      "on": true
+    }
+  },
+  "control.vibrate": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [],
+    "mock": {
+      "ms": 200
+    }
+  },
+  "control.launch": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [],
+    "mock": {
+      "launched": true,
+      "pkg": "com.android.settings"
+    }
+  },
+  "control.speak": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [],
+    "mock": {
+      "spoken": true
+    }
+  },
+  "control.clip": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [],
+    "mock": {
+      "bytes": 11
+    }
+  },
+  "control.settings": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 40,
+    "android": [],
+    "mock": {
+      "ringer": "normal",
+      "autoRotate": true,
+      "timeoutMs": 30000,
+      "fontScale": 1,
+      "brightness": 40,
+      "adaptive": true,
+      "airplane": false
     }
   },
   "system.battery": {

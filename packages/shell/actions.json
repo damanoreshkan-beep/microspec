@@ -1,11 +1,12 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 39,
+  "bridgeVersion": 40,
   "flavours": {
     "godot": ["godot"],
     "mesh": ["mesh"],
     "flash": ["flash"],
-    "audit": ["os"]
+    "audit": ["os"],
+    "control": ["os"]
   },
   "actions": [
     {
@@ -1519,6 +1520,10 @@
           "once": {
             "type": "boolean",
             "description": "Close the server after the first resource it serves, and drop every resource."
+          },
+          "mcp": {
+            "type": "boolean",
+            "description": "Also answer the Model Context Protocol on /mcp: initialize, tools/list and tools/call, each tool a control-capability action the page's bridge is granted. Loopback is enforced when this is on, so only the device itself can reach it."
           }
         }
       },
@@ -2071,6 +2076,186 @@
           { "pkg": "com.android.settings", "system": true, "installed": 1700000000000, "updated": 1700000000000, "a11y": false }
         ]
       }
+    },
+    {
+      "id": "control.brightness",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": ["WRITE_SETTINGS"],
+      "summary": "Set the system screen brightness. Needs the special Modify system settings access, which the page sends the owner to grant once; until then the call returns needsSettings.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["percent"],
+        "properties": {
+          "percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "0 darkest, 100 brightest." },
+          "auto": { "type": "boolean", "description": "Turn adaptive brightness off (false) before setting, so the value sticks." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["percent"],
+        "additionalProperties": false,
+        "properties": { "percent": { "type": "integer" } }
+      },
+      "mock": { "percent": 40 }
+    },
+    {
+      "id": "control.volume",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": [],
+      "summary": "Set the volume of one audio stream. No permission on a normal device; a stream the OS keeps fixed is reported back at the value it kept.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stream", "percent"],
+        "properties": {
+          "stream": { "type": "string", "enum": ["music", "ring", "alarm", "notification", "call", "system"], "description": "Which stream to set." },
+          "percent": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["stream", "percent"],
+        "additionalProperties": false,
+        "properties": { "stream": { "type": "string" }, "percent": { "type": "integer" } }
+      },
+      "mock": { "stream": "music", "percent": 60 }
+    },
+    {
+      "id": "control.torch",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": [],
+      "summary": "Turn the camera flash on or off as a torch. No permission needed for the torch, only for taking a picture.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["on"],
+        "properties": { "on": { "type": "boolean" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["on"],
+        "additionalProperties": false,
+        "properties": { "on": { "type": "boolean" } }
+      },
+      "mock": { "on": true }
+    },
+    {
+      "id": "control.vibrate",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": [],
+      "summary": "Vibrate for a number of milliseconds.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ms"],
+        "properties": { "ms": { "type": "integer", "minimum": 1, "maximum": 5000 } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["ms"],
+        "additionalProperties": false,
+        "properties": { "ms": { "type": "integer" } }
+      },
+      "mock": { "ms": 200 }
+    },
+    {
+      "id": "control.launch",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": [],
+      "summary": "Open another installed app by its package name, the way a launcher does. Fails with unavailable when the package has no launchable activity.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pkg"],
+        "properties": { "pkg": { "type": "string" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["launched"],
+        "additionalProperties": false,
+        "properties": { "launched": { "type": "boolean" }, "pkg": { "type": "string" } }
+      },
+      "mock": { "launched": true, "pkg": "com.android.settings" }
+    },
+    {
+      "id": "control.speak",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": [],
+      "summary": "Speak a line of text aloud through the device's text-to-speech engine.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "lang": { "type": "string", "description": "BCP-47 tag, e.g. uk-UA; the engine's default when absent." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["spoken"],
+        "additionalProperties": false,
+        "properties": { "spoken": { "type": "boolean" } }
+      },
+      "mock": { "spoken": true }
+    },
+    {
+      "id": "control.clip",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": [],
+      "summary": "Write text to the clipboard. Reading it back is only possible while the app is the one on screen, so this is write only.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string", "maxLength": 100000 } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["bytes"],
+        "additionalProperties": false,
+        "properties": { "bytes": { "type": "integer" } }
+      },
+      "mock": { "bytes": 11 }
+    },
+    {
+      "id": "control.settings",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 40,
+      "android": [],
+      "summary": "Read the device-wide settings a launcher shows: ringer mode, auto-rotate, screen timeout, font scale, current brightness and whether adaptive brightness is on, and airplane mode. No permission needed.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["ringer", "autoRotate", "airplane"],
+        "additionalProperties": false,
+        "properties": {
+          "ringer": { "type": "string", "enum": ["silent", "vibrate", "normal"] },
+          "autoRotate": { "type": "boolean" },
+          "timeoutMs": { "type": "integer", "description": "Screen-off timeout." },
+          "fontScale": { "type": "number" },
+          "brightness": { "type": "integer", "description": "Current system brightness, 0-100." },
+          "adaptive": { "type": "boolean", "description": "Adaptive brightness is on." },
+          "airplane": { "type": "boolean" }
+        }
+      },
+      "mock": { "ringer": "normal", "autoRotate": true, "timeoutMs": 30000, "fontScale": 1.0, "brightness": 40, "adaptive": true, "airplane": false }
     },
     {
       "id": "system.battery",

@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 67 actions (bridge 39).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 75 actions (bridge 40).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -47,7 +47,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 67 actions (bridge 39).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 75 actions (bridge 40).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -58,7 +58,7 @@
  * @module
  */
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE: 39;
+export const CATALOGUE_BRIDGE: 40;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
  *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
  *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
@@ -591,6 +591,86 @@ export const ACTIONS: {
                 installer?: undefined;
                 granted?: undefined;
             })[];
+        };
+    };
+    "control.brightness": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: string[];
+        mock: {
+            percent: number;
+        };
+    };
+    "control.volume": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            stream: string;
+            percent: number;
+        };
+    };
+    "control.torch": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            on: boolean;
+        };
+    };
+    "control.vibrate": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ms: number;
+        };
+    };
+    "control.launch": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            launched: boolean;
+            pkg: string;
+        };
+    };
+    "control.speak": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            spoken: boolean;
+        };
+    };
+    "control.clip": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            bytes: number;
+        };
+    };
+    "control.settings": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ringer: string;
+            autoRotate: boolean;
+            timeoutMs: number;
+            fontScale: number;
+            brightness: number;
+            adaptive: boolean;
+            airplane: boolean;
         };
     };
     "system.battery": {

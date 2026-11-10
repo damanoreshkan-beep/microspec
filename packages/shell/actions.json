@@ -2405,6 +2405,133 @@
       "mock": { "events": [ { "key": "batman", "ts": 0 } ] }
     },
     {
+      "id": "control.access",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Whether the microspec accessibility service is on. It forwards the volume keys as events (vol+ / vol-, read with control.events) even on the lock screen, and powers nav, tap, swipe, type and screen. With ask, opens the Accessibility settings to turn it on.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "ask": { "type": "boolean" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["enabled"],
+        "additionalProperties": false,
+        "properties": { "enabled": { "type": "boolean" } }
+      },
+      "mock": { "enabled": true }
+    },
+    {
+      "id": "control.nav",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Perform a global navigation action through the accessibility service: back, home, recents, the notification shade, quick settings, lock screen, power dialog or split screen. Needs control.access on.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action"],
+        "properties": { "action": { "type": "string", "enum": ["back", "home", "recents", "notifications", "quicksettings", "lock", "power", "split"] } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["done"],
+        "additionalProperties": false,
+        "properties": { "done": { "type": "boolean" } }
+      },
+      "mock": { "done": true }
+    },
+    {
+      "id": "control.tap",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Tap at a screen pixel through an accessibility gesture. Needs control.access on.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["x", "y"],
+        "properties": { "x": { "type": "integer" }, "y": { "type": "integer" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["done"],
+        "additionalProperties": false,
+        "properties": { "done": { "type": "boolean" } }
+      },
+      "mock": { "done": true }
+    },
+    {
+      "id": "control.swipe",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Swipe between two screen points over a number of milliseconds, through an accessibility gesture. Needs control.access on.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["x1", "y1", "x2", "y2"],
+        "properties": {
+          "x1": { "type": "integer" }, "y1": { "type": "integer" },
+          "x2": { "type": "integer" }, "y2": { "type": "integer" },
+          "ms": { "type": "integer", "description": "Duration, default 250." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["done"],
+        "additionalProperties": false,
+        "properties": { "done": { "type": "boolean" } }
+      },
+      "mock": { "done": true }
+    },
+    {
+      "id": "control.type",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Set the text of the focused input field through the accessibility service. Needs control.access on and a focused field.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["done"],
+        "additionalProperties": false,
+        "properties": { "done": { "type": "boolean" } }
+      },
+      "mock": { "done": true }
+    },
+    {
+      "id": "control.screen",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Read the on-screen text: the visible nodes with their text, description, class, pixel bounds and whether each is clickable. Needs control.access on.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["count", "nodes"],
+        "additionalProperties": false,
+        "properties": {
+          "count": { "type": "integer" },
+          "nodes": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "mock": { "count": 1, "nodes": [ { "text": "OK", "cls": "android.widget.Button", "bounds": [0, 0, 100, 50], "clickable": true } ] }
+    },
+    {
       "id": "control.rotation",
       "capability": "control",
       "kind": "call",

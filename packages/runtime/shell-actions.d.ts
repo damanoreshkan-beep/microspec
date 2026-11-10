@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 91 actions (bridge 42).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 97 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -47,7 +47,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 91 actions (bridge 42).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 97 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -740,6 +740,66 @@ export const ACTIONS: {
             events: {
                 key: string;
                 ts: number;
+            }[];
+        };
+    };
+    "control.access": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            enabled: boolean;
+        };
+    };
+    "control.nav": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            done: boolean;
+        };
+    };
+    "control.tap": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            done: boolean;
+        };
+    };
+    "control.swipe": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            done: boolean;
+        };
+    };
+    "control.type": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            done: boolean;
+        };
+    };
+    "control.screen": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            count: number;
+            nodes: {
+                text: string;
+                cls: string;
+                bounds: number[];
+                clickable: boolean;
             }[];
         };
     };

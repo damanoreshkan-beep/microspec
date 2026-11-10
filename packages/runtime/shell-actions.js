@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 91 actions (bridge 42).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 97 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -825,6 +825,73 @@ export const ACTIONS = {
         {
           "key": "batman",
           "ts": 0
+        }
+      ]
+    }
+  },
+  "control.access": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "enabled": true
+    }
+  },
+  "control.nav": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "done": true
+    }
+  },
+  "control.tap": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "done": true
+    }
+  },
+  "control.swipe": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "done": true
+    }
+  },
+  "control.type": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "done": true
+    }
+  },
+  "control.screen": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "count": 1,
+      "nodes": [
+        {
+          "text": "OK",
+          "cls": "android.widget.Button",
+          "bounds": [
+            0,
+            0,
+            100,
+            50
+          ],
+          "clickable": true
         }
       ]
     }

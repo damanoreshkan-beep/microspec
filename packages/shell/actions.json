@@ -2382,6 +2382,22 @@
       "mock": { "shown": true }
     },
     {
+      "id": "control.wake",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Turn the screen on (wake the display) through a wake lock, without unlocking. Useful before showing something over the lock screen.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["woke"],
+        "additionalProperties": false,
+        "properties": { "woke": { "type": "boolean" } }
+      },
+      "mock": { "woke": true }
+    },
+    {
       "id": "control.taps",
       "capability": "control",
       "kind": "call",

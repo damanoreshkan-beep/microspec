@@ -2385,6 +2385,26 @@
       "mock": { "taps": 0, "recent": 0, "triple": false }
     },
     {
+      "id": "control.events",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Drain the trigger-hook queue — the keys fired at the server's /t/<key> URL since the last call. Anything that can open a URL (a browser link, an NFC tag, a routine, a shortcut) fires one. wait blocks up to that many seconds for the next event so a listener can long-poll; default 0 returns at once.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "wait": { "type": "integer", "description": "Seconds to wait for an event, 0..55." } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["events"],
+        "additionalProperties": false,
+        "properties": { "events": { "type": "array", "items": { "type": "object" } } }
+      },
+      "mock": { "events": [ { "key": "batman", "ts": 0 } ] }
+    },
+    {
       "id": "control.rotation",
       "capability": "control",
       "kind": "call",

@@ -100,7 +100,7 @@ function bridgeSection(spec) {
 async function build(dir, id) {
   const spec = await readJson(`${dir}/spec.json`);
   const i18n = await readLocales(dir);
-  const dict = i18n.uk || i18n.en || {};
+  const dict = i18n.en || i18n.uk || {};
   const en = i18n.en || dict;
   const title = dict.title || en.title || id;
   const tagline = (dict.profTagline || dict.tagline || en.profTagline || "").trim();

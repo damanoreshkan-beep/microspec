@@ -2334,6 +2334,30 @@
       "mock": { "on": true, "color": "#ff8800", "alpha": 30, "full": true, "overlay": true }
     },
     {
+      "id": "control.image",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Show a full-screen image over everything through the overlay, or clear it with on=false. The image is base64 PNG or JPEG in data; fit contain letterboxes, cover fills. Needs the overlay access.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "on": { "type": "boolean", "description": "Off clears the image." },
+          "data": { "type": "string", "description": "Base64 PNG or JPEG bytes." },
+          "fit": { "type": "string", "enum": ["contain", "cover"], "description": "contain letterboxes, cover crops to fill." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["on"],
+        "additionalProperties": false,
+        "properties": { "on": { "type": "boolean" } }
+      },
+      "mock": { "on": true }
+    },
+    {
       "id": "control.rotation",
       "capability": "control",
       "kind": "call",

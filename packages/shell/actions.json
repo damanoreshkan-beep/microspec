@@ -2358,6 +2358,33 @@
       "mock": { "on": true }
     },
     {
+      "id": "control.taps",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Count screen taps through a transparent touch-catching overlay, so a looping scene can stop on a gesture. on adds the catcher, reset zeroes the count, off removes it. triple is true when the last three taps fell within about 1.5 seconds. Needs the overlay access.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "on": { "type": "boolean", "description": "False removes the catcher." },
+          "reset": { "type": "boolean", "description": "Zero the counters." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["taps", "recent", "triple"],
+        "additionalProperties": false,
+        "properties": {
+          "taps": { "type": "integer", "description": "Total taps since reset." },
+          "recent": { "type": "integer", "description": "Taps held in the rolling window (max 3)." },
+          "triple": { "type": "boolean", "description": "Three taps within ~1.5s." }
+        }
+      },
+      "mock": { "taps": 0, "recent": 0, "triple": false }
+    },
+    {
       "id": "control.rotation",
       "capability": "control",
       "kind": "call",

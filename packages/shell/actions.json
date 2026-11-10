@@ -2363,13 +2363,18 @@
       "kind": "call",
       "minBridge": 42,
       "android": [],
-      "summary": "Show a full-screen image over everything INCLUDING the lock screen, through a show-when-locked activity that also wakes the screen; three taps on it close it. Pass base64 PNG or JPEG in data, fit contain or cover; off true closes it. Unlike control.image this draws above the keyguard.",
+      "summary": "Show a full-screen image over everything INCLUDING the lock screen, through a show-when-locked activity that wakes the screen and turns brightness up; three taps on it close it and restore the volume. flash pulses a colour over the image (a and b, default blue/red); say loops a spoken line until it is closed. off true closes it. Unlike control.image this draws above the keyguard.",
       "args": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "data": { "type": "string", "description": "Base64 PNG or JPEG bytes." },
           "fit": { "type": "string", "enum": ["contain", "cover"] },
+          "flash": { "type": "boolean", "description": "Pulse a colour over the image." },
+          "a": { "type": "string", "description": "First flash #RRGGBB, default blue." },
+          "b": { "type": "string", "description": "Second flash #RRGGBB, default red." },
+          "say": { "type": "string", "description": "A line spoken on a loop until closed." },
+          "lang": { "type": "string", "description": "TTS language tag for say, default uk-UA." },
           "off": { "type": "boolean", "description": "Close the scene." }
         }
       },

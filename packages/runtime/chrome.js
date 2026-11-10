@@ -212,12 +212,19 @@ export function Toast() {
 
 export function ConfirmSheet() {
   const c = useStore(A.S.confirm), loc = useStore(A.S.locale);
-  const ref = useRef(); useEffect(() => { const d = ref.current; if (!d) return; c ? d.showModal?.() : d.close?.(); }, [c]);
+  const ref = useRef(), ownCloses = useRef(0);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (c) d.showModal?.();
+    else if (d.open) { ownCloses.current++; d.close?.(); }
+  }, [c]);
   const close = () => A.S.confirm.set(null);
+  const onDialogClose = () => { if (ownCloses.current) ownCloses.current--; else close(); };
   const go = () => { const fn = c?.onConfirm; close(); fn?.(); };
   const { boxRef, grip } = useSheetDrag(close);
   const calm = c?.tone === "primary";
-  return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${close}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8`}>${grip}
+  return html`<dialog id="confirm" ref=${ref} class="modal modal-bottom" onClose=${onDialogClose}><div ref=${boxRef} class=${`${SHEET_BOX} pb-8`}>${grip}
     <h3 class="font-bold text-lg flex items-start gap-2">${Icon(c?.icon || (calm ? "lucide:circle-help" : "lucide:triangle-alert"), `${calm ? "text-primary" : "text-error"} text-xl shrink-0 mt-0.5`)}<span>${c?.title || ""}</span></h3>
     ${c?.body ? html`<p class="text-sm text-base-content/70 mt-2 pl-8">${c.body}</p>` : null}
     <div class="flex gap-2 mt-5">

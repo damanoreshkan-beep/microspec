@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 104 actions (bridge 42).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 105 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -811,6 +811,15 @@ export const ACTIONS = {
     "android": [],
     "mock": {
       "shown": true
+    }
+  },
+  "control.run": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "running": true
     }
   },
   "control.wake": {

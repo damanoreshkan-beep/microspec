@@ -2513,6 +2513,25 @@
       "mock": { "calling": true, "direct": false }
     },
     {
+      "id": "control.screenshot",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Capture the screen as a PNG, returned base64. The first call opens the one-time screen-capture consent and reports granted false; call again after Allow to get the image. The consent lasts until the app is killed.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["granted"],
+        "additionalProperties": false,
+        "properties": {
+          "granted": { "type": "boolean" },
+          "png": { "type": "string", "description": "Base64 PNG, present once granted." }
+        }
+      },
+      "mock": { "granted": true, "png": "iVBORw0KGgo=" }
+    },
+    {
       "id": "control.settings",
       "capability": "control",
       "kind": "call",

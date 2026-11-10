@@ -2358,6 +2358,30 @@
       "mock": { "on": true }
     },
     {
+      "id": "control.scene",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Show a full-screen image over everything INCLUDING the lock screen, through a show-when-locked activity that also wakes the screen; three taps on it close it. Pass base64 PNG or JPEG in data, fit contain or cover; off true closes it. Unlike control.image this draws above the keyguard.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": { "type": "string", "description": "Base64 PNG or JPEG bytes." },
+          "fit": { "type": "string", "enum": ["contain", "cover"] },
+          "off": { "type": "boolean", "description": "Close the scene." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["shown"],
+        "additionalProperties": false,
+        "properties": { "shown": { "type": "boolean" } }
+      },
+      "mock": { "shown": true }
+    },
+    {
       "id": "control.taps",
       "capability": "control",
       "kind": "call",

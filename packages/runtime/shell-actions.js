@@ -791,6 +791,7 @@ export const ACTIONS = {
       "on": true,
       "color": "#ff8800",
       "alpha": 30,
+      "full": true,
       "overlay": true
     }
   },

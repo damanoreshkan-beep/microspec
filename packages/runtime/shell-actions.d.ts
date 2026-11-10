@@ -707,6 +707,7 @@ export const ACTIONS: {
             on: boolean;
             color: string;
             alpha: number;
+            full: boolean;
             overlay: boolean;
         };
     };

@@ -2308,14 +2308,15 @@
       "kind": "call",
       "minBridge": 42,
       "android": [],
-      "summary": "Paint a colour tint over the whole screen through the display-over-other-apps overlay, or clear it. Needs the overlay access (control.overlay).",
+      "summary": "Paint a colour tint over the screen through the display-over-other-apps overlay, or clear it. full covers the whole display with the bars; without it only the app content area is tinted. Needs the overlay access (control.overlay).",
       "args": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "on": { "type": "boolean", "description": "Off clears the tint." },
           "color": { "type": "string", "description": "#RRGGBB tint colour." },
-          "alpha": { "type": "integer", "description": "Tint strength, 0..100." }
+          "alpha": { "type": "integer", "description": "Tint strength, 0..100." },
+          "full": { "type": "boolean", "description": "True (default) covers the whole display, system bars and cutout included; false tints only the content area." }
         }
       },
       "result": {
@@ -2326,10 +2327,11 @@
           "on": { "type": "boolean" },
           "color": { "type": "string" },
           "alpha": { "type": "integer" },
+          "full": { "type": "boolean" },
           "overlay": { "type": "boolean" }
         }
       },
-      "mock": { "on": true, "color": "#ff8800", "alpha": 30, "overlay": true }
+      "mock": { "on": true, "color": "#ff8800", "alpha": 30, "full": true, "overlay": true }
     },
     {
       "id": "control.rotation",

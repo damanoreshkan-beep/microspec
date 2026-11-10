@@ -2572,6 +2572,109 @@
       "mock": { "count": 1, "nodes": [ { "text": "OK", "cls": "android.widget.Button", "bounds": [0, 0, 100, 50], "clickable": true } ] }
     },
     {
+      "id": "control.click",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Find a visible node whose text or description contains the query and click it (or its nearest clickable parent), through the accessibility service. Needs control.access on.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["done"],
+        "additionalProperties": false,
+        "properties": { "done": { "type": "boolean" } }
+      },
+      "mock": { "done": true }
+    },
+    {
+      "id": "control.scroll",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Scroll the scrollable content forward or backward through the accessibility service. Needs control.access on.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dir"],
+        "properties": { "dir": { "type": "string", "enum": ["forward", "backward"] } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["done"],
+        "additionalProperties": false,
+        "properties": { "done": { "type": "boolean" } }
+      },
+      "mock": { "done": true }
+    },
+    {
+      "id": "control.notifs",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Read the notifications the accessibility service has seen since it started: package, title and text. Needs control.access on; no notification-listener bind.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["count", "notes"],
+        "additionalProperties": false,
+        "properties": {
+          "count": { "type": "integer" },
+          "notes": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "mock": { "count": 1, "notes": [ { "pkg": "com.example", "title": "Hi", "text": "A message", "ts": 0 } ] }
+    },
+    {
+      "id": "control.foreground",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "The app on screen right now: its package and the current window's class, as the accessibility service last saw them. Needs control.access on.",
+      "args": { "type": "object", "additionalProperties": false, "properties": {} },
+      "result": {
+        "type": "object",
+        "required": ["pkg"],
+        "additionalProperties": false,
+        "properties": { "pkg": { "type": "string" }, "activity": { "type": "string" } }
+      },
+      "mock": { "pkg": "com.android.settings", "activity": "com.android.settings.Settings" }
+    },
+    {
+      "id": "control.record",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Record the screen to an MP4 in the app's own files. on starts it (opens the one-time capture consent the first time), off stops it and returns the file path. Video only, no audio.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "on": { "type": "boolean" },
+          "off": { "type": "boolean" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["recording"],
+        "additionalProperties": false,
+        "properties": {
+          "recording": { "type": "boolean" },
+          "path": { "type": "string", "description": "The finished MP4, present after off." }
+        }
+      },
+      "mock": { "recording": true }
+    },
+    {
       "id": "control.rotation",
       "capability": "control",
       "kind": "call",

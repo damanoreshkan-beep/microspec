@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 99 actions (bridge 42).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 104 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -47,7 +47,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 99 actions (bridge 42).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 104 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -819,6 +819,58 @@ export const ACTIONS: {
                 bounds: number[];
                 clickable: boolean;
             }[];
+        };
+    };
+    "control.click": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            done: boolean;
+        };
+    };
+    "control.scroll": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            done: boolean;
+        };
+    };
+    "control.notifs": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            count: number;
+            notes: {
+                pkg: string;
+                title: string;
+                text: string;
+                ts: number;
+            }[];
+        };
+    };
+    "control.foreground": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            pkg: string;
+            activity: string;
+        };
+    };
+    "control.record": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            recording: boolean;
         };
     };
     "control.rotation": {

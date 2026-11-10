@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 99 actions (bridge 42).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 104 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -912,6 +912,60 @@ export const ACTIONS = {
           "clickable": true
         }
       ]
+    }
+  },
+  "control.click": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "done": true
+    }
+  },
+  "control.scroll": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "done": true
+    }
+  },
+  "control.notifs": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "count": 1,
+      "notes": [
+        {
+          "pkg": "com.example",
+          "title": "Hi",
+          "text": "A message",
+          "ts": 0
+        }
+      ]
+    }
+  },
+  "control.foreground": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "pkg": "com.android.settings",
+      "activity": "com.android.settings.Settings"
+    }
+  },
+  "control.record": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "recording": true
     }
   },
   "control.rotation": {

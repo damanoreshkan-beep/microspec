@@ -73,6 +73,30 @@ const CAP = {
 const enc = (s) => encodeURIComponent(String(s)).replace(/-/g, "--").replace(/_/g, "__");
 const shield = (label, value, color) => `![${label}](https://img.shields.io/badge/${enc(label)}-${enc(value)}-${color}?style=flat-square)`;
 
+function bridgeSection(spec) {
+  const b = spec.bridge;
+  if (!b || typeof b !== "object") return "";
+  const L = ["---", "", "## Control bridge — MCP", ""];
+  if (b.lede) L.push(b.lede, "");
+  const meta = [];
+  if (b.endpoint) meta.push(`- **Endpoint** \`${b.endpoint}\``);
+  if (b.transport) meta.push(`- **Transport** ${b.transport}`);
+  if (b.auth) meta.push(`- **Auth** ${b.auth}`);
+  if (meta.length) L.push(...meta, "");
+  for (const g of (Array.isArray(b.groups) ? b.groups : [])) {
+    if (g.title) L.push(`**${g.title}**`, "");
+    for (const it of (Array.isArray(g.items) ? g.items : [])) L.push(`- ${it}`);
+    L.push("");
+  }
+  const ex = b.example;
+  if (ex && ex.code) {
+    if (ex.caption) L.push(`**Example** — ${ex.caption}`, "");
+    L.push("```", ex.code, "```");
+  }
+  while (L.length && L[L.length - 1] === "") L.pop();
+  return "\n" + L.join("\n") + "\n";
+}
+
 async function build(dir, id) {
   const spec = await readJson(`${dir}/spec.json`);
   const i18n = await readLocales(dir);
@@ -98,6 +122,7 @@ async function build(dir, id) {
   ].filter(Boolean).join(" ");
 
   const lede = tagline || `${title} — part of the microspec farm.`;
+  const bridge = bridgeSection(spec);
   const facts = [
     tabs.length ? `**Screens** ${tabs.join(" · ")}` : null,
     `**Capabilities** ${needs.length ? needs.map((n) => CAP[n] || n).join(" · ") : "—"}`,
@@ -120,7 +145,7 @@ ${shot ? `\n<br>\n\n<img src="${shot}" width="640" alt="${title}">\n` : ""}
 ---
 
 ${facts}
-
+${bridge}
 Part of the **[microspec farm](../../)** — an AI-authored, gated micro-PWA. Every screen is accessible,
 responsive, installable and offline by construction. Browse the whole set from the **[store](../store/)**.
 

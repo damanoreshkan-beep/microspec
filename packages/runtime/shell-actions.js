@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 75 actions (bridge 40).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 78 actions (bridge 41).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -30,7 +30,7 @@
  */
 // Run `deno task shell` after changing the catalogue; `--check` gates it before every push.
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE = 40;
+export const CATALOGUE_BRIDGE = 41;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
  *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
  *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
@@ -540,7 +540,8 @@ export const ACTIONS = {
       "port": 8080,
       "url": "http://192.168.1.42:8080/",
       "hits": 3,
-      "routes": 1
+      "routes": 1,
+      "token": "0123456789abcdef0123456789abcdef"
     }
   },
   "files.grant": {
@@ -729,6 +730,56 @@ export const ACTIONS = {
     "android": [],
     "mock": {
       "bytes": 11
+    }
+  },
+  "control.apps": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 41,
+    "android": [],
+    "mock": {
+      "count": 1,
+      "apps": [
+        {
+          "pkg": "com.example.video",
+          "label": "Video",
+          "launcher": true,
+          "routes": [
+            {
+              "activity": "com.example.video.Watch",
+              "schemes": [
+                "https",
+                "example"
+              ],
+              "hosts": [
+                "example.com"
+              ],
+              "paths": [
+                "/watch*"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "control.open": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 41,
+    "android": [],
+    "mock": {
+      "opened": true,
+      "overlay": true
+    }
+  },
+  "control.overlay": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 41,
+    "android": [],
+    "mock": {
+      "granted": true
     }
   },
   "control.settings": {

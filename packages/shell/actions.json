@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 40,
+  "bridgeVersion": 41,
   "flavours": {
     "godot": ["godot"],
     "mesh": ["mesh"],
@@ -1673,6 +1673,10 @@
           },
           "routes": {
             "type": "integer"
+          },
+          "token": {
+            "type": "string",
+            "description": "Bearer token the /mcp and /x/ endpoints require. Present only while the MCP server runs."
           }
         }
       },
@@ -1681,7 +1685,8 @@
         "port": 8080,
         "url": "http://192.168.1.42:8080/",
         "hits": 3,
-        "routes": 1
+        "routes": 1,
+        "token": "0123456789abcdef0123456789abcdef"
       }
     },
     {
@@ -2232,6 +2237,70 @@
         "properties": { "bytes": { "type": "integer" } }
       },
       "mock": { "bytes": 11 }
+    },
+    {
+      "id": "control.apps",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 41,
+      "android": [],
+      "summary": "Every installed app that a launcher or a link can open, with the routes its manifest declares: schemes, hosts and paths.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "pkg": { "type": "string", "description": "Read this one package only." } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["count", "apps"],
+        "additionalProperties": false,
+        "properties": {
+          "count": { "type": "integer" },
+          "apps": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "mock": { "count": 1, "apps": [ { "pkg": "com.example.video", "label": "Video", "launcher": true, "routes": [ { "activity": "com.example.video.Watch", "schemes": ["https", "example"], "hosts": ["example.com"], "paths": ["/watch*"] } ] } ] }
+    },
+    {
+      "id": "control.open",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 41,
+      "android": [],
+      "summary": "Open a URL or an app's own route with a view intent, in one package when pkg is given. Fails with unavailable when nothing handles it; overlay reports whether Android lets this app reach the screen from the background.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url"],
+        "properties": { "url": { "type": "string" }, "pkg": { "type": "string" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["opened", "overlay"],
+        "additionalProperties": false,
+        "properties": { "opened": { "type": "boolean" }, "overlay": { "type": "boolean" } }
+      },
+      "mock": { "opened": true, "overlay": true }
+    },
+    {
+      "id": "control.overlay",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 41,
+      "android": [],
+      "summary": "Whether the display-over-other-apps access is on, which is what lets this app open another from the background. With ask, opens its Settings screen when it is off.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "ask": { "type": "boolean" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["granted"],
+        "additionalProperties": false,
+        "properties": { "granted": { "type": "boolean" } }
+      },
+      "mock": { "granted": true }
     },
     {
       "id": "control.settings",

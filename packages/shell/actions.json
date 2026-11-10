@@ -1,6 +1,6 @@
 {
   "$comment": "THE CATALOGUE. Single source of truth for everything the Android shell can do for a page. Everything else is generated from it: the runtime facade's action table, the gate mocks, the permission enum, the Java dispatch registry (phase 3), and the docs. Hand-writing any of those is how the two sides drift. See docs/research/apk-sdk-plan.md.",
-  "bridgeVersion": 41,
+  "bridgeVersion": 42,
   "flavours": {
     "godot": ["godot"],
     "mesh": ["mesh"],
@@ -2301,6 +2301,214 @@
         "properties": { "granted": { "type": "boolean" } }
       },
       "mock": { "granted": true }
+    },
+    {
+      "id": "control.filter",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Paint a colour tint over the whole screen through the display-over-other-apps overlay, or clear it. Needs the overlay access (control.overlay).",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "on": { "type": "boolean", "description": "Off clears the tint." },
+          "color": { "type": "string", "description": "#RRGGBB tint colour." },
+          "alpha": { "type": "integer", "description": "Tint strength, 0..100." }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["on", "overlay"],
+        "additionalProperties": false,
+        "properties": {
+          "on": { "type": "boolean" },
+          "color": { "type": "string" },
+          "alpha": { "type": "integer" },
+          "overlay": { "type": "boolean" }
+        }
+      },
+      "mock": { "on": true, "color": "#ff8800", "alpha": 30, "overlay": true }
+    },
+    {
+      "id": "control.rotation",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Lock the screen to portrait or landscape, or return it to auto-rotate. Needs modify-system-settings, the same access brightness uses.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["lock"],
+        "properties": { "lock": { "type": "string", "enum": ["auto", "portrait", "landscape"] } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["autoRotate"],
+        "additionalProperties": false,
+        "properties": { "autoRotate": { "type": "boolean" }, "orientation": { "type": "string" } }
+      },
+      "mock": { "autoRotate": false, "orientation": "portrait" }
+    },
+    {
+      "id": "control.ringer",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Set the ringer to normal, vibrate or silent. Silent may need notification-policy access on some phones; the result reports what actually took.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mode"],
+        "properties": { "mode": { "type": "string", "enum": ["normal", "vibrate", "silent"] } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["ringer"],
+        "additionalProperties": false,
+        "properties": { "ringer": { "type": "string", "enum": ["silent", "vibrate", "normal"] } }
+      },
+      "mock": { "ringer": "vibrate" }
+    },
+    {
+      "id": "control.dnd",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Set Do Not Disturb: all lets everything through, none silences all, priority and alarms are the partial modes. With ask, opens the access screen when it is off. Needs notification-policy access.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["filter"],
+        "properties": {
+          "filter": { "type": "string", "enum": ["all", "priority", "none", "alarms"] },
+          "ask": { "type": "boolean" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["filter", "granted"],
+        "additionalProperties": false,
+        "properties": { "filter": { "type": "string" }, "granted": { "type": "boolean" } }
+      },
+      "mock": { "filter": "priority", "granted": true }
+    },
+    {
+      "id": "control.media",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Send a media key to whatever is playing: play, pause, playpause, next, prev or stop. No permission; it reaches the current media app.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key"],
+        "properties": { "key": { "type": "string", "enum": ["play", "pause", "playpause", "next", "prev", "stop"] } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["key"],
+        "additionalProperties": false,
+        "properties": { "key": { "type": "string" } }
+      },
+      "mock": { "key": "playpause" }
+    },
+    {
+      "id": "control.lock",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Lock the screen now through the device-admin access. With ask, opens the screen to grant that access when it is off.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "ask": { "type": "boolean" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["locked", "admin"],
+        "additionalProperties": false,
+        "properties": { "locked": { "type": "boolean" }, "admin": { "type": "boolean" } }
+      },
+      "mock": { "locked": true, "admin": true }
+    },
+    {
+      "id": "control.contacts",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Read the address book — name and number, optionally filtered by a query. Needs the Contacts permission; without it, opens the app's permission screen and reports granted false.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "query": { "type": "string", "description": "Match by name or number." },
+          "limit": { "type": "integer" }
+        }
+      },
+      "result": {
+        "type": "object",
+        "required": ["granted", "count", "contacts"],
+        "additionalProperties": false,
+        "properties": {
+          "granted": { "type": "boolean" },
+          "count": { "type": "integer" },
+          "contacts": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "mock": { "granted": true, "count": 1, "contacts": [ { "name": "Ada", "number": "+100000000" } ] }
+    },
+    {
+      "id": "control.calendar",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Read upcoming calendar events over the next days. Needs the Calendar permission; without it, opens the app's permission screen and reports granted false.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "days": { "type": "integer", "description": "Window ahead, default 7." } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["granted", "count", "events"],
+        "additionalProperties": false,
+        "properties": {
+          "granted": { "type": "boolean" },
+          "count": { "type": "integer" },
+          "events": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "mock": { "granted": true, "count": 1, "events": [ { "title": "Standup", "begin": 0, "end": 0 } ] }
+    },
+    {
+      "id": "control.call",
+      "capability": "control",
+      "kind": "call",
+      "minBridge": 42,
+      "android": [],
+      "summary": "Place a call to a number. With the Phone permission it dials straight away; without it, opens the dialer with the number filled in.",
+      "args": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["number"],
+        "properties": { "number": { "type": "string" } }
+      },
+      "result": {
+        "type": "object",
+        "required": ["calling", "direct"],
+        "additionalProperties": false,
+        "properties": { "calling": { "type": "boolean" }, "direct": { "type": "boolean" } }
+      },
+      "mock": { "calling": true, "direct": false }
     },
     {
       "id": "control.settings",

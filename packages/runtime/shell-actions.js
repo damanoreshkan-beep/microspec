@@ -18,7 +18,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 78 actions (bridge 41).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 87 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -30,7 +30,7 @@
  */
 // Run `deno task shell` after changing the catalogue; `--check` gates it before every push.
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE = 41;
+export const CATALOGUE_BRIDGE = 42;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
  *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
  *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
@@ -780,6 +780,109 @@ export const ACTIONS = {
     "android": [],
     "mock": {
       "granted": true
+    }
+  },
+  "control.filter": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "on": true,
+      "color": "#ff8800",
+      "alpha": 30,
+      "overlay": true
+    }
+  },
+  "control.rotation": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "autoRotate": false,
+      "orientation": "portrait"
+    }
+  },
+  "control.ringer": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "ringer": "vibrate"
+    }
+  },
+  "control.dnd": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "filter": "priority",
+      "granted": true
+    }
+  },
+  "control.media": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "key": "playpause"
+    }
+  },
+  "control.lock": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "locked": true,
+      "admin": true
+    }
+  },
+  "control.contacts": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "granted": true,
+      "count": 1,
+      "contacts": [
+        {
+          "name": "Ada",
+          "number": "+100000000"
+        }
+      ]
+    }
+  },
+  "control.calendar": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "granted": true,
+      "count": 1,
+      "events": [
+        {
+          "title": "Standup",
+          "begin": 0,
+          "end": 0
+        }
+      ]
+    }
+  },
+  "control.call": {
+    "capability": "control",
+    "kind": "call",
+    "minBridge": 42,
+    "android": [],
+    "mock": {
+      "calling": true,
+      "direct": false
     }
   },
   "control.settings": {

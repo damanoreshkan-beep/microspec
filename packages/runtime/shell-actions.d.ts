@@ -17,7 +17,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 78 actions (bridge 41).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 87 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -47,7 +47,7 @@
  *
  * ## What it exports
  * - {@link CATALOGUE_BRIDGE} — the bridge version this catalogue was generated for (what the PAGE was built against).
- * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 78 actions (bridge 41).
+ * - {@link ACTIONS} — id → `{ capability, kind, minBridge, android, mock }` for all 87 actions (bridge 42).
  * - {@link FLAVOUR_OF} / {@link FLAVOURS} — the heavier shell flavours, so the download path forwards what a
  *   spec declares instead of a hand-typed name (which is how every `mesh` app once downloaded the `full` shell).
  *
@@ -58,7 +58,7 @@
  * @module
  */
 /** The bridge version this catalogue was generated for — what the PAGE was built against. */
-export const CATALOGUE_BRIDGE: 41;
+export const CATALOGUE_BRIDGE: 42;
 /** The heavier shell FLAVOURS, capability -> the flavours that carry it. A capability absent here is carried
  *  by every flavour; one named here needs the APK built with one of its flavours, or the bridge refuses the
  *  action on the device with "capability not granted to this page". Derived so no caller re-types the list. */
@@ -696,6 +696,105 @@ export const ACTIONS: {
         android: any[];
         mock: {
             granted: boolean;
+        };
+    };
+    "control.filter": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            on: boolean;
+            color: string;
+            alpha: number;
+            overlay: boolean;
+        };
+    };
+    "control.rotation": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            autoRotate: boolean;
+            orientation: string;
+        };
+    };
+    "control.ringer": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            ringer: string;
+        };
+    };
+    "control.dnd": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            filter: string;
+            granted: boolean;
+        };
+    };
+    "control.media": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            key: string;
+        };
+    };
+    "control.lock": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            locked: boolean;
+            admin: boolean;
+        };
+    };
+    "control.contacts": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            granted: boolean;
+            count: number;
+            contacts: {
+                name: string;
+                number: string;
+            }[];
+        };
+    };
+    "control.calendar": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            granted: boolean;
+            count: number;
+            events: {
+                title: string;
+                begin: number;
+                end: number;
+            }[];
+        };
+    };
+    "control.call": {
+        capability: string;
+        kind: string;
+        minBridge: number;
+        android: any[];
+        mock: {
+            calling: boolean;
+            direct: boolean;
         };
     };
     "control.settings": {

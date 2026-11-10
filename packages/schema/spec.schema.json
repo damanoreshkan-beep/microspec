@@ -125,6 +125,40 @@
         }
       }
     },
+    "bridge": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "OPTIONAL — a control-bridge (MCP) section on the app's generated README: the local server an agent speaks to. Rendered by deploy/readme.mjs; apps without it are unchanged.",
+      "properties": {
+        "lede": { "type": "string", "description": "One paragraph introducing the bridge." },
+        "endpoint": { "type": "string", "description": "The server address, shown in a code span." },
+        "transport": { "type": "string", "description": "How a client talks to it." },
+        "auth": { "type": "string", "description": "How a call is authorised." },
+        "groups": {
+          "type": "array",
+          "description": "Action groups, each a titled list of items.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "items": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["title", "items"]
+          }
+        },
+        "example": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "One worked call, shown as a fenced block.",
+          "properties": {
+            "caption": { "type": "string" },
+            "code": { "type": "string" }
+          },
+          "required": ["code"]
+        }
+      }
+    },
     "profile": {
       "type": "object",
       "additionalProperties": false,

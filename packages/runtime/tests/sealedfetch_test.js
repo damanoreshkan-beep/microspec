@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { installSealedFetch, sealedUrl } from "../sealedfetch.js";
+import { installSealedFetch, sealedUrl, sealedFrameUrl } from "../sealedfetch.js";
 import { VPS_PROXY } from "../feed.js";
-import { b64u } from "../sealed.js";
+import { b64u, unb64u, unseal } from "../sealed.js";
 
 const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
 const KEY = b64u(await crypto.subtle.exportKey("raw", pair.publicKey));
@@ -68,4 +68,16 @@ Deno.test("sealedUrl: the route with the envelope in ?s= — and a raw (non-JSON
   try { await globalThis.fetch(await sealedUrl("/library/put", { n: "x.mp3" }, KEY), { method: "POST", body: new Uint8Array([1, 2]) }); } finally { restore(); }
   assert(hit.u.startsWith(`${VPS_PROXY}/library/put?s=`), "a file body is never re-expressed through the tunnel");
   assert(hit.body instanceof Uint8Array);
+});
+
+Deno.test("sealedFrameUrl: the envelope names the frame route at version 2, and nothing else rides in the URL", async () => {
+  const url = await sealedFrameUrl("https://cdn.example/a.m3u8", "https://site.example/", "reel", KEY);
+  const q = new URL(url, "https://host.example").searchParams;
+  assertEquals([...q.keys()], ["s"]);
+  const a = (await unseal(pair.privateKey, KEY, unb64u(q.get("s")))).payload;
+  assertEquals(a.p, "/feed/frame");
+  assertEquals(a.fv, 2);
+  assertEquals(a.u, "https://cdn.example/a.m3u8");
+  assertEquals(a.e, "reel");
+  assertEquals(Object.keys(a).filter((k) => !["p", "u", "r", "fv", "e", "ts"].includes(k)), []);
 });

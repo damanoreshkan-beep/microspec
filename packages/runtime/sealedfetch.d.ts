@@ -22,7 +22,7 @@
  * - {@link installSealedFetch} — `installSealedFetch(realFetch = globalThis.fetch)` replaces `globalThis.fetch`
  *   with the sealing wrapper and returns an uninstall function that restores `realFetch` (for tests). Anything
  *   off VPS_PROXY, the tunnel itself and the PLAIN routes pass through untouched.
- * - {@link sealedFrameUrl} — `async (url, ref, egress?) → "${VPS_PROXY}/frame?s=<envelope>"`: a plain GET an ELEMENT
+ * - {@link sealedFrameUrl} — `async (url, ref, egress?, key?) → "${VPS_PROXY}/frame?s=<envelope>"`: a plain GET an ELEMENT
  *   can load (`<video src>`, `<iframe src>`), with the destination sealed into `?s=`. The reply is not sealed.
  *   `egress` names an edge exit group (iptv: "tv"); a proxied HLS playlist keeps it on every line it rewrites.
  * - {@link sealedUrl} — `async (route, fields) → "${VPS_PROXY}${route}?s=<envelope>"` with the SESSION inside, for
@@ -85,9 +85,10 @@
  * @param ref optional referer the proxy should present
  * @param egress optional egress group (the edge's EGRESS map, e.g. "tv"): the stream — and, for HLS, every
  *   variant, segment and key the proxied playlist points at — is fetched from that group's own exit
- * @returns the proxy URL string
+ * @param key the pinned key to seal with (default: the product's SEALED_KEY)
+ * @returns the proxy URL string; the envelope carries `fv: 2`, the frame envelope version the edge requires
  */
-export function sealedFrameUrl(url: any, ref: any, egress: any): Promise<string>;
+export function sealedFrameUrl(url: any, ref: any, egress: any, key?: any): Promise<string>;
 /**
  * Build the /feed/clip GET URL for the clip exporter, with the destination sealed into `?s=`.
  * @param url the source video URL

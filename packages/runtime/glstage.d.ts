@@ -72,6 +72,11 @@
  *   under the gate costs one upload, and a camera costs one per new frame. The canvas reports `data-cam="yes"`
  *   once a frame is bound; `camAspect.y` says the same to the shader, which reads a 1×1 grey until then. Rows are
  *   uploaded top-first (no `UNPACK_FLIP_Y`), so a shader that flips `uv.y` for the DOM samples it upright.
+ * - `cam` and `tex2` also take a TILE SHEET `{ w, h, next(), pending() }`: the stage allocates one empty `w × h`
+ *   texture when the sheet's identity changes, then every frame pulls `next()` → `{ x, y, src }` and writes that
+ *   patch with `texSubImage2D` for at most 3 ms (one patch is always taken), so a set of hundreds of tiles fills in
+ *   cell by cell and never stalls a frame. `pending()` keeps an idle stage drawing until the sheet is drained. A
+ *   `tex2` sheet regenerates its mipmaps when it drains and at most every 250 ms while it streams.
  * - Under the gate: DPR 1 and every other frame skipped (a full-screen fbm field at DPR 2 in SwiftShader starved a
  *   fixture stream from 0.7 s to 30 s). Elsewhere DPR is capped at 2. A hidden tab draws nothing.
  * - `points` is the only VARIABLE-LENGTH channel: a flat array of up to 8 vec4s (`[x,y,z,w, x,y,z,w, …]`),
@@ -100,8 +105,9 @@
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
  * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
  *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
- * @param tex2     optional MATERIAL texture URL (CORS-readable): full resolution, unit 2, mirrored-repeat, so a
- *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
+ * @param tex2     optional MATERIAL texture URL (CORS-readable) or a tile sheet: full resolution, unit 2,
+ *                 mirrored-repeat, so a shader can tile a generated material over a picture — `tex2` / `tex2Aspect`
+ *                 (x = w/h, y = bound)
  * @param tex3     optional PICTURE texture URL (CORS-readable): full resolution, unit 4, clamped, swapped whole —
  *                 `tex3` / `tex3Aspect` (x = w/h, y = bound); null unbinds it
  * @param aux      optional number or function — `env.w`, the app's own flag (a loading state); `env.y` / `env.z` are

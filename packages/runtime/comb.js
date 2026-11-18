@@ -67,8 +67,10 @@
  *   with no picture takes the theme's material (`--ds-fill`). Text is set in the page's font.
  * - Two atlases: icons at the source's own 256 px (512 for a small set), so the form at the centre is never
  *   magnified; names and lines on a separate atlas sized by the screen (`0.9 × pitch × 1.15 × dpr`, 4096² where the
- *   GPU allows) with mipmaps, so the type is crisp at every zoom. The icon atlas uploads progressively (names
- *   first, at most two more uploads), the text atlas once per locale.
+ *   GPU allows) with mipmaps, so the type is crisp at every zoom. Both atlases are TILE SHEETS
+ *   ({@link iconPainter}, {@link textPainter}): no atlas-sized canvas exists, the stage pulls one tile at a time
+ *   inside a 3 ms frame budget, centre first, and a changed cover or name re-sends only its own tile. A cell whose
+ *   form tile has not landed yet keeps its skeleton, so the field scrolls from the first frame while it fills.
  * - `data-comb` on the wrapper: `gl` or `dom`; `data-comb-focus` the item under the lens, `data-comb-group` its
  *   group's id, `data-comb-zoom` the level, `data-comb-open` while a cell is in its large state, `data-comb-ready`
  *   once the machine runs.
@@ -202,37 +204,55 @@ function wrap(ctx, text, width, maxLines) {
 const ICON = 0.86, NAME_H = 0.314, NAME_FONT = 0.133, LINE_TOP = 0.33, LINE_H = 0.42, LINE_FONT = 0.105, TEXT_ASPECT = 0.75;
 const FONT = "Geist, ui-sans-serif, system-ui, sans-serif", MONO = "'Geist Mono', ui-monospace, monospace";
 
+function tileSheet(plan, paint) {
+  const queue = new Map();
+  return {
+    queue,
+    sheet: {
+      w: plan.size, h: plan.size,
+      pending: () => queue.size > 0,
+      next() {
+        for (const [i, job] of queue) {
+          queue.delete(i);
+          const src = paint(i, job);
+          if (src) return { x: (i % plan.cols) * plan.tileW, y: Math.floor(i / plan.cols) * plan.tileH, src };
+        }
+        return null;
+      },
+    },
+  };
+}
+
 /**
- * The ICON atlas as a living painter: `update(items, publish)` redraws only the tiles whose id, picture or form
- * changed, keeps decoded pictures, and publishes at most one bitmap in flight — a shelf whose covers land one by one
- * costs one tile each, never a whole atlas.
- * @param plan `{ cols, tileW, size }` from {@link atlasPlan} (square tiles)
+ * The ICON atlas as a tile sheet for the stage: `update(items)` queues only the tiles whose id, picture or form
+ * changed, keeps decoded pictures, and `sheet.next()` paints ONE tile when the stage asks for it — a shelf of
+ * hundreds of songs streams in cell by cell inside the frame budget, a cover that lands costs one tile.
+ * @param plan `{ cols, tileW, tileH, size }` (square tiles)
  * @param fill the theme's material URL for a form without a picture, or ""
- * @returns `{ update(items, publish), stop() }`
+ * @returns `{ sheet, update(items), stop() }`
  */
 export function iconPainter(plan, fill = "") {
-  let alive = true, material = null, materialP = null, dirty = false, flying = false, publishFn = null;
+  let alive = true, material = null, materialP = null;
   const cv = document.createElement("canvas");
-  cv.width = cv.height = plan.size;
+  cv.width = cv.height = plan.tileW;
   const ctx = cv.getContext("2d");
-  if (!ctx) return { update: () => {}, stop: () => {} };
+  const idle = { sheet: { w: plan.size, h: plan.size, pending: () => false, next: () => null }, update: () => {}, stop: () => {} };
+  if (!ctx) return idle;
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
   const side = ICON * plan.tileW, pad = (plan.tileW - side) / 2;
-  const originOf = (i) => [(i % plan.cols) * plan.tileW + pad, Math.floor(i / plan.cols) * plan.tileW + pad];
   const scratch = document.createElement("canvas");
   const S = Math.max(2, Math.round(side * 2));
   scratch.width = scratch.height = S;
   const sc = scratch.getContext("2d");
   if (sc) { sc.imageSmoothingEnabled = true; sc.imageSmoothingQuality = "high"; }
-  const keys = new Map(), imgs = new Map();
+  const keys = new Map(), imgs = new Map(), decoded = new Map();
   const load = (src) => {
     let p = imgs.get(src);
-    if (!p) { p = new Promise((res) => { const im = new Image(); im.decoding = "async"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src; }); imgs.set(src, p); }
+    if (!p) { p = new Promise((res) => { const im = new Image(); im.decoding = "async"; im.onload = () => { decoded.set(src, im); res(im); }; im.onerror = () => res(null); im.src = src; }); imgs.set(src, p); }
     return p;
   };
-  const form = (i, it, img) => {
+  const form = (it, img) => {
     if (!sc) return;
-    const [ox, oy] = originOf(i);
     sc.save();
     sc.globalCompositeOperation = "source-over";
     sc.clearRect(0, 0, S, S);
@@ -245,78 +265,79 @@ export function iconPainter(plan, fill = "") {
     sc.fillStyle = "#fff";
     sc.fill(new Path2D(pathOf(it.form || shapeOf(it.id))));
     sc.restore();
-    ctx.clearRect(ox, oy, side, side);
-    ctx.drawImage(scratch, ox, oy, side, side);
   };
-  const flush = async () => {
-    if (!alive || flying || !dirty) return;
-    dirty = false; flying = true;
-    try { const bmp = await createImageBitmap(cv); if (alive) publishFn?.(bmp); } catch { if (alive) publishFn?.(cv); }
-    flying = false;
-    if (dirty) flush();
-  };
-  const mark = () => { dirty = true; flush(); };
-  const update = async (items, publish) => {
-    publishFn = publish;
+  const { queue, sheet } = tileSheet(plan, (i, job) => {
+    if (!alive) return null;
+    ctx.clearRect(0, 0, plan.tileW, plan.tileW);
+    if (job.it) { form(job.it, job.img); ctx.drawImage(scratch, pad, pad, side, side); }
+    return cv;
+  });
+  const update = async (items) => {
     if (fill && !material) { materialP ??= load(fill); material = await materialP; if (!alive) return; }
-    let changed = false;
     items.forEach((it, i) => {
       const key = `${it.id}|${it.icon || ""}|${it.form || ""}`;
       if (keys.get(i) === key) return;
-      keys.set(i, key); changed = true;
-      form(i, it, null);
-      if (it.icon) load(it.icon).then((img) => { if (!alive || keys.get(i) !== key || !img) return; form(i, it, img); mark(); });
+      keys.set(i, key);
+      const ready = it.icon ? decoded.get(it.icon) : null;
+      queue.set(i, { it, img: ready || null });
+      if (it.icon && !ready) load(it.icon).then((img) => { if (!alive || keys.get(i) !== key || !img) return; queue.delete(i); queue.set(i, { it, img }); });
     });
-    for (const k of [...keys.keys()]) if (k >= items.length) { keys.delete(k); const [ox, oy] = originOf(k); ctx.clearRect(ox, oy, side, side); changed = true; }
-    if (changed) mark();
+    for (const k of [...keys.keys()]) if (k >= items.length) { keys.delete(k); queue.set(k, { it: null }); }
   };
-  return { update, stop: () => { alive = false; } };
+  return { sheet, update, stop: () => { alive = false; queue.clear(); } };
 }
 
+let fontsP = null;
+const fontsReady = () => (fontsP ??= typeof document !== "undefined" && document.fonts?.load
+  ? Promise.race([Promise.all([document.fonts.load(`600 16px Geist`), document.fonts.load(`600 16px 'Geist Mono'`)]), new Promise((r) => setTimeout(r, 1500))]).catch(() => {})
+  : Promise.resolve());
+
 /**
- * The TEXT atlas: every item's name (two lines) and line (three), and every group's caption, white on transparent,
- * in the page's font at the density the screen asks for; published once as a blob URL (the stage mipmaps it).
- * @param items the comb's items
- * @param groups the comb's groups
+ * The TEXT atlas as a tile sheet for the stage: every item's name (two lines) and line (three), and every group's
+ * caption, white on transparent, in the page's font at the density the screen asks for. `update(items, groups)`
+ * queues only the tiles whose words changed; `sheet.next()` sets ONE tile when the stage asks (the stage mipmaps it).
  * @param plan from {@link atlasPlan} with the text aspect
- * @param publish `(url) => void`
- * @returns `() => void` stop
+ * @returns `{ sheet, update(items, groups), stop() }`
  */
-export function buildText(items, groups, plan, publish) {
-  let alive = true, url = "";
+export function textPainter(plan) {
+  let alive = true;
+  const W = plan.tileW, H = plan.tileH;
   const cv = document.createElement("canvas");
-  cv.width = cv.height = plan.size;
+  cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d");
-  if (!ctx) return () => {};
-  const W = plan.tileW, originOf = (i) => [(i % plan.cols) * W, Math.floor(i / plan.cols) * plan.tileH];
-  const draw = () => {
-    ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!ctx) return { sheet: { w: plan.size, h: plan.size, pending: () => false, next: () => null }, update: () => {}, stop: () => {} };
+  const keys = new Map();
+  const { queue, sheet } = tileSheet(plan, (i, job) => {
+    if (!alive) return null;
+    ctx.clearRect(0, 0, W, H);
     ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillStyle = "#fff";
-    items.forEach((it, i) => {
-      const [ox, oy] = originOf(i);
+    if (job.it) {
       ctx.font = `600 ${NAME_FONT * W}px ${FONT}`;
-      wrap(ctx, it.name, W * 0.94, 2).forEach((l, k) => ctx.fillText(l, ox + W / 2, oy + k * NAME_FONT * W * 1.18 + NAME_FONT * W * 0.08));
-      if (it.subtitle) {
+      wrap(ctx, job.it.name, W * 0.94, 2).forEach((l, k) => ctx.fillText(l, W / 2, k * NAME_FONT * W * 1.18 + NAME_FONT * W * 0.08));
+      if (job.it.subtitle) {
         ctx.font = `500 ${LINE_FONT * W}px ${FONT}`;
-        wrap(ctx, it.subtitle, W * 0.94, 3).forEach((l, k) => ctx.fillText(l, ox + W / 2, oy + LINE_TOP * W + k * LINE_FONT * W * 1.25));
+        wrap(ctx, job.it.subtitle, W * 0.94, 3).forEach((l, k) => ctx.fillText(l, W / 2, LINE_TOP * W + k * LINE_FONT * W * 1.25));
       }
-    });
-    groups.forEach((g, k) => {
-      const [ox, oy] = originOf(items.length + k);
-      const word = String(g.name || "").toUpperCase();
+    } else if (job.g) {
+      const word = String(job.g.name || "").toUpperCase();
       let px = 0.12 * W;
       try { ctx.letterSpacing = `${0.012 * W}px`; } catch { }
       for (;;) { ctx.font = `600 ${px}px ${MONO}`; if (ctx.measureText(word).width <= W * 0.9 || px < 0.05 * W) break; px *= 0.92; }
-      ctx.fillText(word, ox + W / 2, oy + NAME_H * W * 0.5 - px * 0.55);
+      ctx.fillText(word, W / 2, NAME_H * W * 0.5 - px * 0.55);
       try { ctx.letterSpacing = "0px"; } catch { }
-    });
-    cv.toBlob((b) => { if (!alive || !b) return; url = URL.createObjectURL(b); publish(url); }, "image/png");
+    }
+    return cv;
+  });
+  const update = async (items, groups) => {
+    await fontsReady();
+    if (!alive) return;
+    const put = (i, key, job) => { if (keys.get(i) === key) return; keys.set(i, key); queue.set(i, job); };
+    items.forEach((it, i) => put(i, `i${it.name}|${it.subtitle || ""}`, { it }));
+    groups.forEach((g, k) => put(items.length + k, `g${g.name || ""}`, { g }));
+    const n = items.length + groups.length;
+    for (const k of [...keys.keys()]) if (k >= n) { keys.delete(k); queue.set(k, {}); }
   };
-  const ready = typeof document !== "undefined" && document.fonts?.load
-    ? Promise.race([Promise.all([document.fonts.load(`600 16px Geist`), document.fonts.load(`600 16px 'Geist Mono'`)]), new Promise((r) => setTimeout(r, 1500))])
-    : Promise.resolve();
-  ready.then(draw, draw);
-  return () => { alive = false; if (url) setTimeout(() => URL.revokeObjectURL(url), 5000); };
+  return { sheet, update, stop: () => { alive = false; queue.clear(); } };
 }
 
 const WASM = () => new URL("../_rt/comb.wasm", document.baseURI);
@@ -338,7 +359,7 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const [level, setLevel] = useState(1);
   const [opened, setOpened] = useState(false);
   const [size, setSize] = useState(() => [globalThis.innerWidth || 384, globalThis.innerHeight || 832]);
-  const m = useRef({ api: null, icons: null, text: "", stopIcons: null, stopText: null, focusSeq: 0, tapSeq: 0, settleSeq: 0, goal: -1, sent: new Map(), items, groups, onOpen, onFocus, onSettle }).current;
+  const m = useRef({ api: null, icons: null, focusSeq: 0, tapSeq: 0, settleSeq: 0, goal: -1, sent: new Map(), items, groups, onOpen, onFocus, onSettle }).current;
   m.items = items; m.groups = groups; m.onOpen = onOpen; m.onFocus = onFocus; m.onSettle = onSettle; m.onBloom = onBloom;
   const dpr = typeof devicePixelRatio === "number" ? Math.min(4, devicePixelRatio) : 2;
   const texMax = useMemo(() => (mode === "gl" ? maxTex() : 2048), [mode]);
@@ -394,21 +415,20 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const iconKey = items.map((it) => `${it.id}|${it.icon || ""}|${it.form || ""}`).join("\n") + `|${iconPlan.tileW}|${pal?.fill || ""}`;
   useEffect(() => {
     if (mode !== "gl" || !ready || !pal) return;
-    if (!items.length) { m.painter?.stop(); m.painter = null; m.icons = null; m.pendingIcons = null; return; }
+    if (!items.length) { m.painter?.stop(); m.painter = null; m.painterKey = ""; m.icons = null; return; }
     const pkey = `${iconPlan.size}|${iconPlan.cols}|${pal.fill || ""}`;
-    if (m.painterKey !== pkey) { m.painter?.stop(); m.painter = iconPainter(iconPlan, pal.fill); m.painterKey = pkey; }
-    const publish = (bmp) => { m.pendingIcons = bmp; const land = () => { if (m.down) { setTimeout(land, 120); return; } m.icons = m.pendingIcons; }; land(); };
-    m.painter.update(items, publish);
+    if (m.painterKey !== pkey) { m.painter?.stop(); m.painter = iconPainter(iconPlan, pal.fill); m.painterKey = pkey; m.icons = m.painter.sheet; }
+    m.painter.update(items);
   }, [iconKey, mode, ready, !!pal]);
-  useEffect(() => () => { m.painter?.stop(); m.painter = null; }, []);
-  const textKey = items.map((it) => `${it.id}|${it.name}|${it.subtitle || ""}`).join("\n") + "\n" + groups.map((g) => g.name).join("|") + `|${textPlan.tileW}`;
+  useEffect(() => () => { m.painter?.stop(); m.painter = null; m.textPainter?.stop(); m.textPainter = null; }, []);
+  const textKey = items.map((it) => `${it.name}|${it.subtitle || ""}`).join("\n") + "\n" + groups.map((g) => g.name).join("|") + `|${textPlan.size}|${textPlan.cols}|${textPlan.tileW}`;
+  const [text, setText] = useState(null);
   useEffect(() => {
     if (mode !== "gl" || !ready) return;
-    m.stopText?.();
-    m.stopText = buildText(items, groups, textPlan, (url) => setText(url));
-    return () => { m.stopText?.(); m.stopText = null; };
+    const tkey = `${textPlan.size}|${textPlan.cols}|${textPlan.tileW}|${textPlan.tileH}`;
+    if (m.textPainterKey !== tkey) { m.textPainter?.stop(); m.textPainter = textPainter(textPlan); m.textPainterKey = tkey; setText(m.textPainter.sheet); }
+    m.textPainter.update(items, groups);
   }, [textKey, mode, ready]);
-  const [text, setText] = useState("");
   const [win, setWin] = useState("");
   const windowOf = (it) => { const w = it?.window; return !w ? "" : typeof w === "string" ? w : (pal?.light ? w.light || w.dark : w.dark) || ""; };
   useEffect(() => { if (!m.bloomed) return; const it = m.items[m.lastFocus]; if (it) setWin(windowOf(it)); }, [items]);

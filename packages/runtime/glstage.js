@@ -73,6 +73,11 @@
  *   under the gate costs one upload, and a camera costs one per new frame. The canvas reports `data-cam="yes"`
  *   once a frame is bound; `camAspect.y` says the same to the shader, which reads a 1×1 grey until then. Rows are
  *   uploaded top-first (no `UNPACK_FLIP_Y`), so a shader that flips `uv.y` for the DOM samples it upright.
+ * - `cam` and `tex2` also take a TILE SHEET `{ w, h, next(), pending() }`: the stage allocates one empty `w × h`
+ *   texture when the sheet's identity changes, then every frame pulls `next()` → `{ x, y, src }` and writes that
+ *   patch with `texSubImage2D` for at most 3 ms (one patch is always taken), so a set of hundreds of tiles fills in
+ *   cell by cell and never stalls a frame. `pending()` keeps an idle stage drawing until the sheet is drained. A
+ *   `tex2` sheet regenerates its mipmaps when it drains and at most every 250 ms while it streams.
  * - Under the gate: DPR 1 and every other frame skipped (a full-screen fbm field at DPR 2 in SwiftShader starved a
  *   fixture stream from 0.7 s to 30 s). Elsewhere DPR is capped at 2. A hidden tab draws nothing.
  * - `points` is the only VARIABLE-LENGTH channel: a flat array of up to 8 vec4s (`[x,y,z,w, x,y,z,w, …]`),
@@ -97,6 +102,9 @@ const DPR_CAP = 2;
 const GATE_DPR = 1;
 const TEX_MAX = 64;
 const POINTS = 8;
+const SHEET_MS = 3;
+const SHEET_MIP_MS = 250;
+const isSheet = (s) => !!s && typeof s.next === "function";
 
 const VS = `#version 300 es
 in vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }`;
@@ -124,8 +132,9 @@ export const hasWebGL2 = () => {
  *                 the texture is (not) bound, so the app can fade the field in through its own `vary` channel
  * @param cam      optional live picture source — a `<video>`, canvas, image or ImageBitmap, or a function
  *                 returning one (read every frame); projected at full resolution as `cam` / `camAspect`
- * @param tex2     optional MATERIAL texture URL (CORS-readable): full resolution, unit 2, mirrored-repeat, so a
- *                 shader can tile a generated material over a picture — `tex2` / `tex2Aspect` (x = w/h, y = bound)
+ * @param tex2     optional MATERIAL texture URL (CORS-readable) or a tile sheet: full resolution, unit 2,
+ *                 mirrored-repeat, so a shader can tile a generated material over a picture — `tex2` / `tex2Aspect`
+ *                 (x = w/h, y = bound)
  * @param tex3     optional PICTURE texture URL (CORS-readable): full resolution, unit 4, clamped, swapped whole —
  *                 `tex3` / `tex3Aspect` (x = w/h, y = bound); null unbinds it
  * @param aux      optional number or function — `env.w`, the app's own flag (a loading state); `env.y` / `env.z` are
@@ -183,8 +192,34 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         if (uCam) gl.uniform1i(uCam, 1);
         let camAspect = 1, camBound = 0, camBoundAt = 0, camLast = null, camTime = -1;
         const sizeOfSrc = (s) => [s.videoWidth || s.naturalWidth || s.width || 0, s.videoHeight || s.naturalHeight || s.height || 0];
-        const uploadCam = (src) => {
+        const sheetAlloc = (unit, t, s, wrap) => {
+          gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, s.w, s.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+          gl.activeTexture(gl.TEXTURE0);
+        };
+        const sheetDrain = (unit, t, s, until) => {
+          let n = 0;
+          gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t);
+          while (!n || performance.now() < until) {
+            const p = s.next();
+            if (!p) break;
+            const [w, h] = sizeOfSrc(p.src);
+            if (w > 0 && h > 0 && p.x + w <= s.w && p.y + h <= s.h) { try { gl.texSubImage2D(gl.TEXTURE_2D, 0, p.x, p.y, gl.RGBA, gl.UNSIGNED_BYTE, p.src); } catch { } }
+            n++;
+          }
+          gl.activeTexture(gl.TEXTURE0);
+          if (n) state.uploaded = true;
+          return n;
+        };
+        const uploadCam = (src, until) => {
           if (!src) return;
+          if (isSheet(src)) {
+            if (src !== camLast) { sheetAlloc(1, camTex, src, gl.CLAMP_TO_EDGE); camLast = src; camAspect = src.w / (src.h || 1); }
+            if (sheetDrain(1, camTex, src, until) && !camBound) { camBound = 1; camBoundAt = performance.now(); canvas.dataset.cam = "yes"; }
+            return;
+          }
           const video = typeof HTMLVideoElement !== "undefined" && src instanceof HTMLVideoElement;
           if (video) { if (src.readyState < 2 || src.currentTime === camTime) return; }
           else if (src === camLast) return;
@@ -205,9 +240,24 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
         if (uTex2) gl.uniform1i(uTex2, 2);
-        let tex2Aspect = 1, tex2Bound = 0, tex2BoundAt = 0;
+        let tex2Aspect = 1, tex2Bound = 0, tex2BoundAt = 0, tex2Sheet = null, tex2MipAt = 0;
+        const drainTex2 = (until) => {
+          const s = tex2Sheet;
+          if (!s || !sheetDrain(2, tex2Tex, s, until)) return;
+          const now = performance.now();
+          if (!s.pending() || now - tex2MipAt > SHEET_MIP_MS) {
+            gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, tex2Tex);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+            gl.activeTexture(gl.TEXTURE0);
+            tex2MipAt = now;
+          }
+          if (!tex2Bound) { tex2BoundAt = now; tex2Bound = 1; canvas.dataset.tex2 = "yes"; }
+        };
         state.loadTex2 = async (url) => {
+          tex2Sheet = null;
           if (!url) { tex2Bound = 0; return; }
+          if (isSheet(url)) { sheetAlloc(2, tex2Tex, url, gl.MIRRORED_REPEAT); tex2Sheet = url; tex2Aspect = url.w / (url.h || 1); tex2MipAt = 0; state.uploaded = true; return; }
           try {
             const img = new Image(); img.crossOrigin = "anonymous"; img.decoding = "async"; img.src = url;
             await img.decode();
@@ -317,7 +367,9 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             const target0 = themeLight();
             const auxNow = typeof state.aux === "function" ? state.aux() : (state.aux || 0);
             const fading = (camBound && now - camBoundAt < 800) || (tex2Bound && now - tex2BoundAt < 800) || auxNow > 0.5;
-            const moving = state.live() || state.uploaded || fading || Math.abs(target0 - state.light) > 0.002 || warm < 3;
+            const camSrc = typeof state.cam === "function" ? state.cam() : state.cam;
+            const streaming = (!!uCam && isSheet(camSrc) && (camSrc !== camLast || camSrc.pending())) || (!!uTex2 && !!tex2Sheet?.pending());
+            const moving = state.live() || state.uploaded || streaming || fading || Math.abs(target0 - state.light) > 0.002 || warm < 3;
             if (!moving) {
               if (now - drawsAt >= 1000) { canvas.dataset.draws = String(draws); draws = 0; drawsAt = now; }
               state.raf = requestAnimationFrame(frame); return;
@@ -343,7 +395,9 @@ export function GlStage({ shader, seed = 0, ink, vary, points, tex, texReady, ca
             if (uPointCount) gl.uniform1f(uPointCount, n);
           }
           if (uTexAspect) gl.uniform2f(uTexAspect, texAspect, 0);
-          if (uCam) { uploadCam(typeof state.cam === "function" ? state.cam() : state.cam); gl.uniform2f(uCamAspect, camAspect, camBound); }
+          const until = performance.now() + SHEET_MS;
+          if (uCam) { uploadCam(typeof state.cam === "function" ? state.cam() : state.cam, until); gl.uniform2f(uCamAspect, camAspect, camBound); }
+          if (uTex2) drainTex2(until);
           if (uTex2Aspect) gl.uniform2f(uTex2Aspect, tex2Aspect, tex2Bound);
           if (uTex3Aspect) gl.uniform2f(uTex3Aspect, tex3Aspect, tex3Bound);
           if (uBuf) { uploadBuf(typeof state.buf === "function" ? state.buf() : state.buf); gl.uniform2f(uBufSize, bufW, bufH); }

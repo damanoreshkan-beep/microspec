@@ -66,8 +66,10 @@
  *   with no picture takes the theme's material (`--ds-fill`). Text is set in the page's font.
  * - Two atlases: icons at the source's own 256 px (512 for a small set), so the form at the centre is never
  *   magnified; names and lines on a separate atlas sized by the screen (`0.9 × pitch × 1.15 × dpr`, 4096² where the
- *   GPU allows) with mipmaps, so the type is crisp at every zoom. The icon atlas uploads progressively (names
- *   first, at most two more uploads), the text atlas once per locale.
+ *   GPU allows) with mipmaps, so the type is crisp at every zoom. Both atlases are TILE SHEETS
+ *   ({@link iconPainter}, {@link textPainter}): no atlas-sized canvas exists, the stage pulls one tile at a time
+ *   inside a 3 ms frame budget, centre first, and a changed cover or name re-sends only its own tile. A cell whose
+ *   form tile has not landed yet keeps its skeleton, so the field scrolls from the first frame while it fills.
  * - `data-comb` on the wrapper: `gl` or `dom`; `data-comb-focus` the item under the lens, `data-comb-group` its
  *   group's id, `data-comb-zoom` the level, `data-comb-open` while a cell is in its large state, `data-comb-ready`
  *   once the machine runs.
@@ -106,30 +108,66 @@ export function atlasPlan(n: any, size?: number, aspect?: number, want?: number)
 /** `#rrggbb` → the packed integer the machine's tables take. */
 export function rgbOf(hex: any): number;
 /**
- * The ICON atlas as a living painter: `update(items, publish)` redraws only the tiles whose id, picture or form
- * changed, keeps decoded pictures, and publishes at most one bitmap in flight — a shelf whose covers land one by one
- * costs one tile each, never a whole atlas.
- * @param plan `{ cols, tileW, size }` from {@link atlasPlan} (square tiles)
+ * The ICON atlas as a tile sheet for the stage: `update(items)` queues only the tiles whose id, picture or form
+ * changed, keeps decoded pictures, and `sheet.next()` paints ONE tile when the stage asks for it — a shelf of
+ * hundreds of songs streams in cell by cell inside the frame budget, a cover that lands costs one tile.
+ * @param plan `{ cols, tileW, tileH, size }` (square tiles)
  * @param fill the theme's material URL for a form without a picture, or ""
- * @returns `{ update(items, publish), stop() }`
+ * @returns `{ sheet, update(items), stop() }`
  */
 export function iconPainter(plan: any, fill?: string): {
+    sheet: {
+        w: any;
+        h: any;
+        pending: () => boolean;
+        next: () => any;
+    };
     update: () => void;
     stop: () => void;
 } | {
-    update: (items: any, publish: any) => Promise<void>;
+    sheet: {
+        w: any;
+        h: any;
+        pending: () => boolean;
+        next(): {
+            x: number;
+            y: number;
+            src: any;
+        };
+    };
+    update: (items: any) => Promise<void>;
     stop: () => void;
 };
 /**
- * The TEXT atlas: every item's name (two lines) and line (three), and every group's caption, white on transparent,
- * in the page's font at the density the screen asks for; published once as a blob URL (the stage mipmaps it).
- * @param items the comb's items
- * @param groups the comb's groups
+ * The TEXT atlas as a tile sheet for the stage: every item's name (two lines) and line (three), and every group's
+ * caption, white on transparent, in the page's font at the density the screen asks for. `update(items, groups)`
+ * queues only the tiles whose words changed; `sheet.next()` sets ONE tile when the stage asks (the stage mipmaps it).
  * @param plan from {@link atlasPlan} with the text aspect
- * @param publish `(url) => void`
- * @returns `() => void` stop
+ * @returns `{ sheet, update(items, groups), stop() }`
  */
-export function buildText(items: any, groups: any, plan: any, publish: any): () => void;
+export function textPainter(plan: any): {
+    sheet: {
+        w: any;
+        h: any;
+        pending: () => boolean;
+        next: () => any;
+    };
+    update: () => void;
+    stop: () => void;
+} | {
+    sheet: {
+        w: any;
+        h: any;
+        pending: () => boolean;
+        next(): {
+            x: number;
+            y: number;
+            src: any;
+        };
+    };
+    update: (items: any, groups: any) => Promise<void>;
+    stop: () => void;
+};
 /**
  * The honeycomb display: the items from the centre outward on the GPU, their accessible twin behind it, the core's
  * CSS lattice where WebGL2 is not.

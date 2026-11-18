@@ -87,15 +87,17 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
   vec2 d = p - cs;
 
   vec4 acc = vec4(0.0);
-  float ready = camAspect.y > 0.5 ? smoothstep(0.0, 0.5, env.y) : 0.0;
+  float cols = max(1.0, points[1].z); float tile = max(1.0, points[1].w); float atlas = max(1.0, points[5].x);
+  vec2 tileO = vec2(mod(float(idx), cols), floor(float(idx) / cols)) * tile;
+  float landed = camAspect.y > 0.5 ? step(0.5, texture(cam, (tileO + 0.5 * tile) / atlas).a) : 0.0;
+  float ready = landed * smoothstep(0.0, 0.5, env.y);
   if (ready < 1.0) {
     float sk = skel(d, R, ring) * (1.0 - ready) * arrive;
     acc.rgb += pal(30) * sk; acc.a += sk;
   }
-  float cols = max(1.0, points[1].z); float tile = max(1.0, points[1].w); float atlas = max(1.0, points[5].x);
   vec2 fu = d / (2.0 * R) + 0.5;
   if (fu.x > -0.05 && fu.x < 1.05 && fu.y > -0.05 && fu.y < 1.05) {
-    vec2 uv = (vec2(mod(float(idx), cols), floor(float(idx) / cols)) * tile + (1.0 - ICON) * 0.5 * tile + fu * ICON * tile) / atlas;
+    vec2 uv = (tileO + (1.0 - ICON) * 0.5 * tile + fu * ICON * tile) / atlas;
     vec4 art = texture(cam, uv);
     float a = art.a * ready;
     float win = (idx == focus && tex3Aspect.y > 0.5) ? smoothstep(0.08, 0.92, open) : 0.0;

@@ -119,6 +119,7 @@ It works on `feed` and `gallery` too (below).
   "title": "position",   // required: heading
   "subtitle": "company", // OPTIONAL field
   "body": "desc",        // OPTIONAL field (clamped 2 lines)
+  "bodyFull": true,      // OPTIONAL: the whole body text, as the detail shows it, instead of the clamp
   "meta": {"field":"ts","format":"ago"}, // OPTIONAL: a field name, OR {field,format:"ago"} → locale-aware relative date
 
   "more": "more",        // OPTIONAL i18n key for the "Details ↗" link (bottom-right)

@@ -1152,6 +1152,10 @@
                 "minLength": 1,
                 "description": "feed layout — item field for the clamped body text."
               },
+              "bodyFull": {
+                "type": "boolean",
+                "description": "feed layout — OPTIONAL: true shows the whole body text on the card, the same text the detail shows, instead of the 2-line clamp."
+              },
               "badges": {
                 "type": "array",
                 "description": "Badges shown on the card. Each badge is either field-driven (field) or condition-driven (when+label).",

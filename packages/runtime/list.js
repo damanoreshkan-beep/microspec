@@ -170,7 +170,7 @@ function Card({ item: it, card, hide }) {
     ${mark ? html`<div class="flex items-center gap-3 @max-[240px]:gap-2">${mark}<div class="flex-1 min-w-0">${head}</div></div>` : head}
     ${sub ? html`<div class="text-sm text-base-content/70 @max-[240px]:hidden">${fieldNode(it, card.subtitle, loc)}</div>` : null}
     <${Badges} item=${it} badges=${card.badges} hide=${hide} />
-    ${bodyTxt ? html`<p class="text-sm text-base-content/70 line-clamp-2 @max-[240px]:hidden">${fieldNode(it, card.body, loc)}</p>` : null}
+    ${bodyTxt ? html`<p class=${`text-sm text-base-content/70 ${card.bodyFull ? "" : "line-clamp-2 "}@max-[240px]:hidden`}>${fieldNode(it, card.body, loc)}</p>` : null}
     <div class="flex items-center justify-between gap-2 mt-0.5 @max-[240px]:hidden">
       ${(() => { const mt = metaText(card.meta, it, t, loc); return mt ? html`<span class="text-xs text-base-content/80 flex items-center gap-1">${isTimeFmt(card.meta?.format) ? Icon("lucide:clock", "text-[0.9em] opacity-70") : null}${mt}</span>` : html`<span></span>`; })()}
       ${card.more ? html`<span class="text-xs text-primary font-medium flex items-center gap-0.5 ml-auto">${T(t, card.more)} ${Icon(A.spec.detail ? "lucide:chevron-right" : "lucide:arrow-up-right")}</span>` : null}
@@ -335,7 +335,7 @@ export function ListView({ tab }) {
   const shown = items.slice(0, vis);
   const cards = shown.map((it) => html`<${Card} item=${it} card=${tab.card} key=${A.favKey(it) || it[tab.card.title]} />`);
   const tail = html`<${InfiniteTail} count=${vis} total=${items.length} grow=${grow} paginate=${paginate} key="tail" />`;
-  if (tab.sections) return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} tab=${tab} key=${sec.label} />` : null; })]);
+  if (tab.sections) return Frag([banner, ...tab.sections.map((sec) => { const l = items.filter((it) => test(it, fav, sec.filter)); return l.length ? html`<${Section} sec=${sec} items=${l} card=${tab.card} tab=${tab} key=${sec.label} />` : null; }), paginate ? html`<${InfiniteTail} count=${items.length} total=${items.length} grow=${() => A.loadMore()} paginate=${paginate} key="tail" />` : null]);
   if (tab.card.layout === "grid") return Frag([banner, html`<div class="@container pt-2" key="grid"><div class="grid grid-cols-3 @min-[300px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   if (tab.card.layout === "gallery") return Frag([banner, html`<div class="@container pt-2" key="gallery"><div class="grid grid-cols-3 @max-[220px]:grid-cols-2 @min-[600px]:grid-cols-4 gap-x-3 gap-y-5">${cards}</div></div>`, tail]);
   if (tab.card.layout === "table") return Frag([banner, html`<${Table} items=${items} tab=${tab} key="tbl" />`, html`<${InfiniteTail} count=${items.length} total=${items.length} grow=${() => paginate && A.loadMore()} paginate=${paginate} key="tail" />`]);

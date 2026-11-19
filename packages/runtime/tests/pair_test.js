@@ -15,6 +15,17 @@ Deno.test("a pair link never hands the session over by itself", () => {
   assert(/id="pair-approve"[^\n]*onClick=\$\{approve\}/.test(screen), "only the button calls approve()");
 });
 
+Deno.test("a paired session keeps its provider, so the next boot asks the right /me", async () => {
+  const { adoptSession } = await import("../auth.js");
+  for (const provider of ["telegram", "google", "github"]) {
+    const s = adoptSession({ sid: "sid-" + provider, provider, user: { login: "u", name: "U" } });
+    assertEquals(s.provider, provider);
+    assertEquals(localStorage.getItem("ms:gh:prov"), provider);
+  }
+  assertEquals(adoptSession({ sid: "x", provider: "other" }).provider, "github");
+  for (const k of ["ms:gh:sid", "ms:gh:user", "ms:gh:prov"]) localStorage.removeItem(k);
+});
+
 Deno.test("the question is said in both languages", () => {
   for (const k of ["pairConfirm", "pairApprove"]) {
     for (const loc of ["uk", "en"]) assert(sys(k, loc) && sys(k, loc) !== k, `${k}/${loc} is missing`);

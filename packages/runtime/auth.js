@@ -317,14 +317,15 @@ export async function jobs(owner, repo, id) {
 
 /**
  * Make a session minted elsewhere (the pairing flow) this page's own: persist it and set the atom.
- * @param s `{ sid, provider?, user? }` — the opaque sid, "github" | "google", and the trimmed profile
+ * @param s `{ sid, provider?, user? }` — the opaque sid, "github" | "google" | "telegram", and the trimmed profile
  * @returns the adopted session, or null when the sid is missing
  */
 export function adoptSession({ sid, provider = "github", user }) {
   if (typeof sid !== "string" || !sid) return null;
   const u = user && user.login ? { login: user.login, name: user.name || user.login, avatar: user.avatar || "", html_url: user.html_url || "" } : null;
-  lsSet(SID_KEY, sid); lsSet(PROV_KEY, provider === "google" ? "google" : "github"); if (u) lsSetJSON(USER_KEY, u);
-  const sess = { sid, user: u, provider: provider === "google" ? "google" : "github" };
+  const prov = provider === "google" || provider === "telegram" ? provider : "github";
+  lsSet(SID_KEY, sid); lsSet(PROV_KEY, prov); if (u) lsSetJSON(USER_KEY, u);
+  const sess = { sid, user: u, provider: prov };
   session.set(sess); return sess;
 }
 

@@ -124,7 +124,7 @@ export function runs(owner: any, repo: any, per: any): Promise<any>;
 export function jobs(owner: any, repo: any, id: any): Promise<any>;
 /**
  * Make a session minted elsewhere (the pairing flow) this page's own: persist it and set the atom.
- * @param s `{ sid, provider?, user? }` — the opaque sid, "github" | "google", and the trimmed profile
+ * @param s `{ sid, provider?, user? }` — the opaque sid, "github" | "google" | "telegram", and the trimmed profile
  * @returns the adopted session, or null when the sid is missing
  */
 export function adoptSession({ sid, provider, user }: {

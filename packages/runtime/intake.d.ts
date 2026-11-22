@@ -61,10 +61,7 @@ export function toDataURL(url: any, maxSide?: number): Promise<any>;
  * @param blobOrUrl a Blob, or a URL `fetch` can read
  * @returns `{ w, h }`, or null when the bytes do not decode
  */
-export function sizeOf(blobOrUrl: any): Promise<{
-    w: any;
-    h: any;
-}>;
+export function sizeOf(blobOrUrl: any): Promise<any>;
 /**
  * The chooser: upload · camera · the last picture the farm made, on a frost island over the stage (a solid
  * panel would punch a hole in it). `compact` is the same three sources as glyphs in one row, for a slot that

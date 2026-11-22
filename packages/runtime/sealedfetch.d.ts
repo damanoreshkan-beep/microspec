@@ -48,7 +48,8 @@
  *
  * ## How it fits
  * Imports `VPS_PROXY` and `SEALED_KEY` from feed.js, `seal` / `openResponse` / `b64u` / `unb64u` from
- * sealed.js and `authWall` from authwall.js. index.js imports `installSealedFetch` and calls it once at
+ * sealed.js, `authWall` from authwall.js, Effect from fx.js, Remeda, and its data from sealedfetch.config.js and
+ * auth.config.js. index.js imports `installSealedFetch` and calls it once at
  * bootstrap, so every farm app reaches the tunnel without importing this file; one app imports it by name —
  * reel, for `sealedFrameUrl` and `sealedClipUrl`. Every generated sw.js precaches it.
  *

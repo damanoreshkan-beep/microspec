@@ -10,6 +10,9 @@ import { trTick } from "./translate.js";
 import { metaTick } from "./enrich.js";
 import { collection } from "./db.js";
 import { A, VIEWS, Icon, field, fieldNode, safeHref, watchOf } from "./render-ctx.js";
+import { Effect } from "./fx.js";
+import { fromEntries } from "./remeda.js";
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
 
 function WatchSlot({ source, params, loc }) {
   const [Comp, setComp] = useState(null);
@@ -40,7 +43,9 @@ export function PermissionsScreen() {
   const loc = useStore(A.S.locale), L = permLabels(loc);
   const keys = (A.spec.profile?.permissions || []).filter((k) => PERMISSIONS[k]);
   const [states, setStates] = useState({});
-  const refresh = async () => { const s = {}; for (const k of keys) s[k] = await permState(k); setStates(s); };
+  const refresh = async () => await Effect.runPromise(Effect.forEach(keys, (k) => tried(() => permState(k)).pipe(Effect.map((st) => [k, st]))).pipe(
+    Effect.flatMap((pairs) => Effect.sync(() => { setStates(fromEntries(pairs)); })),
+  ));
   useEffect(() => {
     refresh();
     const subs = [];
@@ -155,30 +160,29 @@ export function ApkScreen() {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState(false);
 
-  const resolveIcons = async () => {
-    const real = await fetchAppIcons();
-    if (real) return real;
-    const tile = await letterTilePng(name, accent());
-    return { icon: tile, ...(await adaptiveFromTile(tile, accent())) };
-  };
+  const lettered = () => tried(() => letterTilePng(name, accent())).pipe(
+    Effect.flatMap((tile) => tried(() => adaptiveFromTile(tile, accent())).pipe(Effect.map((adaptive) => ({ icon: tile, ...adaptive })))),
+  );
+  const resolveIcons = () => tried(() => fetchAppIcons()).pipe(Effect.flatMap((real) => real ? Effect.succeed(real) : lettered()));
   useEffect(() => {
     let live = true;
-    (async () => { try { const i = await resolveIcons(); if (live) setIcons(i); } catch { } })();
+    Effect.runPromise(resolveIcons().pipe(Effect.tap((i) => Effect.sync(() => { if (live) setIcons(i); })), Effect.catchCause(() => Effect.void)));
     return () => { live = false; };
   }, []);
 
+  const built = (i) => tried(async () => {
+    const power = apkPower(A.spec);
+    if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg, power }); downloadBlob(blob, apkFilename(name)); }
+    setDone(true); A.toast(sys("apkDone", loc));
+  });
   const generate = async () => {
     if (busy) return;
     setBusy(true); setErr(false); setDone(false);
-    try {
-      let i = icons;
-      if (!i) { try { i = await resolveIcons(); } catch { i = {}; } }
-      const power = apkPower(A.spec);
-      if (!gate) { const blob = await buildApk({ url, name, iconB64: i.icon, fgB64: i.fg, bg: i.bg, power }); downloadBlob(blob, apkFilename(name)); }
-      setDone(true); A.toast(sys("apkDone", loc));
-    } catch (e) {
-      setErr(String(e?.message || e) || true);
-    } finally { setBusy(false); }
+    return await Effect.runPromise((icons ? Effect.succeed(icons) : resolveIcons().pipe(Effect.catchCause(() => Effect.succeed({})))).pipe(
+      Effect.flatMap(built),
+      Effect.catch((e) => Effect.sync(() => { setErr(String(e?.message || e) || true); })),
+      Effect.ensuring(Effect.sync(() => { setBusy(false); })),
+    ));
   };
 
   return html`<div role="dialog" aria-modal="true" class="fixed inset-0 z-40 bg-base-200 overflow-y-auto" style="padding-bottom:env(safe-area-inset-bottom)">

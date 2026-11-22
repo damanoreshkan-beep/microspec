@@ -60,7 +60,7 @@
  * @param prompt the prompt that produced it (stored truncated to 400 chars)
  * @returns resolves once stored or skipped
  */
-export function writeLastGen(src: any, prompt: any): Promise<void>;
+export function writeLastGen(src: any, prompt: any): Promise<any>;
 /**
  * Read the newest handoff written by `writeLastGen`.
  * @returns `{ url, prompt, ts }` or null when nothing valid is stored

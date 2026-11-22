@@ -76,6 +76,7 @@
  */
 import { atom, map, computed } from "nanostores";
 import { persistentAtom } from "@nanostores/persistent";
+import { Effect } from "./fx.js";
 import { dictFor, firstLocale } from "./i18n.js";
 
 const JSON_CODEC = { encode: JSON.stringify, decode: (s) => { try { return JSON.parse(s); } catch { return {}; } } };
@@ -138,27 +139,26 @@ export function createApp(spec, dataLoad) {
   S.t = computed(S.locale, (l) => dictFor(spec.i18n, l));
   S.filters.listen((v) => { try { localStorage.setItem(FKEY, JSON.stringify(v)); } catch { } });
 
+  const page = (more, land, fail) => Effect.tryPromise({ try: async () => dataLoad({ ...S.filters.get(), q: S.query.get().trim(), ...more }), catch: (e) => e }).pipe(
+    Effect.flatMap(({ items, meta, next }) => Effect.sync(() => land(items, meta, next))),
+    Effect.catchCause(() => Effect.sync(fail)),
+  );
+
   async function load() {
     S.data.set({ ...S.data.get(), loading: true, error: false, moreError: false });
-    try {
-      const { items, meta, next } = await dataLoad({ ...S.filters.get(), q: S.query.get().trim() });
-      S.data.set({ items: items || [], meta: meta || {}, loading: false, error: false, next: next ?? null, loadingMore: false, moreError: false });
-    } catch {
-      S.data.set({ items: [], meta: {}, loading: false, error: true, next: null, loadingMore: false, moreError: false });
-    }
+    return await Effect.runPromise(page({},
+      (items, meta, next) => { S.data.set({ items: items || [], meta: meta || {}, loading: false, error: false, next: next ?? null, loadingMore: false, moreError: false }); },
+      () => { S.data.set({ items: [], meta: {}, loading: false, error: true, next: null, loadingMore: false, moreError: false }); }));
   }
 
   async function loadMore() {
     const d = S.data.get();
     if (d.next == null || d.loading || d.loadingMore) return;
     S.data.set({ ...d, loadingMore: true, moreError: false });
-    try {
-      const { items, meta, next } = await dataLoad({ ...S.filters.get(), q: S.query.get().trim(), cursor: d.next });
+    return await Effect.runPromise(page({ cursor: d.next }, (items, meta, next) => {
       const cur = S.data.get();
       S.data.set({ ...cur, items: [...cur.items, ...(items || [])], meta: { ...cur.meta, ...(meta || {}) }, next: next ?? null, loadingMore: false });
-    } catch {
-      S.data.set({ ...S.data.get(), loadingMore: false, moreError: true });
-    }
+    }, () => { S.data.set({ ...S.data.get(), loadingMore: false, moreError: true }); }));
   }
 
   let toastTimer;

@@ -33,9 +33,10 @@
  * @module
  */
 import { shell } from "./shell.js";
-
+import { Effect } from "./fx.js";
+import { find, map, pipe } from "./remeda.js";
+import { SHARE } from "./share.config.js";
 const KEYS = ["sh_title", "sh_text", "sh_url", "sh_files"];
-const SHARE_CACHE = "ms-share";   
 
 /**
  * Collect the files a file share parked in the share cache: `${scope}share-target/<i>` for i < n.
@@ -45,20 +46,20 @@ const SHARE_CACHE = "ms-share";
  * @returns File[] in share order; entries that are missing are skipped, the rest are deleted after reading
  */
 export async function takeFiles(cacheStorage, scope, n) {
-  const out = [];
-  try {
-    const cache = await cacheStorage.open(SHARE_CACHE);
-    for (let i = 0; i < Math.min(Number(n) || 0, 20); i++) {
-      const key = `${scope}share-target/${i}`;
-      const res = await cache.match(key);
-      if (!res) continue;
-      const name = decodeURIComponent(res.headers.get("x-ms-name") || `shared-${i}`);
-      out.push(new File([await res.blob()], name, { type: res.headers.get("content-type") || "" }));
-      await cache.delete(key);
-    }
-  } catch {  }
-  return out;
+  return await Effect.runPromise(tried(() => cacheStorage.open(SHARE.cache)).pipe(
+    Effect.flatMap((cache) =>
+      parked(cache, scope, Math.min(Number(n) || 0, SHARE.max), 0, [])),
+    Effect.catchCause(() => Effect.succeed([])),
+  ));
 }
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const unpark = (res, i) => tried(async () => { const name = decodeURIComponent(res.headers.get(SHARE.name.header) || `${SHARE.name.fallback}${i}`); return new File([await res.blob()], name, { type: res.headers.get(SHARE.type) || "" }); });
+const parked = (cache, scope, count, i, out) => i >= count ? Effect.succeed(out) : tried(() => cache.match(`${scope}${SHARE.slot}${i}`)).pipe(
+  Effect.flatMap((res) => !res ? parked(cache, scope, count, i + 1, out) : unpark(res, i).pipe(
+    Effect.flatMap((file) => tried(() => cache.delete(`${scope}${SHARE.slot}${i}`)).pipe(Effect.as([...out, file]), Effect.flatMap((kept) => parked(cache, scope, count, i + 1, kept)), Effect.catch(() => Effect.succeed([...out, file])))),
+  )),
+  Effect.catch(() => Effect.succeed(out)),
+);
 const LINK = /https?:\/\/[^\s<>"']+/i;
 let held = null;
 const takers = [];
@@ -69,11 +70,8 @@ const takers = [];
  * @returns the address, trailing punctuation dropped, or `""`
  */
 export function firstLink(s) {
-  for (const f of [s?.url, s?.text, s?.title]) {
-    const m = typeof f === "string" && f.match(LINK);
-    if (m) return m[0].replace(/[.,;:!?)\]'"]+$/, "");
-  }
-  return "";
+  const m = pipe([s?.url, s?.text, s?.title], map((f) => typeof f === "string" && f.match(LINK)), find(Boolean));
+  return m ? m[0].replace(/[.,;:!?)\]'"]+$/, "") : "";
 }
 
 function deliver(s) {

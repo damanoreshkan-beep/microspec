@@ -48,8 +48,8 @@
  * ```
  *
  * ## How it fits
- * Imports `atom` from `nanostores`, `viaProxy`, `isJsonArray`, `pool` from `feed.js` — the same proxy and
- * concurrency pool every CORS-blocked source uses — and `askAI` from `ai-core.js` for the edge's `english`
+ * Imports `atom` from `nanostores`, `viaProxy` and `isJsonArray` from `feed.js` — the same proxy every
+ * CORS-blocked source uses — Effect from `fx.js`, Remeda, its data from `translate.config.js`, and `askAI` from `ai-core.js` for the edge's `english`
  * mode behind gtx. Three runtime modules build on it: `render.js` (the spec's `translate: [...]` fields),
  * `localize.js` (translate → polish under one `pending` flag) and `ai-text.js` (`CONTENT_LANG`,
  * `rememberEnglish`). 4 farm apps import it directly — tarot (`tr`/`warm`/`trTick` for card meanings), imagine,
@@ -64,7 +64,7 @@
  *   original text; a failed string is left uncached so a later `warm()` retries it. Fail-CLOSED for SENDING
  *   (`toEnglish`): a prompt that could not be made English throws rather than reaching a Space (2026-09-03).
  * - `warm()` de-duplicates in-flight strings across concurrent calls (`pending`) and runs 6 at a time through
- *   `pool`; it bumps `trTick` once per call, only when something new landed.
+ *   `Effect.forEach`; it bumps `trTick` once per call, only when something new landed.
  * - The cache lives in `localStorage` under `ms:tr:<target>` (mirrored in memory); private mode or quota
  *   failures degrade to the in-memory map for the session.
  * - `toEnglish` skips the wire for Latin-script text, auto-detects the source (`sl=auto`) otherwise, falls back
@@ -75,8 +75,11 @@
  * @module
  */
 import { atom } from "nanostores";
-import { viaProxy, isJsonArray, pool } from "./feed.js";
+import { viaProxy, isJsonArray } from "./feed.js";
 import { askAI } from "./ai-core.js";
+import { Effect } from "./fx.js";
+import { filter, join, map, pipe, unique } from "./remeda.js";
+import { TRANSLATE as T } from "./translate.config.js";
 
 /** The language the source APIs speak ("en"); a target equal to this is a passthrough. */
 export const CONTENT_LANG = "en";
@@ -122,11 +125,13 @@ export function isTranslated(text, target) {
   return text in cacheFor(target);
 }
 
-async function translateOne(text, target) {
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${CONTENT_LANG}&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
-  const data = JSON.parse(await viaProxy(url, isJsonArray, 8000));
-  return (data[0] || []).map((seg) => seg[0]).join("").trim() || text;
-}
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const gtx = (sl, tl, text) => tried(async () => {
+  const url = T.gtx.replace(/\{(sl|tl|q)\}/g, (_, k) => k === "sl" ? sl : k === "tl" ? tl : encodeURIComponent(text));
+  const data = JSON.parse(await viaProxy(url, isJsonArray, T.timeout));
+  return pipe(data[0] || [], map((seg) => seg[0]), join("")).trim();
+});
+const translateOne = (text, target) => gtx(CONTENT_LANG, target, text).pipe(Effect.map((out) => out || text));
 
 const NON_LATIN = /[^\p{Script=Latin}\P{L}]/u;
 /** True when the text carries no letter outside the Latin script — what an image Space can read as-is. */
@@ -140,21 +145,19 @@ export const isLatin = (text) => !NON_LATIN.test(String(text || ""));
  */
 export async function toEnglish(text) {
   if (typeof text !== "string" || !text.trim() || isLatin(text)) return text;
-  const cache = cacheFor("_en");
+  const cache = cacheFor(E.bucket);
   if (text in cache) return cache[text];
-  let out = "";
-  try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${CONTENT_LANG}&dt=t&q=${encodeURIComponent(text)}`;
-    const data = JSON.parse(await viaProxy(url, isJsonArray, 8000));
-    out = (data[0] || []).map((seg) => seg[0]).join("").trim();
-  } catch { }
-  if (!out || !isLatin(out)) {
-    try { out = (await askAI(text, CONTENT_LANG, "english")).text; } catch { out = ""; }
-  }
-  if (!out || !isLatin(out)) { const e = new Error("no English for the prompt"); e.code = "eTranslate"; throw e; }
-  cache[text] = out; persist("_en", cache);
-  return out;
+  const english = (out) => !!out && isLatin(out);
+  return await Effect.runPromise(gtx(E.from, CONTENT_LANG, text).pipe(
+    Effect.catch(() => Effect.succeed("")),
+    Effect.flatMap((out) => english(out) ? Effect.succeed(out)
+      : tried(async () => (await askAI(text, CONTENT_LANG, E.mode)).text).pipe(Effect.catch(() => Effect.succeed("")))),
+    Effect.flatMap((out) => english(out)
+      ? Effect.sync(() => { cache[text] = out; persist(E.bucket, cache); return out; })
+      : Effect.fail(Object.assign(new Error(E.error), { code: E.code }))),
+  ));
 }
+const E = T.english;
 /**
  * Seed the English bucket with a pair the AI wrote itself: `toEnglish(local)` then answers `en` at once.
  * @param local the prompt as shown to the reader, in their language
@@ -174,16 +177,18 @@ export function rememberEnglish(local, en) {
 export async function warm(texts, target) {
   if (!target || target === CONTENT_LANG) return;
   const cache = cacheFor(target);
-  const todo = [...new Set(
+  const todo = pipe(
     (texts || []).filter((s) => typeof s === "string" && s.trim() && !(s in cache) && !pending.has(target + " " + s)),
-  )];
+    unique(),
+  );
   if (!todo.length) return;
   todo.forEach((s) => pending.add(target + " " + s));
-  let changed = false;
-  await pool(todo, 6, async (src) => {
-    try { cache[src] = await translateOne(src, target); changed = true; }
-    catch { }
-    finally { pending.delete(target + " " + src); }
-  });
-  if (changed) { persist(target, cache); trTick.set(trTick.get() + 1); }
+  return await Effect.runPromise(Effect.forEach(todo, (src) => translateOne(src, target).pipe(
+    Effect.tap((out) => Effect.sync(() => { cache[src] = out; })),
+    Effect.as(true),
+    Effect.catchCause(() => Effect.succeed(false)),
+    Effect.ensuring(Effect.sync(() => { pending.delete(target + " " + src); })),
+  ), { concurrency: T.concurrency }).pipe(
+    Effect.flatMap((got) => got.some(Boolean) ? Effect.sync(() => { persist(target, cache); trTick.set(trTick.get() + 1); }) : Effect.void),
+  ));
 }

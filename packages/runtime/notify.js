@@ -61,6 +61,8 @@
  */
 import { shell } from "./shell.js";
 import { permState, permRequest } from "./permissions.js";
+import { Effect } from "./fx.js";
+import { NOTIFY as N } from "./notify.config.js";
 
 const ASKED = "ms:notify:asked";
 
@@ -84,12 +86,13 @@ export async function notifyAsk() {
  */
 export async function notify({ id = "ms-note", title, body = "", tag = id, icon = "./icons/icon-192.png", url = "./" } = {}) {
   if (!title) return false;
-  try {
-    if (shell.present && shell.has("notify.show")) { await shell.call("notify.show", { id, title, body }); return true; }
-    if (typeof Notification === "undefined" || Notification.permission !== "granted") return false;
-    const reg = await navigator.serviceWorker?.getRegistration?.();
-    if (reg?.showNotification) { await reg.showNotification(title, { body, tag, icon, badge: icon, data: { url }, renotify: true }); return true; }
-    new Notification(title, { body, tag, icon });
-    return true;
-  } catch { return false; }
+  const viaShell = tried(() => shell.call(N.capability, { id, title, body })).pipe(Effect.as(true));
+  const viaPage = Effect.sync(() => { new Notification(title, { body, tag, icon }); return true; });
+  const viaWorker = tried(() => navigator.serviceWorker?.getRegistration?.()).pipe(Effect.flatMap((reg) => reg?.showNotification
+    ? tried(() => reg.showNotification(title, { body, tag, icon, badge: icon, data: { url }, renotify: N.renotify })).pipe(Effect.as(true))
+    : viaPage));
+  return await Effect.runPromise(Effect.suspend(() => shell.present && shell.has(N.capability) ? viaShell
+    : typeof Notification === "undefined" || Notification.permission !== N.granted ? Effect.succeed(false)
+    : viaWorker).pipe(Effect.catchCause(() => Effect.succeed(false))));
 }
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });

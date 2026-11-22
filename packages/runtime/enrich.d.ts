@@ -73,6 +73,6 @@ export function enrich(url: any): any;
  * @param urls outbound URLs to warm
  * @returns resolves when the batch is done
  */
-export function warmMeta(urls: any): Promise<void>;
+export function warmMeta(urls: any): Promise<any>;
 /** Counter atom bumped once per `warmMeta` batch that added previews, so cards subscribed to it re-render. */
 export const metaTick: any;

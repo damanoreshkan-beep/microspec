@@ -169,16 +169,7 @@ export function googleClientId(): any;
 /** Exchange a GIS credential (the ID token JWT) for a farm session. Gate → the mock Google session. */
 export function loginGoogle(credential: any, { adopt }?: {
     adopt?: boolean;
-}): Promise<{
-    sid: any;
-    user: {
-        login: any;
-        name: any;
-        avatar: any;
-        html_url: string;
-    };
-    provider: string;
-}>;
+}): Promise<any>;
 /**
  * Sign in with Telegram — inside a Mini App the viewer is already authenticated, so the launch `initData`
  * (signed by the bot) becomes a farm session with no popup and no second login. Reads `WebApp.initData` when
@@ -186,16 +177,7 @@ export function loginGoogle(credential: any, { adopt }?: {
  */
 export function loginTelegram(initData: any, { adopt }?: {
     adopt?: boolean;
-}): Promise<{
-    sid: any;
-    user: {
-        login: any;
-        name: any;
-        avatar: any;
-        html_url: string;
-    };
-    provider: string;
-}>;
+}): Promise<any>;
 /**
  * Web "Log in with Telegram" (outside a Mini App). Opens Telegram's OpenID Connect consent in a popup (the
  * edge runs the code flow at /feed/tg/oidc/*) and resolves with the same telegram session the Mini App path

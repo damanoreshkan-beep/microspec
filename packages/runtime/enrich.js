@@ -62,7 +62,10 @@
  * @module
  */
 import { atom } from "nanostores";
-import { viaProxy, pool } from "./feed.js";
+import { viaProxy } from "./feed.js";
+import { Effect } from "./fx.js";
+import { filter, pipe, unique } from "./remeda.js";
+import { ENRICH } from "./enrich.config.js";
 
 /** Counter atom bumped once per `warmMeta` batch that added previews, so cards subscribed to it re-render. */
 export const metaTick = atom(0);
@@ -87,15 +90,15 @@ function hfReadmeDesc(md) {
   return out.join(" ").replace(/\s+/g, " ").trim().slice(0, 340);
 }
 
+const HF = ENRICH.huggingface;
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const described = (description, empty) => description ? Effect.succeed({ description }) : Effect.fail(new Error(empty));
 const RESOLVERS = {
-  "huggingface.co": async (url) => {
-    const m = url.match(/^https?:\/\/huggingface\.co\/((?:spaces|datasets)\/[^/?#]+\/[^/?#]+|[^/?#]+\/[^/?#]+)/);
-    if (!m) return null;
-    const md = await viaProxy(`https://huggingface.co/${m[1]}/raw/main/README.md`, (x) => typeof x === "string" && x.length > 0, 12000);
-    const description = hfReadmeDesc(md);
-    if (!description) throw new Error("no card");
-    return { description };
-  },
+  [HF.host]: (url) => Effect.suspend(() => {
+    const m = url.match(new RegExp(HF.repo));
+    return !m ? Effect.succeed(null) : tried(() => viaProxy(HF.readme.replace("{repo}", () => m[1]), (x) => typeof x === "string" && x.length > 0, HF.timeout)).pipe(
+      Effect.flatMap((md) => described(hfReadmeDesc(md), HF.empty)));
+  }),
 };
 
 const mem = new Map();
@@ -123,22 +126,21 @@ export function enrich(url) {
   return cache().get(url) || null;
 }
 
-async function fetchMeta(url) {
-  let host = "";
-  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { }
-  const resolver = RESOLVERS[host];
-  if (resolver) { const r = await resolver(url); if (r) return r; }
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 10000);
-  try {
-    const r = await fetch("https://r.jina.ai/" + url, { signal: ctrl.signal, headers: { Accept: "application/json", "X-Timeout": "8" } });
-    if (!r.ok) throw new Error("status " + r.status);
-    const d = (await r.json())?.data || {};
-    const description = String(d.description || "").replace(/\s+/g, " ").trim();
-    if (!description) throw new Error("no description");
-    return { description };
-  } finally { clearTimeout(t); }
-}
+const hostOf = (url) => { try { return new URL(url).hostname.replace(new RegExp(ENRICH.www), ""); } catch { return ""; } };
+const abortAfter = (ms) => Effect.acquireRelease(
+  Effect.sync(() => { const ctrl = new AbortController(); return { ctrl, t: setTimeout(() => ctrl.abort(), ms) }; }),
+  ({ t }) => Effect.sync(() => clearTimeout(t)),
+);
+const resolved = (url) => Effect.suspend(() => RESOLVERS[hostOf(url)]?.(url) ?? Effect.succeed(null));
+const READER = ENRICH.reader;
+const reading = (url, ctrl) => tried(async () => {
+  const r = await fetch(READER.href + url, { signal: ctrl.signal, headers: READER.headers });
+  if (!r.ok) throw new Error(READER.refused + r.status);
+  const d = (await r.json())?.data || {};
+  return String(d.description || "").replace(/\s+/g, " ").trim();
+}).pipe(Effect.flatMap((description) => described(description, READER.empty)));
+const read = (url) => Effect.scoped(abortAfter(READER.timeout).pipe(Effect.flatMap(({ ctrl }) => reading(url, ctrl))));
+const fetchMeta = (url) => resolved(url).pipe(Effect.flatMap((r) => r ? Effect.succeed(r) : read(url)));
 
 /**
  * Fetches a description for every not-yet-cached URL (bounded concurrency), persists the cache and bumps
@@ -148,14 +150,15 @@ async function fetchMeta(url) {
  */
 export async function warmMeta(urls) {
   const c = cache();
-  const todo = [...new Set((urls || []).filter((u) => typeof u === "string" && u && !c.has(u) && !pending.has(u)))];
+  const todo = pipe(urls || [], filter((u) => typeof u === "string" && u && !c.has(u) && !pending.has(u)), unique());
   if (!todo.length) return;
   todo.forEach((u) => pending.add(u));
-  let changed = false;
-  await pool(todo, 5, async (u) => {
-    try { c.set(u, await fetchMeta(u)); changed = true; }
-    catch { }
-    finally { pending.delete(u); }
-  });
-  if (changed) { persist(); metaTick.set(metaTick.get() + 1); }
+  return await Effect.runPromise(Effect.forEach(todo, (u) => fetchMeta(u).pipe(
+    Effect.tap((meta) => Effect.sync(() => { c.set(u, meta); })),
+    Effect.as(true),
+    Effect.catchCause(() => Effect.succeed(false)),
+    Effect.ensuring(Effect.sync(() => { pending.delete(u); })),
+  ), { concurrency: ENRICH.concurrency }).pipe(
+    Effect.flatMap((got) => got.some(Boolean) ? Effect.sync(() => { persist(); metaTick.set(metaTick.get() + 1); }) : Effect.void),
+  ));
 }

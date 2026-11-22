@@ -112,21 +112,14 @@ export function letterTilePng(text: any, accent: any, size?: number): Promise<an
  * Load THIS app's built icon set (legacy tile, adaptive foreground, sampled background colour).
  * @returns `{ icon, fg, bg }` as base64 / "#rrggbb", or null when the build's icons do not exist
  */
-export function fetchAppIcons(): Promise<{
-    icon: any;
-    fg: any;
-    bg: string;
-}>;
+export function fetchAppIcons(): Promise<any>;
 /**
  * Derive an adaptive icon (foreground layer + background colour) from a full-bleed tile.
  * @param pngB64 the tile as base64 PNG
  * @param fallbackBg background used when the tile's corner is not opaque (default white)
  * @returns `{ fg, bg }` — base64 PNG of the 432px foreground layer and the "#rrggbb" background
  */
-export function adaptiveFromTile(pngB64: any, fallbackBg?: string): Promise<{
-    fg: any;
-    bg: string;
-}>;
+export function adaptiveFromTile(pngB64: any, fallbackBg?: string): Promise<any>;
 /**
  * Fetch a site's best icon through the edge and rasterise it to a square PNG.
  * @param url the site URL
@@ -171,7 +164,7 @@ export function downloadBlob(blob: any, filename: any): void;
  * The shell is tried FIRST for that reason: where a bridge exists it is the only thing that can share, and
  * `shell.has` already answers "no bridge / unknown action / bridge too old" as one boolean.
  */
-export function shareFile(blob: any, filename: any): Promise<"saved" | "shared" | "cancel">;
+export function shareFile(blob: any, filename: any): Promise<any>;
 /**
  * Save a blob:/data: URL you already hold as a file, with the same shell-aware contract as `downloadBlob`.
  * @param url the blob: or data: URL

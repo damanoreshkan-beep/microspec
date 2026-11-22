@@ -1,0 +1,18 @@
+export const AI_CORE = {
+  route: "/feed/ai",
+  task: "/task",
+  json: { "content-type": "application/json" },
+  key: 24,
+  pace: { base: 1000, cap: 15000, wake: "online" },
+  retryable: [408, 429],
+  refused: { from: 400, to: 500 },
+  gone: 404,
+  events: 200,
+  idle: 204,
+  failed: 502,
+  noResult: "no result",
+  signIn: 401,
+  start: { offset: "-1", cursor: "" },
+  live: "long-poll",
+  headers: { next: "stream-next-offset", cursor: "stream-cursor", closed: "stream-closed" },
+};

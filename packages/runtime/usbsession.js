@@ -76,6 +76,7 @@
  * - In tests inject `setTimer` / `clearTimer` and call `flush()` instead of waiting out the real grace period.
  * @module
  */
+import { Effect } from "./fx.js";
 
 /** Delay in ms between telling the DSP worker to stop and calling terminate() on it. */
 export const TERMINATE_GRACE_MS = 400;
@@ -147,14 +148,16 @@ export function createUsbSession({
 
   async function connect() {
     if (!canUse()) { $usbOk.set(false); return false; }
-    let dev;
-    try { dev = await ask(); } catch { return false; }
-    if (!dev) return false;
-    $usbOk.set(true);
-    onOpen();
-    $connected.set(true);
-    startWorker();
-    return true;
+    return await Effect.runPromise(Effect.tryPromise({ try: async () => ask(), catch: (e) => e }).pipe(
+      Effect.catch(() => Effect.succeed(null)),
+      Effect.flatMap((dev) => !dev ? Effect.succeed(false) : Effect.sync(() => {
+        $usbOk.set(true);
+        onOpen();
+        $connected.set(true);
+        startWorker();
+        return true;
+      })),
+    ));
   }
 
   function disconnect() {

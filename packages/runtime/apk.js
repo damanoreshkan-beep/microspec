@@ -96,6 +96,8 @@
 import { VPS_PROXY } from "./feed.js";
 import { shell } from "./shell.js";
 import { FLAVOURS } from "./shell-actions.js";
+import { Effect } from "./fx.js";
+import { APK } from "./apk.config.js";
 
 function bytesToB64(buf) {
   let s = "";
@@ -107,6 +109,29 @@ function canvasToPngB64(cv) {
   return new Promise((resolve) => cv.toBlob(async (b) => resolve(bytesToB64(new Uint8Array(await b.arrayBuffer()))), "image/png"));
 }
 
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const pngOf = (cv) => Effect.promise(() => canvasToPngB64(cv));
+const imageFrom = (src) => Effect.callback((resume) => {
+  const i = new Image();
+  i.onload = () => resume(Effect.succeed(i));
+  i.onerror = (e) => resume(Effect.fail(e));
+  i.src = src;
+});
+const coverDrawn = (img, size) => {
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = size;
+  const ctx = cv.getContext("2d");
+  const s = Math.max(size / (img.width || 1), size / (img.height || 1));
+  const w = img.width * s, h = img.height * s;
+  ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  return cv;
+};
+const rasterized = (blob, size) => Effect.acquireUseRelease(
+  Effect.sync(() => URL.createObjectURL(blob)),
+  (url) => imageFrom(url).pipe(Effect.map((img) => coverDrawn(img, size)), Effect.flatMap(pngOf)),
+  (url) => Effect.sync(() => URL.revokeObjectURL(url)),
+);
+
 /**
  * Rasterise any image blob (svg/ico/png/webp) into a square PNG, cover-fitted.
  * @param blob the source image
@@ -114,17 +139,7 @@ function canvasToPngB64(cv) {
  * @returns base64 PNG bytes, no data: prefix
  */
 export async function rasterizeIcon(blob, size = 192) {
-  const url = URL.createObjectURL(blob);
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-    const cv = document.createElement("canvas");
-    cv.width = cv.height = size;
-    const ctx = cv.getContext("2d");
-    const s = Math.max(size / (img.width || 1), size / (img.height || 1));
-    const w = img.width * s, h = img.height * s;
-    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-    return await canvasToPngB64(cv);
-  } finally { URL.revokeObjectURL(url); }
+  return await Effect.runPromise(rasterized(blob, size));
 }
 
 /**
@@ -148,36 +163,37 @@ export function letterTilePng(text, accent, size = 192) {
   return canvasToPngB64(cv);
 }
 
-async function fetchPngB64(rel) {
-  try {
-    const r = await fetch(new URL(rel, location.href), { cache: "force-cache" });
-    if (!r.ok) return null;
-    const buf = new Uint8Array(await r.arrayBuffer());
-    if (buf.length < 8 || buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4E || buf[3] !== 0x47) return null;
-    return bytesToB64(buf);
-  } catch { return null; }
-}
+const isPng = (buf) => buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47;
+const builtPng = (rel) => tried(() => fetch(new URL(rel, location.href), { cache: APK.cache })).pipe(
+  Effect.flatMap((r) => !r.ok ? Effect.succeed(null) : tried(() => r.arrayBuffer()).pipe(
+    Effect.map((ab) => new Uint8Array(ab)),
+    Effect.map((buf) => isPng(buf) ? bytesToB64(buf) : null),
+  )),
+  Effect.catchCause(() => Effect.succeed(null)),
+);
 
-async function cornerHex(pngB64) {
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
+const cornerOf = (pngB64) => imageFrom(`data:image/png;base64,${pngB64}`).pipe(
+  Effect.map((img) => {
     const cv = document.createElement("canvas"); cv.width = cv.height = 1;
     const ctx = cv.getContext("2d"); ctx.drawImage(img, 0, 0);
     const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
     return a === 255 ? "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("") : null;
-  } catch { return null; }
-}
+  }),
+  Effect.catchCause(() => Effect.succeed(null)),
+);
 
 /**
  * Load THIS app's built icon set (legacy tile, adaptive foreground, sampled background colour).
  * @returns `{ icon, fg, bg }` as base64 / "#rrggbb", or null when the build's icons do not exist
  */
 export async function fetchAppIcons() {
-  const icon = await fetchPngB64("icons/icon-192.png");
-  if (!icon) return null;
-  const [fg, mask] = await Promise.all([fetchPngB64("icons/icon-fg-432.png"), fetchPngB64("icons/icon-192-maskable.png")]);
-  const bg = mask ? await cornerHex(mask) : null;
-  return { icon, fg: fg || undefined, bg: bg || undefined };
+  return await Effect.runPromise(builtPng(APK.icons.tile).pipe(
+    Effect.flatMap((icon) => !icon ? Effect.succeed(null) : Effect.forEach([APK.icons.fg, APK.icons.mask], (rel) => builtPng(rel), { concurrency: 2 }).pipe(
+      Effect.flatMap(([fg, mask]) => (mask ? cornerOf(mask) : Effect.succeed(null)).pipe(
+        Effect.map((bg) => ({ icon, fg: fg || undefined, bg: bg || undefined })),
+      )),
+    )),
+  ));
 }
 
 /**
@@ -187,12 +203,14 @@ export async function fetchAppIcons() {
  * @returns `{ fg, bg }` — base64 PNG of the 432px foreground layer and the "#rrggbb" background
  */
 export async function adaptiveFromTile(pngB64, fallbackBg = "#ffffff") {
-  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `data:image/png;base64,${pngB64}`; });
-  const size = 432, box = Math.round(size * 0.46);
-  const cv = document.createElement("canvas"); cv.width = cv.height = size;
-  cv.getContext("2d").drawImage(img, (size - box) / 2, (size - box) / 2, box, box);
-  const bg = (await cornerHex(pngB64)) || fallbackBg;
-  return { fg: await canvasToPngB64(cv), bg };
+  return await Effect.runPromise(Effect.gen(function* () {
+    const img = yield* imageFrom(`data:image/png;base64,${pngB64}`);
+    const size = APK.adaptive.size, box = Math.round(size * APK.adaptive.safe);
+    const cv = document.createElement("canvas"); cv.width = cv.height = size;
+    cv.getContext("2d").drawImage(img, (size - box) / 2, (size - box) / 2, box, box);
+    const bg = (yield* cornerOf(pngB64)) || fallbackBg;
+    return { fg: yield* pngOf(cv), bg };
+  }));
 }
 
 /**
@@ -202,13 +220,11 @@ export async function adaptiveFromTile(pngB64, fallbackBg = "#ffffff") {
  * @returns base64 PNG bytes, or null on any failure
  */
 export async function fetchSiteIconPng(url, size = 192) {
-  try {
-    const r = await fetch(`${VPS_PROXY}/appicon?url=${encodeURIComponent(url)}`);
-    if (!r.ok) return null;
-    const blob = await r.blob();
-    if (!blob.size) return null;
-    return await rasterizeIcon(blob, size);
-  } catch { return null; }
+  return await Effect.runPromise(tried(() => fetch(`${VPS_PROXY}${APK.appicon}?url=${encodeURIComponent(url)}`)).pipe(
+    Effect.flatMap((r) => r.ok ? tried(() => r.blob()) : Effect.succeed(null)),
+    Effect.flatMap((blob) => blob?.size ? rasterized(blob, size) : Effect.succeed(null)),
+    Effect.catchCause(() => Effect.succeed(null)),
+  ));
 }
 
 /**
@@ -287,21 +303,20 @@ export function downloadBlob(blob, filename) {
  */
 export async function shareFile(blob, filename) {
   const mime = blob.type || "application/octet-stream";
-  if (shell.has("files.share")) {
-    try {
-      await shell.call("files.share", { name: filename, mime, base64: bytesToB64(new Uint8Array(await blob.arrayBuffer())) });
-      return "shared";
-    } catch { }
-  } else {
-    try {
-      const file = new File([blob], filename, { type: mime });
-      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file] }); return "shared"; }
-    } catch (e) {
-      if (e?.name === "AbortError") return "cancel";
-    }
-  }
-  downloadBlob(blob, filename);
-  return "saved";
+  const viaShell = tried(async () => shell.call(APK.share, { name: filename, mime, base64: bytesToB64(new Uint8Array(await blob.arrayBuffer())) })).pipe(
+    Effect.as("shared"),
+    Effect.catch(() => Effect.succeed(null)),
+  );
+  const viaSheet = tried(async () => {
+    const file = new File([blob], filename, { type: mime });
+    if (!navigator.canShare?.({ files: [file] })) return null;
+    await navigator.share({ files: [file] });
+    return "shared";
+  }).pipe(Effect.catch((e) => Effect.succeed(e?.name === "AbortError" ? "cancel" : null)));
+  const saved = Effect.sync(() => { downloadBlob(blob, filename); return "saved"; });
+  return await Effect.runPromise((shell.has(APK.share) ? viaShell : viaSheet).pipe(
+    Effect.flatMap((done) => done ? Effect.succeed(done) : saved),
+  ));
 }
 
 /**

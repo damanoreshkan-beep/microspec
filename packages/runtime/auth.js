@@ -93,13 +93,12 @@ import { atom } from "nanostores";
 import { VPS_PROXY } from "./feed.js";
 import { gate } from "./gate.js";
 import { launchInitData } from "./tma.js";
+import { Effect } from "./fx.js";
+import { find, map, pipe } from "./remeda.js";
+import { EDGE_MS, FALLBACK, KEYS, POPUP, PROVIDERS } from "./auth.config.js";
 
-const GH = `${VPS_PROXY}/gh`;
-const SID_KEY = "ms:gh:sid";
-const USER_KEY = "ms:gh:user";
-const PROV_KEY = "ms:gh:prov";
-const GOOGLE = `${VPS_PROXY}/google`;
-const TG = `${VPS_PROXY}/tg`;
+const { sid: SID_KEY, user: USER_KEY, prov: PROV_KEY } = KEYS;
+const GH = `${VPS_PROXY}${PROVIDERS.github.base}`;
 const PWA_ORIGIN = typeof location !== "undefined" ? location.origin : "";
 const EDGE_ORIGIN = (() => { try { return new URL(VPS_PROXY).origin; } catch { return ""; } })();
 
@@ -141,27 +140,85 @@ const lsGetJSON = (k) => { try { const v = localStorage.getItem(k); return v ? J
 const lsSetJSON = (k, o) => { try { localStorage.setItem(k, JSON.stringify(o)); } catch { } };
 const dropStored = () => { lsDel(SID_KEY); lsDel(USER_KEY); lsDel(PROV_KEY); panelAsked = null; };
 
-const trimUser = (u) => (u && u.login ? {
-  login: u.login, name: u.name || u.login, avatar: u.avatar_url || "", html_url: u.html_url || `https://github.com/${u.login}`,
-} : null);
-
-function edge(path, body, timeout = 12000) { return edgeAt(`${GH}/${path}`, body, timeout); }
-async function edgeAt(url, body, timeout = 12000) {
-  const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), timeout);
-  try {
+function edge(path, body, timeout = EDGE_MS) { return edgeAt(`${GH}/${path}`, body, timeout); }
+const abortAfter = (ms) => Effect.acquireRelease(
+  Effect.sync(() => { const ctrl = new AbortController(); return { ctrl, t: setTimeout(() => ctrl.abort(), ms) }; }),
+  ({ t }) => Effect.sync(() => clearTimeout(t)),
+);
+const edgeFx = (url, body, timeout) => Effect.scoped(abortAfter(timeout).pipe(Effect.flatMap(({ ctrl }) => Effect.tryPromise({
+  try: async () => {
     const r = await fetch(url, {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(body), signal: ctrl.signal,
     });
-    if (!r.ok) { const e = new Error(`${url} ${r.status}`); e.status = r.status; throw e; }
-    return await r.json();
-  } catch (e) {
-    if (e && typeof e.status === "number") throw e;
-    const err = new Error(`${url} network`); err.status = 0; throw err;
-  } finally { clearTimeout(to); }
-}
-const me = (sid, provider) => (provider === "google" ? edgeAt(`${GOOGLE}/me`, { sid }) : provider === "telegram" ? edgeAt(`${TG}/me`, { sid }) : edge("me", { sid }));
+    if (!r.ok) throw Object.assign(new Error(`${url} ${r.status}`), { status: r.status });
+    return r.json();
+  },
+  catch: (e) => e && typeof e.status === "number" ? e : Object.assign(new Error(`${url} network`), { status: 0 }),
+}))));
+async function edgeAt(url, body, timeout = EDGE_MS) { return await Effect.runPromise(edgeFx(url, body, timeout)); }
+
+const rowOf = (provider) => PROVIDERS[provider] || PROVIDERS[FALLBACK];
+const at = (path) => `${VPS_PROXY}${path}`;
+const fill = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
+const pick = (u, field, login) => pipe(field, map((c) => (c.startsWith("@") ? u[c.slice(1)] : fill(c, { login }))), find((v) => !!v)) || "";
+const profileOf = (provider, u) => {
+  if (!u) return null;
+  const p = rowOf(provider).profile, login = pick(u, p.login, "");
+  return login ? { login, name: pick(u, p.name, login), avatar: pick(u, p.avatar, login), html_url: pick(u, p.html_url, login) } : null;
+};
+const openPopup = (url, name) => Effect.suspend(() => {
+  const left = (screen.width - POPUP.width) * 0.5, top = (screen.height - POPUP.height) * 0.5;
+  const popup = window.open(url, `${name}-${crypto.randomUUID()}`, `width=${POPUP.width},height=${POPUP.height},left=${left},top=${top}`);
+  return popup ? Effect.succeed(popup) : Effect.fail(new Error("popup-blocked"));
+});
+const closePopup = (popup) => Effect.sync(() => { try { popup.close(); } catch { } });
+const edgeMessage = (popup, source) => Effect.callback((resume) => {
+  const stop = () => removeEventListener("message", onMsg);
+  const onMsg = (e) => {
+    const d = e.data;
+    if (e.origin === EDGE_ORIGIN && e.source === popup && d && d.source === source && typeof d.sid === "string") { stop(); resume(Effect.succeed(d)); }
+  };
+  addEventListener("message", onMsg);
+  return Effect.sync(stop);
+});
+const popupClosed = (popup) => Effect.callback((resume) => {
+  const poll = setInterval(() => { if (popup.closed) { clearInterval(poll); resume(Effect.fail(new Error("popup-closed"))); } }, POPUP.pollMs);
+  return Effect.sync(() => clearInterval(poll));
+});
+const popupMessage = (url, name, source) => Effect.scoped(
+  Effect.acquireRelease(openPopup(url, name), closePopup).pipe(
+    Effect.flatMap((popup) => Effect.raceFirst(edgeMessage(popup, source), popupClosed(popup))),
+    Effect.timeoutOrElse({ duration: POPUP.ms, orElse: () => Effect.fail(new Error("timeout")) }),
+  ),
+);
+const signedIn = (provider, sid, user, adopt) => Effect.sync(() => {
+  const s = { sid, user, provider };
+  if (adopt) { lsSet(SID_KEY, sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, provider); session.set(s); }
+  return s;
+});
+const signedInWith = (provider, sid, raw, adopt) => {
+  const user = profileOf(provider, raw);
+  return user ? signedIn(provider, sid, user, adopt) : Effect.fail(new Error("no-profile"));
+};
+const meFx = (sid, provider) => edgeFx(at(rowOf(provider).me), { sid }, EDGE_MS);
+const viaMe = (provider, d, adopt) => Effect.sync(() => { if (adopt) lsSet(SID_KEY, d.sid); }).pipe(
+  Effect.andThen(meFx(d.sid, provider)),
+  Effect.flatMap((j) => signedInWith(provider, d.sid, j && j.user, adopt)),
+);
+const popupLogin = (provider, vars, adopt) => {
+  const { popup } = rowOf(provider);
+  return popupMessage(at(fill(popup.start, { ...vars, origin: encodeURIComponent(PWA_ORIGIN) })), popup.name, popup.source).pipe(
+    Effect.flatMap((d) => (popup.profile === "me" ? viaMe(provider, d, adopt) : signedInWith(provider, d.sid, d.user, adopt))),
+  );
+};
+const exchange = (provider, value, adopt) => {
+  const { verify } = rowOf(provider);
+  return edgeFx(at(verify.path), { [verify.field]: String(value) }, EDGE_MS).pipe(Effect.flatMap((j) => {
+    const user = profileOf(provider, j && j.user);
+    return j?.sid && user ? signedIn(provider, j.sid, user, adopt) : Effect.fail(Object.assign(new Error(verify.refusal), { status: 502 }));
+  }));
+};
 
 /**
  * Rehydrate the session on app boot: cached profile immediately, revalidated in the background; dropped only on a definitive 401.
@@ -174,15 +231,22 @@ export async function restore() {
   const provider = lsGet(PROV_KEY) || "github";
   const cached = lsGetJSON(USER_KEY);
   if (cached) session.set({ sid, user: cached, provider });
-  try {
-    const j = await me(sid, provider);
-    const user = provider === "github" ? trimUser(j && j.user) : trimGoogleUser(j && j.user);
-    if (user) { lsSetJSON(USER_KEY, user); const s = { sid, user, provider }; session.set(s); return s; }
-    return session.get();
-  } catch (e) {
-    if (e && e.status === 401) { dropStored(); session.set(null); return null; }
-    return session.get();
-  }
+  return await Effect.runPromise(meFx(sid, provider).pipe(
+    Effect.map((j) => profileOf(provider, j && j.user)),
+    Effect.map((user) => {
+      if (!user) return session.get();
+      lsSetJSON(USER_KEY, user);
+      const s = { sid, user, provider };
+      session.set(s);
+      return s;
+    }),
+    Effect.catch((e) => Effect.sync(() => {
+      if (!(e && e.status === 401)) return session.get();
+      dropStored();
+      session.set(null);
+      return null;
+    })),
+  ));
 }
 
 /**
@@ -190,36 +254,9 @@ export async function restore() {
  * @param opts `{ scope }` — the OAuth scope this app actually needs (default `SCOPE`)
  * @returns a promise of the session; rejects on "popup-blocked", "popup-closed", "timeout" or a missing profile
  */
-export function login({ scope = SCOPE, adopt = true } = {}) {
-  if (gate) { if (!adopt) return Promise.resolve(MOCK_LINK); session.set(MOCK_SESSION); return Promise.resolve(MOCK_SESSION); }
-  return new Promise((resolve, reject) => {
-    const url = `${GH}/authorize?scope=${encodeURIComponent(scope)}&origin=${encodeURIComponent(PWA_ORIGIN)}`;
-    const w = 640, h = 720;
-    const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
-    const popup = window.open(url, `gh-oauth-${crypto.randomUUID()}`, `width=${w},height=${h},left=${left},top=${top}`);
-    if (!popup) { reject(new Error("popup-blocked")); return; }
-
-    let done = false;
-    const finish = (fn, arg) => { if (done) return; done = true; cleanup(); fn(arg); };
-    const onMsg = async (e) => {
-      if (e.origin !== EDGE_ORIGIN || e.source !== popup) return;
-      const d = e.data;
-      if (!d || d.source !== "microspec-gh" || typeof d.sid !== "string") return;
-      if (adopt) lsSet(SID_KEY, d.sid);
-      try {
-        const j = await edge("me", { sid: d.sid });
-        const user = trimUser(j && j.user);
-        if (!user) throw new Error("no-profile");
-        const s = { sid: d.sid, user, provider: "github" };
-        if (adopt) { lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "github"); session.set(s); }
-        finish(resolve, s);
-      } catch (err) { finish(reject, err); }
-    };
-    const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);
-    const timer = setTimeout(() => { try { popup.close(); } catch { } finish(reject, new Error("timeout")); }, 180000);
-    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { } }
-    addEventListener("message", onMsg);
-  });
+export async function login({ scope = SCOPE, adopt = true } = {}) {
+  if (gate) { if (!adopt) return MOCK_LINK; session.set(MOCK_SESSION); return MOCK_SESSION; }
+  return await Effect.runPromise(popupLogin("github", { scope: encodeURIComponent(scope) }, adopt));
 }
 
 /**
@@ -361,34 +398,26 @@ export async function logout() {
   try { await edge("logout", { sid: s.sid }); } catch { }
 }
 
-const trimGoogleUser = (u) => (u && (u.email || u.login) ? {
-  login: u.email || u.login, name: u.name || u.email || u.login, avatar: u.picture || u.avatar_url || "", html_url: "",
-} : null);
 
 let clientIdP = null;
 /**
  *  surface then offers GitHub alone). Fetched once per page; gate → a mock id so the surface renders. */
 export function googleClientId() {
   if (gate) return Promise.resolve("mock-google-client");
-  return (clientIdP ||= (async () => {
-    try {
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
-      const r = await fetch(`${GOOGLE}/config`, { signal: ctrl.signal }); clearTimeout(to);
+  return (clientIdP ||= Effect.runPromise(Effect.scoped(abortAfter(PROVIDERS.google.config.ms).pipe(Effect.flatMap(({ ctrl }) => Effect.tryPromise({
+    try: async () => {
+      const r = await fetch(at(PROVIDERS.google.config.path), { signal: ctrl.signal });
       if (!r.ok) return "";
       const j = await r.json(); return typeof j?.clientId === "string" ? j.clientId : "";
-    } catch { clientIdP = null; return ""; }
-  })());
+    },
+    catch: (e) => e,
+  })))).pipe(Effect.catch(() => Effect.sync(() => { clientIdP = null; return ""; })))));
 }
 
 /** Exchange a GIS credential (the ID token JWT) for a farm session. Gate → the mock Google session. */
 export async function loginGoogle(credential, { adopt = true } = {}) {
   if (gate) { if (!adopt) return MOCK_LINK; session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
-  const j = await edgeAt(`${GOOGLE}/verify`, { credential: String(credential || "") });
-  const user = trimGoogleUser(j && j.user);
-  if (!j?.sid || !user) throw Object.assign(new Error("google-verify"), { status: 502 });
-  const s = { sid: j.sid, user, provider: "google" };
-  if (adopt) { lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "google"); session.set(s); }
-  return s;
+  return await Effect.runPromise(exchange("google", credential || "", adopt));
 }
 
 /**
@@ -398,46 +427,18 @@ export async function loginGoogle(credential, { adopt = true } = {}) {
  */
 export async function loginTelegram(initData, { adopt = true } = {}) {
   if (gate) { if (!adopt) return MOCK_LINK; session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
-  let id = initData;
-  if (!id) { try { id = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData; } catch { } }
-  if (!id) id = launchInitData();
+  const id = initData || sdkInitData() || launchInitData();
   if (!id) throw Object.assign(new Error("no-telegram"), { status: 0 });
-  const j = await edgeAt(`${TG}/verify`, { initData: String(id) });
-  const user = trimGoogleUser(j && j.user);
-  if (!j?.sid || !user) throw Object.assign(new Error("tg-verify"), { status: 502 });
-  const s = { sid: j.sid, user, provider: "telegram" };
-  if (adopt) { lsSet(SID_KEY, j.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram"); session.set(s); }
-  return s;
+  return await Effect.runPromise(exchange("telegram", id, adopt));
 }
+const sdkInitData = () => { try { return window.Telegram?.WebApp?.initData || ""; } catch { return ""; } };
 
 /**
  * Web "Log in with Telegram" (outside a Mini App). Opens Telegram's OpenID Connect consent in a popup (the
  * edge runs the code flow at /feed/tg/oidc/*) and resolves with the same telegram session the Mini App path
  * mints. Mirrors {@link login}: trusts only a `microspec-tg` message from the edge origin carrying a sid.
  */
-export function loginTelegramWeb({ adopt = true } = {}) {
-  if (gate) { if (!adopt) return Promise.resolve(MOCK_LINK); session.set(MOCK_GOOGLE_SESSION); return Promise.resolve(MOCK_GOOGLE_SESSION); }
-  return new Promise((resolve, reject) => {
-    const url = `${TG}/oidc/start?origin=${encodeURIComponent(PWA_ORIGIN)}`;
-    const w = 640, h = 720;
-    const left = (screen.width - w) / 2, top = (screen.height - h) / 2;
-    const popup = window.open(url, `tg-oidc-${crypto.randomUUID()}`, `width=${w},height=${h},left=${left},top=${top}`);
-    if (!popup) { reject(new Error("popup-blocked")); return; }
-    let done = false;
-    const finish = (fn, arg) => { if (done) return; done = true; cleanup(); fn(arg); };
-    const onMsg = (e) => {
-      if (e.origin !== EDGE_ORIGIN || e.source !== popup) return;
-      const d = e.data;
-      if (!d || d.source !== "microspec-tg" || typeof d.sid !== "string") return;
-      const user = trimGoogleUser(d.user);
-      if (!user) { finish(reject, new Error("no-profile")); return; }
-      const s = { sid: d.sid, user, provider: "telegram" };
-      if (adopt) { lsSet(SID_KEY, d.sid); lsSetJSON(USER_KEY, user); lsSet(PROV_KEY, "telegram"); session.set(s); }
-      finish(resolve, s);
-    };
-    const poll = setInterval(() => { if (popup.closed) finish(reject, new Error("popup-closed")); }, 500);
-    const timer = setTimeout(() => { try { popup.close(); } catch { } finish(reject, new Error("timeout")); }, 180000);
-    function cleanup() { removeEventListener("message", onMsg); clearInterval(poll); clearTimeout(timer); try { popup.close(); } catch { } }
-    addEventListener("message", onMsg);
-  });
+export async function loginTelegramWeb({ adopt = true } = {}) {
+  if (gate) { if (!adopt) return MOCK_LINK; session.set(MOCK_GOOGLE_SESSION); return MOCK_GOOGLE_SESSION; }
+  return await Effect.runPromise(popupLogin("telegram", {}, adopt));
 }

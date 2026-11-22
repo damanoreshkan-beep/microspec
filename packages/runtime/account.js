@@ -66,6 +66,7 @@ import { SignIn, GoogleG } from "./signin.js";
 import { sys, intlLocale } from "./i18n.js";
 import { gate } from "./gate.js";
 import { VPS_PROXY } from "./feed.js";
+import { Effect } from "./fx.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -118,6 +119,7 @@ const ACC = `${VPS_PROXY}/account`;
 const PROVIDER = { google: "Google", telegram: "Telegram", github: "GitHub" };
 const COUNTS = [["songs", "cSongs"], ["coins", "cCoins"], ["chats", "cChats"], ["characters", "cCharacters"], ["watches", "cWatches"], ["youtube", "cYoutube"], ["jobs", "cJobs"]];
 const MOCK_LIST = { account: "1", current: "1", identities: [{ ident: "1", provider: "google", label: "octo@example.com" }] };
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
 async function call(op, body = {}) {
   const r = await fetch(`${ACC}/${op}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sid: session.get()?.sid, ...body }), signal: AbortSignal.timeout(130_000) });
   const j = await r.json().catch(() => null);
@@ -142,25 +144,23 @@ function Signins({ github, loc, onChange }) {
   useEffect(() => { if (!gate) call("list").then(setList, () => {}); }, []);
 
   const done = (l, key) => { setList(l); setMerge(null); setNote(key); onChange?.(session.get()); };
-  const link = async (other) => {
-    setBusy(true);
-    try { done(gate ? { ...list, identities: [...list.identities, { ident: "2", provider: other.provider, label: other.user?.login || "" }] } : await call("link", { other: other.sid }), "signinAdded"); }
-    catch { setNote("signinFailed"); } finally { setBusy(false); }
-  };
+  const busied = (flow, after) => Effect.acquireUseRelease(Effect.sync(() => setBusy(true)), () => flow, () => Effect.sync(() => { setBusy(false); after?.(); }));
+  const linking = (other) => busied(tried(async () => done(gate ? { ...list, identities: [...list.identities, { ident: "2", provider: other.provider, label: other.user?.login || "" }] } : await call("link", { other: other.sid }), "signinAdded")).pipe(
+    Effect.catch(() => Effect.sync(() => setNote("signinFailed"))),
+  ));
+  const link = async (other) => await Effect.runPromise(linking(other));
   const proved = async (other) => {
     setAdding(false); setNote("");
     if (gate) { setMerge({ other, counts: { songs: 3, coins: 531 } }); return; }
-    try {
-      const p = await call("preview", { other: other.sid });
-      if (p.same) { setNote("signinSame"); return; }
-      if (COUNTS.some(([k]) => p.counts?.[k])) setMerge({ other, counts: p.counts }); else await link(other);
-    } catch { setNote("signinFailed"); }
+    return await Effect.runPromise(tried(() => call("preview", { other: other.sid })).pipe(
+      Effect.flatMap((p) => p.same ? Effect.sync(() => setNote("signinSame"))
+        : COUNTS.some(([k]) => p.counts?.[k]) ? Effect.sync(() => setMerge({ other, counts: p.counts })) : linking(other)),
+      Effect.catchCause(() => Effect.sync(() => setNote("signinFailed"))),
+    ));
   };
-  const unlink = async (ident) => {
-    setBusy(true);
-    try { done(gate ? { ...list, identities: list.identities.filter((i) => i.ident !== ident) } : await call("unlink", { ident }), ""); }
-    catch (e) { setNote(unlinkNote(e)); } finally { setBusy(false); setAsk(""); }
-  };
+  const unlink = async (ident) => await Effect.runPromise(busied(tried(async () => done(gate ? { ...list, identities: list.identities.filter((i) => i.ident !== ident) } : await call("unlink", { ident }), "")).pipe(
+    Effect.catch((e) => Effect.sync(() => setNote(unlinkNote(e)))),
+  ), () => setAsk("")));
   const fmt = (n) => Number(n).toLocaleString(intlLocale(loc));
   const ids = list?.identities || [];
 

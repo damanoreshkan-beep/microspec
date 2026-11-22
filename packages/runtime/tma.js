@@ -19,6 +19,8 @@
  */
 import { VPS_PROXY } from "./feed.js";
 import { shell } from "./shell.js";
+import { Effect } from "./fx.js";
+import { TMA } from "./tma.config.js";
 
 const LAUNCH_KEY = "ms:tg-launch";
 const URL_LAUNCH = (() => { try { return typeof location !== "undefined" ? (location.hash || "").replace(/^#/, "") + "&" + (location.search || "").replace(/^\?/, "") : ""; } catch { return ""; } })();
@@ -69,19 +71,22 @@ export function inMiniApp(win) {
 }
 
 let sdk = null;
+const script = (src) => Effect.callback((resume) => {
+  const s = document.createElement("script");
+  s.src = src;
+  s.async = true;
+  s.onload = () => resume(Effect.succeed(tg()));
+  s.onerror = () => resume(Effect.succeed(null));
+  document.head.appendChild(s);
+});
+const sdkLoad = Effect.suspend(() => {
+  if (typeof document === "undefined") return Effect.succeed(null);
+  const have = tg();
+  return have ? Effect.succeed(have) : script(TMA.sdk);
+});
 function loadSdk() {
   if (sdk) return sdk;
-  sdk = new Promise((resolve) => {
-    if (typeof document === "undefined") return resolve(null);
-    const have = tg();
-    if (have) return resolve(have);
-    const s = document.createElement("script");
-    s.src = "https://telegram.org/js/telegram-web-app.js";
-    s.async = true;
-    s.onload = () => resolve(tg());
-    s.onerror = () => resolve(null);
-    document.head.appendChild(s);
-  });
+  sdk = Effect.runPromise(sdkLoad);
   return sdk;
 }
 
@@ -91,14 +96,18 @@ function loadSdk() {
  */
 export async function initTelegram() {
   if (!inTelegram()) return;
-  const w = await loadSdk();
-  if (!w || !w.initData) return;
+  return await Effect.runPromise(Effect.promise(() => loadSdk()).pipe(
+    Effect.flatMap((w) => !w || !w.initData ? Effect.void : opened(w).pipe(
+      Effect.andThen(Effect.sync(() => applyInsets(w))),
+      Effect.andThen(Effect.sync(() => routeStartApp(w))),
+    )),
+  ));
+}
+const opened = (w) => Effect.sync(() => {
   try { w.ready(); } catch { }
   try { w.expand(); } catch { }
-  try { if (w.isVersionAtLeast && w.isVersionAtLeast("8.0")) w.requestFullscreen && w.requestFullscreen(); } catch { }
-  applyInsets(w);
-  routeStartApp(w);
-}
+  try { if (w.isVersionAtLeast && w.isVersionAtLeast(TMA.fullscreen)) w.requestFullscreen && w.requestFullscreen(); } catch { }
+});
 
 /**
  * Fullscreen [8.0+] makes Telegram's header transparent and floats the close/⋯ controls OVER the app, so the

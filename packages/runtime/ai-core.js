@@ -71,6 +71,8 @@
  * @module
  */
 import { atom } from "nanostores";
+import { Effect } from "./fx.js";
+import { AI_CORE as C } from "./ai-core.config.js";
 import { VPS_PROXY } from "./feed.js";
 import { authWall } from "./authwall.js";
 
@@ -117,49 +119,53 @@ export function persist(ns, locale, obj) {
  * @returns `{ text, truncated, ungrounded }` — the trimmed answer plus the two "not worth caching" flags
  */
 export async function askAI(text, locale, mode, extra) {
-  const j = await taskCall("/feed/ai", { mode, text, locale, ...extra });
-  return { text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated), ungrounded: !!(j && j.ungrounded) };
+  return await Effect.runPromise(ask(text, locale, mode, extra));
 }
 
-const AT = (ms) => new Promise((go) => {
-  const done = () => { clearTimeout(t); globalThis.removeEventListener?.("online", done); go(); };
+const ask = (text, locale, mode, extra) => taskCall(C.route, { mode, text, locale, ...extra }).pipe(
+  Effect.map((j) => ({ text: (j && typeof j.text === "string") ? j.text.trim() : "", truncated: !!(j && j.truncated), ungrounded: !!(j && j.ungrounded) })),
+);
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const AT = (ms) => Effect.callback((resume) => {
+  const off = () => { clearTimeout(t); globalThis.removeEventListener?.(C.pace.wake, done); };
+  const done = () => { off(); resume(Effect.void); };
   const t = setTimeout(done, ms);
-  globalThis.addEventListener?.("online", done, { once: true });   
+  globalThis.addEventListener?.(C.pace.wake, done, { once: true });
+  return Effect.sync(off);
 });
-const pace = (n) => AT(Math.min(15_000, 1000 * 2 ** n));
-const failed = (status, why) => { if (status === 401) authWall.set(authWall.get() + 1); return Object.assign(new Error("status " + status), { status, why }); };
-const final = (s) => s >= 400 && s < 500 && s !== 408 && s !== 429;
-
-async function taskCall(route, body) {
-  const k = crypto.randomUUID().replaceAll("-", "").slice(0, 24);
-  let id = "";
-  for (let n = 0; !id; n++) {
-    try {
-      const r = await fetch(`${VPS_PROXY}/task`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ route, body, k }) });
-      if (r.ok) { id = String((await r.json())?.id || ""); if (id) break; }
-      else if (final(r.status)) throw failed(r.status);
-    } catch (e) { if (e?.status) throw e; }
-    await pace(n);
+const pace = (n) => AT(Math.min(C.pace.cap, C.pace.base * 2 ** n));
+const failed = (status, why) => { if (status === C.signIn) authWall.set(authWall.get() + 1); return Object.assign(new Error("status " + status), { status, why }); };
+const final = (s) => s >= C.refused.from && s < C.refused.to && !C.retryable.includes(s);
+const retried = (attempt, n = 0) => tried(attempt).pipe(
+  Effect.catch((e) => e?.status ? Effect.fail(e) : Effect.void),
+  Effect.flatMap((got) => got ? Effect.succeed(got) : pace(n).pipe(Effect.andThen(Effect.suspend(() => retried(attempt, n + 1))))),
+);
+const open = (route, body, k) => retried(async () => {
+  const r = await fetch(`${VPS_PROXY}${C.task}`, { method: "POST", headers: C.json, body: JSON.stringify({ route, body, k }) });
+  if (r.ok) return String((await r.json())?.id || "");
+  if (final(r.status)) throw failed(r.status);
+});
+const poll = (id, offset, cursor) => retried(async () => {
+  const r = await fetch(`${VPS_PROXY}${C.task}/${id}?offset=${encodeURIComponent(offset)}&live=${C.live}${cursor ? `&cursor=${cursor}` : ""}`);
+  if (r.status === C.gone) throw failed(C.gone);
+  if (r.status === C.events) return { r, events: await r.json() };
+  if (r.status !== C.idle) throw new Error("poll " + r.status);
+  return { r, events: null };
+});
+const outcome = (events) => {
+  for (const ev of events || []) {
+    if (ev.t === "result") return Effect.succeed(ev.body);
+    if (ev.t === "fail") return Effect.fail(failed(ev.status || C.failed, ev.error));
   }
-  let offset = "-1", cursor = "";
-  for (let n = 0; ;) {
-    let r, events = null;
-    try {
-      r = await fetch(`${VPS_PROXY}/task/${id}?offset=${encodeURIComponent(offset)}&live=long-poll${cursor ? `&cursor=${cursor}` : ""}`);
-      if (r.status === 404) throw failed(404);
-      if (r.status === 200) events = await r.json();
-      else if (r.status !== 204) throw new Error("poll " + r.status);
-    } catch (e) { if (e?.status) throw e; await pace(n++); continue; }
-    n = 0;
-    for (const ev of events || []) {
-      if (ev.t === "result") return ev.body;
-      if (ev.t === "fail") throw failed(ev.status || 502, ev.error);
-    }
-    offset = r.headers.get("stream-next-offset") || offset;
-    cursor = r.headers.get("stream-cursor") || "";
-    if (r.headers.get("stream-closed") === "true") throw failed(502, "no result");
-  }
-}
+};
+const follow = (id, offset, cursor) => poll(id, offset, cursor).pipe(
+  Effect.flatMap(({ r, events }) => outcome(events) ?? (r.headers.get(C.headers.closed) === "true"
+    ? Effect.fail(failed(C.failed, C.noResult))
+    : follow(id, r.headers.get(C.headers.next) || offset, r.headers.get(C.headers.cursor) || ""))),
+);
+const taskCall = (route, body) => Effect.suspend(() => open(route, body, crypto.randomUUID().replaceAll("-", "").slice(0, C.key))).pipe(
+  Effect.flatMap((id) => follow(id, C.start.offset, C.start.cursor)),
+);
 
 /**
  * Build a cached, deduped, fail-open synthesis capability for one namespace and server mode.
@@ -176,11 +182,11 @@ export function reading(ns, mode) {
     const tag = ns + " " + locale + " " + key;
     if (key in cache || pending.has(tag)) return;
     pending.add(tag);
-    try {
-      const { text: out, truncated, ungrounded } = await askAI(text, locale, mode, extra);
-      if (out && !truncated && !ungrounded) { cache[key] = out; persist(ns, locale, cache); aiTick.set(aiTick.get() + 1); }
-    } catch { }
-    finally { pending.delete(tag); }
+    return await Effect.runPromise(ask(text, locale, mode, extra).pipe(
+      Effect.flatMap(({ text: out, truncated, ungrounded }) => Effect.sync(() => { if (out && !truncated && !ungrounded) { cache[key] = out; persist(ns, locale, cache); aiTick.set(aiTick.get() + 1); } })),
+      Effect.catchCause(() => Effect.void),
+      Effect.ensuring(Effect.sync(() => { pending.delete(tag); })),
+    ));
   };
   return { get, has, warm };
 }

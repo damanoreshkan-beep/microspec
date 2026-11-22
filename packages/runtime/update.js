@@ -32,6 +32,9 @@
 
 import { BUILD } from "./build.js";
 import { sys } from "./i18n.js";
+import { Effect } from "./fx.js";
+import { filter, map, pipe } from "./remeda.js";
+import { UPDATE } from "./update.config.js";
 
 const HOUR = 3600000;
 const today = () => new Date().toISOString().slice(0, 10);
@@ -74,17 +77,17 @@ export function pickNote(entries, app, mark) {
  */
 export const markFor = (entry) => `${entry.date} ${entry.id}`;
 
-async function whatsNew(app, key) {
-  try {
-    const r = await fetch(new URL("../store/changelog.json", location.href), { cache: "no-cache" });
-    if (!r.ok) return;
-    const note = pickNote(await r.json(), app.spec.id, localStorage.getItem(key));
-    if (!note) return;
-    localStorage.setItem(key, markFor(note));
-    const text = note[app.S.locale.get()] || note.uk || note.en;
-    if (text) app.S.update.set({ text });
-  } catch { }
-}
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const unseen = (app, key) => tried(async () => {
+  const r = await fetch(new URL(UPDATE.changelog.path, location.href), { cache: UPDATE.changelog.cache });
+  if (r.ok) return pickNote(await r.json(), app.spec.id, localStorage.getItem(key));
+});
+const remember = (key, locale) => (note) => Effect.sync(() => { localStorage.setItem(key, markFor(note)); return note[locale.get()] || note.uk || note.en; });
+const whatsNew = (app, key) => Effect.runPromise(unseen(app, key).pipe(
+  Effect.flatMap((note) => note ? remember(key, app.S.locale)(note) : Effect.void),
+  Effect.flatMap((text) => text ? Effect.sync(() => { app.S.update.set({ text }); }) : Effect.void),
+  Effect.catchCause(() => Effect.void),
+));
 
 /**
  * Registers the app's service worker and owns everything that follows from a new version.
@@ -165,17 +168,27 @@ export function installUpdates(app) {
  * @returns `"offline"` when the network is not there (nothing was touched); otherwise the page navigates
  */
 export async function refreshNow(id) {
-  let stub;
-  try {
-    const r = await fetch("sw.js", { cache: "no-store" });
-    if (!r.ok) return "offline";
-    stub = await r.text();
-  } catch { return "offline"; }
-  const shell = [...stub.matchAll(/"(\.{1,2}\/[^"]*)"/g)].map((m) => m[1]);
-  await Promise.allSettled(shell.map((u) => fetch(u, { cache: "reload" })));
-  try { for (const k of await caches.keys()) if (k.startsWith(`ms-${id}-`)) await caches.delete(k); } catch { }
-  try { await (await navigator.serviceWorker?.getRegistration())?.unregister(); } catch { }
-  try { sessionStorage.setItem(`${id}:fresh`, "1"); } catch { }
-  location.replace(location.pathname);
-  return "reloading";
+  return await Effect.runPromise(stub.pipe(
+    Effect.flatMap((text) => text === OFFLINE ? Effect.succeed(R.offline) : warm(text).pipe(
+      Effect.andThen(drop(id)),
+      Effect.andThen(unregister),
+      Effect.andThen(relaunch(id)),
+    )),
+  ));
 }
+const R = UPDATE.refresh;
+const OFFLINE = {};
+const quiet = (fx) => tried(fx).pipe(Effect.catch(() => Effect.void));
+const stub = tried(async () => { const r = await fetch(R.stub, { cache: R.probe }); return r.ok ? await r.text() : OFFLINE; }).pipe(Effect.catch(() => Effect.succeed(OFFLINE)));
+const warm = (text) => Effect.forEach(pipe([...text.matchAll(new RegExp(R.shell, "g"))], map((m) => m[1])), (u) => quiet(() => fetch(u, { cache: R.warm })), { concurrency: "unbounded", discard: true });
+const drop = (id) => tried(() => caches.keys()).pipe(
+  Effect.flatMap((keys) => Effect.forEach(filter(keys, (k) => k.startsWith(R.caches.replace("{id}", () => id))), (k) => tried(() => caches.delete(k)), { discard: true })),
+  Effect.catch(() => Effect.void),
+);
+const unregister = quiet(async () => (await navigator.serviceWorker?.getRegistration())?.unregister());
+const relaunch = (id) => Effect.sync(() => {
+  try { sessionStorage.setItem(R.fresh.replace("{id}", () => id), R.mark); } catch { }
+  location.replace(location.pathname);
+  return R.reloading;
+});
+

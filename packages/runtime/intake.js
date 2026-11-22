@@ -57,6 +57,8 @@ import { report } from "./telemetry.js";
 import { Island } from "./ui.js";
 import { CameraPrime } from "./camprime.js";
 import { readLastGen } from "./lastgen.js";
+import { Effect, Cause } from "./fx.js";
+import { INTAKE } from "./intake.config.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -94,47 +96,67 @@ export const mockArt = (seed, scale = 1) => {
  * @returns `{ data, w, h }` — the JPEG data URL and the pixel size sent
  */
 export async function toDataURL(url, maxSide = MAX_SIDE) {
-  try { return await decodeHere(url, maxSide); }
-  catch (e) {
-    if (gate || !/^(blob|data):/.test(url)) throw e;
-    let about = { type: "", size: 0 };
-    try { const bl = await (await fetch(url)).blob(); about = { type: bl.type, size: bl.size }; } catch { }
-    report("intake.decode", { step: "local", msg: e?.message || String(e), ...about }, "warn");
-    let converted;
-    try { converted = await convertAtEdge(url); }
-    catch (e2) { report("intake.convert", { msg: e2?.message || String(e2), ...about }); throw e2; }
-    try { return await decodeHere(converted, maxSide); }
-    catch (e3) { report("intake.decode", { step: "converted", msg: e3?.message || String(e3), ...about }); throw e3; }
-  }
-}
-function decodeHere(url, maxSide) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-        if (!w || !h) return reject(new Error("empty image"));
-        const s = Math.min(1, maxSide / Math.max(w, h));
-        w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
-        const c = document.createElement("canvas"); c.width = w; c.height = h;
-        c.getContext("2d").drawImage(img, 0, 0, w, h);
-        resolve({ data: c.toDataURL("image/jpeg", 0.9), w, h });
-      } catch (e) { reject(e); }
-    };
-    img.onerror = () => reject(new Error("load failed"));
-    img.src = url;
+  const msg = (e) => e?.message || String(e);
+  const reportedAs = (event, about, step) => Effect.catchCause((cause) => {
+    const e = Cause.squash(cause);
+    report(event, { ...(step ? { step } : {}), msg: msg(e), ...about });
+    return Effect.fail(e);
   });
-}
-async function convertAtEdge(url) {
-  const image = url.startsWith("data:") ? url : await new Promise(async (ok, no) => {
-    try { const bl = await (await fetch(url)).blob(); const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.onerror = () => no(new Error("read failed")); fr.readAsDataURL(bl); } catch (e) { no(e); }
+  const viaEdge = (e) => Effect.gen(function* () {
+    const about = yield* aboutBytes(url);
+    report("intake.decode", { step: "local", msg: msg(e), ...about }, "warn");
+    const converted = yield* convertAtEdge(url).pipe(reportedAs("intake.convert", about));
+    return yield* decodeHere(converted, maxSide).pipe(reportedAs("intake.decode", about, "converted"));
   });
-  const r = await fetch(`${VPS_PROXY}/convert`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image }) });
-  if (!r.ok) throw new Error("convert " + r.status);
-  const j = await r.json().catch(() => null);
-  if (!j?.image?.startsWith?.("data:image/")) throw new Error("convert: no image");
-  return j.image;
+  return await Effect.runPromise(decodeHere(url, maxSide).pipe(Effect.catchCause((cause) => {
+    const e = Cause.squash(cause);
+    return gate || !/^(blob|data):/.test(url) ? Effect.fail(e) : viaEdge(e);
+  })));
 }
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const loaded = (url) => Effect.callback((resume) => {
+  const img = new Image();
+  img.onload = () => resume(Effect.succeed(img));
+  img.onerror = () => resume(Effect.fail(new Error("load failed")));
+  img.src = url;
+});
+const capped = (img, maxSide) => Effect.try({
+  try: () => {
+    let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error("empty image");
+    const s = Math.min(1, maxSide / Math.max(w, h));
+    w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    return { data: c.toDataURL("image/jpeg", INTAKE.jpeg), w, h };
+  },
+  catch: (e) => e,
+});
+const decodeHere = (url, maxSide) => loaded(url).pipe(Effect.flatMap((img) => capped(img, maxSide)));
+const blobOf = (url) => tried(async () => (await fetch(url)).blob());
+const aboutBytes = (url) => blobOf(url).pipe(
+  Effect.flatMap((bl) => Effect.try({ try: () => ({ type: bl.type, size: bl.size }), catch: (e) => e })),
+  Effect.catch(() => Effect.succeed({ type: "", size: 0 })),
+);
+const readAsDataUrl = (bl) => Effect.callback((resume) => {
+  const fr = new FileReader();
+  fr.onload = () => resume(Effect.succeed(String(fr.result)));
+  fr.onerror = () => resume(Effect.fail(new Error("read failed")));
+  fr.readAsDataURL(bl);
+});
+const convertAtEdge = (url) => (url.startsWith("data:") ? Effect.succeed(url) : blobOf(url).pipe(Effect.flatMap(readAsDataUrl))).pipe(
+  Effect.flatMap((image) => tried(() => fetch(`${VPS_PROXY}${INTAKE.convert}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ image }),
+  }))),
+  Effect.flatMap((r) => r.ok
+    ? tried(() => r.json().catch(() => null))
+    : Effect.fail(new Error("convert " + r.status))),
+  Effect.flatMap((j) => j?.image?.startsWith?.("data:image/")
+    ? Effect.succeed(j.image)
+    : Effect.fail(new Error("convert: no image"))),
+);
 
 /**
  * The pixel size of a picture, measured — `naturalWidth` lies on a scaled `<img>`; a decoded bitmap does not.
@@ -142,11 +164,11 @@ async function convertAtEdge(url) {
  * @returns `{ w, h }`, or null when the bytes do not decode
  */
 export async function sizeOf(blobOrUrl) {
-  try {
-    const bl = typeof blobOrUrl === "string" ? await (await fetch(blobOrUrl)).blob() : blobOrUrl;
-    const bm = await createImageBitmap(bl);
-    const s = { w: bm.width, h: bm.height }; bm.close?.(); return s;
-  } catch { return null; }
+  const bytes = typeof blobOrUrl === "string" ? blobOf(blobOrUrl) : Effect.succeed(blobOrUrl);
+  const bitmap = (bl) => tried(() => createImageBitmap(bl));
+  const measured = (bm) => Effect.sync(() => ({ w: bm.width, h: bm.height }));
+  const closed = (bm) => Effect.sync(() => bm.close?.());
+  return await Effect.runPromise(bytes.pipe(Effect.flatMap((bl) => Effect.acquireUseRelease(bitmap(bl), measured, closed)), Effect.catchCause(() => Effect.succeed(null))));
 }
 
 /**
@@ -205,14 +227,14 @@ export function Camera({ loc, reason, privacy, onCapture, onClose, onSettings })
     if (gate || !enabled) return;
     if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { setErr("unavailable"); return; }
     let live = true;
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
-        if (!live) { stream.getTracks().forEach((tr) => tr.stop()); return; }
-        streamRef.current = stream;
-        const v = videoRef.current; if (v) { v.srcObject = stream; v.setAttribute?.("playsinline", ""); try { await v.play?.(); } catch { } }
-      } catch (e) { if (live) setErr(e && e.name === "NotAllowedError" ? "denied" : "unavailable"); }
-    })();
+    const released = (stream) => Effect.sync(() => stream.getTracks().forEach((tr) => tr.stop()));
+    const shown = (stream) => Effect.sync(() => { streamRef.current = stream; const v = videoRef.current; if (v) { v.srcObject = stream; v.setAttribute?.("playsinline", ""); } return v; }).pipe(
+      Effect.flatMap((v) => v ? tried(() => v.play?.()).pipe(Effect.catch(() => Effect.void)) : Effect.void));
+    const refused = (cause) => Effect.sync(() => { const e = Cause.squash(cause); if (live) setErr(e && e.name === "NotAllowedError" ? "denied" : "unavailable"); });
+    Effect.runPromise(tried(() => navigator.mediaDevices.getUserMedia(INTAKE.camera)).pipe(
+      Effect.flatMap((stream) => live ? shown(stream) : released(stream)),
+      Effect.catchCause(refused),
+    ));
     return () => { live = false; try { streamRef.current?.getTracks().forEach((tr) => tr.stop()); } catch { } streamRef.current = null; const v = videoRef.current; try { if (v) v.srcObject = null; } catch { } };
   }, [enabled]);
   const capture = () => {

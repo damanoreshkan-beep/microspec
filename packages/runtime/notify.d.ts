@@ -77,4 +77,4 @@ export function notify({ id, title, body, tag, icon, url }?: {
     icon?: string;
     url?: string;
     title?: any;
-}): Promise<boolean>;
+}): Promise<any>;

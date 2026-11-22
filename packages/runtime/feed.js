@@ -66,6 +66,9 @@
  * @module
  */
 import { ORIGINS, SEALED_KEY as KEY } from "./backend.js";
+import { Effect } from "./fx.js";
+import { filter, map, pipe, reduce } from "./remeda.js";
+import { FEED } from "./feed.config.js";
 
 const isLocal = typeof location !== "undefined" && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 
@@ -95,11 +98,11 @@ export const VPS_PROXY = feedBase(typeof location !== "undefined" ? location.ori
 /** The backend's pinned long-term public key (base64url) for sealedfetch.js, or "" when it has no sealed tunnel. */
 export const SEALED_KEY = KEY;
 
-const PROXIES = [
-  (u) => u,
-  ...(isLocal ? [(u) => `/feed?url=${encodeURIComponent(u)}`] : []),
-  (u) => `${VPS_PROXY}?url=${encodeURIComponent(u)}`,
-];
+const PROXIES = pipe(
+  FEED.hops,
+  filter((h) => !h.local || isLocal),
+  map((h) => (u) => h.href.replace(/\{(url|enc|base)\}/g, (_, k) => k === "url" ? u : k === "enc" ? encodeURIComponent(u) : VPS_PROXY)),
+);
 
 /**
  * Fetches a URL as text through the proxy chain (direct → dev proxy → VPS proxy), moving to the next hop on
@@ -109,21 +112,21 @@ const PROXIES = [
  * @param timeout per-hop abort timeout in ms
  * @returns the first response text that passed validation; throws the last error when every hop failed
  */
-export async function viaProxy(url, validate = (x) => !!x, timeout = 10000) {
-  let err;
-  for (const wrap of PROXIES) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeout);
-    try {
-      const r = await fetch(wrap(url), { signal: ctrl.signal });
-      if (!r.ok) throw new Error(`status ${r.status}`);
-      const x = await r.text();
-      if (validate(x)) return x;
-      throw new Error("failed validator");
-    } catch (e) { err = e; } finally { clearTimeout(t); }
-  }
-  throw err;
+export async function viaProxy(url, validate = (x) => !!x, timeout = FEED.timeout) {
+  return await Effect.runPromise(reduce(PROXIES, (chain, wrap) => chain.pipe(Effect.catch(() => hop(wrap, url, validate, timeout))), Effect.fail(undefined)));
 }
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const abortAfter = (ms) => Effect.acquireRelease(
+  Effect.sync(() => { const ctrl = new AbortController(); return { ctrl, t: setTimeout(() => ctrl.abort(), ms) }; }),
+  ({ t }) => Effect.sync(() => clearTimeout(t)),
+);
+const hop = (wrap, url, validate, timeout) => Effect.scoped(abortAfter(timeout).pipe(Effect.flatMap(({ ctrl }) => tried(async () => {
+  const r = await fetch(wrap(url), { signal: ctrl.signal });
+  if (!r.ok) throw new Error(FEED.refused.replace("{status}", () => r.status));
+  const x = await r.text();
+  if (validate(x)) return x;
+  throw new Error(FEED.rejected);
+}))));
 
 /** Validator for `viaProxy`: true when the response text looks like a JSON array (not an HTML error page). */
 export const isJsonArray = (x) => x.trim().startsWith("[");

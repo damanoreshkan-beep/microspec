@@ -60,6 +60,7 @@ import { VPS_PROXY } from "./feed.js";
 import { BOT } from "./backend.js";
 import { gate } from "./gate.js";
 import { sys } from "./i18n.js";
+import { Effect, Cause } from "./fx.js";
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 
@@ -111,6 +112,7 @@ export function place() {
 }
 
 const fmt = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 100) / 100));
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
 
 /**
  * The profile card for ONE source. `params` pins what the source needs when the app already knows it (a
@@ -161,15 +163,17 @@ export function Bell({ source, loc, app = "", params = null, className = "" }) {
 
   const save = async () => {
     setBusy(true); setErr("");
-    try {
-      let p = params;
-      if (!p && S.needs === "geo") { p = await place(); if (!p) { setErr(sys("watchNoPlace", loc)); setBusy(false); return; } }
-      await watchAdd(bands ? { source, params: p || {}, band, lang: loc } : { source, params: p || {}, op, value: Math.min(S.max ?? Infinity, Math.max(S.min ?? -Infinity, Number(value))), lang: loc });   
-      await load();
-    } catch (e) {
-      setErr(e?.reason === "too many" ? sys("watchTooMany", loc) : sys("watchFailed", loc));
-    }
-    setBusy(false);
+    const placeNeeded = !params && S.needs === "geo";
+    const rule = (p) => bands ? { source, params: p || {}, band, lang: loc } : { source, params: p || {}, op, value: Math.min(S.max ?? Infinity, Math.max(S.min ?? -Infinity, Number(value))), lang: loc };
+    await Effect.runPromise(Effect.gen(function* () {
+      const p = placeNeeded ? yield* tried(() => place()) : params;
+      if (placeNeeded && !p) return setErr(sys("watchNoPlace", loc));
+      yield* tried(() => watchAdd(rule(p)));
+      yield* tried(() => load());
+    }).pipe(
+      Effect.catchCause((cause) => Effect.sync(() => setErr(Cause.squash(cause)?.reason === "too many" ? sys("watchTooMany", loc) : sys("watchFailed", loc)))),
+      Effect.ensuring(Effect.sync(() => setBusy(false))),
+    ));
   };
 
   const unit = S.unit ? " " + S.unit : "";

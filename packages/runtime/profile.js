@@ -13,6 +13,10 @@ import * as backend from "./backend.js";
 const BOT = backend.BOT;
 const APK_ROW = backend.APK ?? true, STARS_CARD = backend.STARS ?? true;
 import { A, Icon, isStandalone } from "./render-ctx.js";
+import { Effect } from "./fx.js";
+import { PROFILE } from "./profile.config.js";
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const offer = (when, fx, done) => Effect.suspend(() => when() ? tried(fx).pipe(Effect.as(true), Effect.catch((e) => Effect.succeed(done(e)))) : Effect.succeed(false));
 
 function AccountSlot({ github, loc }) {
   const [Comp, setComp] = useState(null);
@@ -146,15 +150,17 @@ export function Profile({ tab }) {
   const shareApp = async () => {
     const url = location.href.split("#")[0];
     const title = T(t, "title");
-    if (shell.has("share.send")) {
-      try { await shell.call("share.send", { title, url }); return; }
-      catch { }
-    }
-    if (navigator.share) {
-      try { await navigator.share({ title, url }); return; }
-      catch (e) { if (e?.name === "AbortError") return; }
-    }
-    try { await navigator.clipboard.writeText(url); A.toast(sys("shareCopied", loc)); } catch { }
+    const S = PROFILE.share;
+    const viaShell = offer(() => shell.has(S.capability), () => shell.call(S.capability, { title, url }), () => false);
+    const viaSheet = offer(() => navigator.share, () => navigator.share({ title, url }), (e) => e?.name === S.cancelled);
+    const viaClipboard = tried(async () => {
+      await navigator.clipboard.writeText(url);
+      A.toast(sys(S.copied, loc));
+    }).pipe(Effect.catch(() => Effect.void));
+    return await Effect.runPromise(viaShell.pipe(
+      Effect.flatMap((sent) => sent ? Effect.succeed(true) : viaSheet),
+      Effect.flatMap((sent) => sent ? Effect.void : viaClipboard),
+    ));
   };
   const shape = useShape();
   const acts = [

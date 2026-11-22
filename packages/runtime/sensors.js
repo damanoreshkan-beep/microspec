@@ -64,7 +64,7 @@
  * ```
  *
  * ## How it fits
- * Imports nothing at load; `compass.start` lazy-imports geomag.js (the ~2 KB World Magnetic Model) only once a
+ * Imports Effect from fx.js and its data from sensors.config.js; `compass.start` lazy-imports geomag.js (the ~2 KB World Magnetic Model) only once a
  * compass actually runs, so the apps that merely import `haptic` never pay for it. Inside the runtime,
  * index.js imports `haptic` and `hapticFor` for the one delegated `pointerdown` listener that gives every
  * tappable control its feedback, video.js imports `wakeLock`, dpad.js imports `haptic`; tests/sensors_test.js
@@ -99,7 +99,21 @@
  * @module
  */
 
+import { Effect, Cause } from "./fx.js";
+import { SENSORS } from "./sensors.config.js";
+
 const canVibrate = typeof navigator !== "undefined" && "vibrate" in navigator;
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const firstFrom = (subscribe) => Effect.acquireUseRelease(
+  Effect.sync(() => {
+    const sub = { got: null, wake: null };
+    const tell = (eff) => { if (sub.got) return; sub.got = eff; sub.wake?.(eff); };
+    sub.stop = subscribe((v) => tell(Effect.succeed(v)), (e) => tell(Effect.fail(e)));
+    return sub;
+  }),
+  (sub) => Effect.callback((resume) => { if (sub.got) resume(sub.got); else sub.wake = resume; }),
+  (sub) => Effect.sync(() => sub.stop?.()),
+);
 
 /** Short vibration feedback — `buzz(pattern)`, `tick`, `bump`, `ok`; a silent no-op where unsupported. */
 export const haptic = {
@@ -147,12 +161,7 @@ export const geo = {
     return () => navigator.geolocation.clearWatch(id);
   },
   once(opts) {
-    return new Promise((resolve, reject) => {
-      let stop = null, done = false;
-      const finish = (fn, v) => { if (done) return; done = true; stop?.(); fn(v); };
-      stop = this.watch((fix) => finish(resolve, fix), (err) => finish(reject, new Error(err)), opts);
-      if (done) stop?.();
-    });
+    return Effect.runPromise(firstFrom((fix, refuse) => this.watch(fix, (err) => refuse(new Error(err)), opts)));
   },
 };
 
@@ -342,21 +351,28 @@ export const camera = {
   async start(video, onErr, { facingMode = "environment", constraints = null } = {}) {
     if (!this.supported) { onErr?.("unsupported"); return () => {}; }
     let stream = null, stopped = false;
-    const open = (bare) => navigator.mediaDevices.getUserMedia({ video: bare ? { facingMode } : { facingMode, ...(constraints || {}) }, audio: false });
-    try {
-      try { stream = await open(); }
-      catch (e) {
-        if (!e || !/NotReadableError|AbortError|OverconstrainedError/.test(e.name)) throw e;
-        await new Promise((r) => setTimeout(r, RELEASE_MS));
-        if (stopped) return () => {};
-        stream = await open(true);
-      }
-      if (stopped) { stream.getTracks().forEach((tr) => tr.stop()); return () => {}; }
-      if (video) { video.srcObject = stream; video.setAttribute?.("playsinline", ""); try { await video.play?.(); } catch { } }
-    } catch (e) {
+    const gone = {};
+    const open = (bare) => tried(() => navigator.mediaDevices.getUserMedia({ video: bare ? { facingMode } : { facingMode, ...(constraints || {}) }, audio: false }));
+    const busy = (e) => !!e && new RegExp(SENSORS.camera.retryOn.join("|")).test(e.name);
+    const reopened = Effect.sleep(RELEASE_MS).pipe(Effect.andThen(Effect.suspend(() => stopped ? Effect.succeed(gone) : open(true))));
+    const released = (s) => Effect.sync(() => { s.getTracks().forEach((tr) => tr.stop()); });
+    const shown = (s) => Effect.sync(() => { video.srcObject = s; video.setAttribute?.("playsinline", ""); }).pipe(
+      Effect.andThen(tried(() => video.play?.()).pipe(Effect.catch(() => Effect.void))),
+    );
+    const refused = (cause) => Effect.sync(() => {
+      const e = Cause.squash(cause);
       onErr?.(e && e.name === "NotAllowedError" ? "denied" : "unavailable");
-      return () => {};
-    }
+      return false;
+    });
+    const live = await Effect.runPromise(Effect.gen(function* () {
+      const s = yield* open().pipe(Effect.catchIf(busy, () => reopened));
+      if (s === gone) return false;
+      stream = s;
+      if (stopped) { yield* released(stream); return false; }
+      if (video) yield* shown(stream);
+      return true;
+    }).pipe(Effect.catchCause(refused)));
+    if (!live) return () => {};
     return () => {
       stopped = true;
       try { stream?.getTracks().forEach((tr) => tr.stop()); } catch { }
@@ -372,7 +388,7 @@ export const camera = {
   controls(video) { return camControls(video?.srcObject?.getVideoTracks?.()[0] || null); },
 };
 /** How long a stopped camera keeps its hardware on Android before the other one can open (measured ~300 ms). */
-const RELEASE_MS = 350;
+const RELEASE_MS = SENSORS.camera.releaseMs;
 
 /**
  * Controls over one video track (pure over `getCapabilities` / `applyConstraints`, so a fake track tests it).

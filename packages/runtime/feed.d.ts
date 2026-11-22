@@ -73,7 +73,7 @@
  * @param timeout per-hop abort timeout in ms
  * @returns the first response text that passed validation; throws the last error when every hop failed
  */
-export function viaProxy(url: any, validate?: (x: any) => boolean, timeout?: number): Promise<any>;
+export function viaProxy(url: any, validate?: (x: any) => boolean, timeout?: any): Promise<any>;
 /**
  * Fetches JSON through the proxy chain, validating the shape before parsing.
  * @param url the upstream URL

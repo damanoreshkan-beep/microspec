@@ -93,11 +93,7 @@ export function persist(ns: any, locale: any, obj: any): void;
  * @param extra extra body fields that mode needs (`level`, `turns`, `locked`)
  * @returns `{ text, truncated, ungrounded }` — the trimmed answer plus the two "not worth caching" flags
  */
-export function askAI(text: any, locale: any, mode: any, extra: any): Promise<{
-    text: any;
-    truncated: boolean;
-    ungrounded: boolean;
-}>;
+export function askAI(text: any, locale: any, mode: any, extra: any): Promise<any>;
 /**
  * Build a cached, deduped, fail-open synthesis capability for one namespace and server mode.
  * @param ns cache namespace (also the in-flight tag prefix)
@@ -107,7 +103,7 @@ export function askAI(text: any, locale: any, mode: any, extra: any): Promise<{
 export function reading(ns: any, mode: any): {
     get: (key: any, locale: any) => any;
     has: (key: any, locale: any) => boolean;
-    warm: (key: any, text: any, locale: any, extra: any) => Promise<void>;
+    warm: (key: any, text: any, locale: any, extra: any) => Promise<any>;
 };
 /** Atom bumped whenever any AI cache gains an entry; `useStore(aiTick)` re-renders the subscriber. */
 export const aiTick: any;

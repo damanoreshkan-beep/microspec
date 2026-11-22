@@ -63,9 +63,9 @@
  * ## How it fits
  * `summary` / `isSummarized` / `warmSummary` are exactly `reading("sum", "summarize")` from ai-core;
  * `polish` is the odd one out and stays hand-written — it is keyed by the source text itself (not a
- * signature), warms a batch with bounded concurrency through `pool` from feed.js, and on failure caches the
+ * signature), warms a batch with bounded concurrency through `Effect.forEach`, and on failure caches the
  * input so the app shows the literal translation rather than nothing. The module imports `askAI`,
- * `cacheFor`, `persist`, `pending`, `aiTick`, `reading` from ai-core.js, `pool` from feed.js and
+ * `cacheFor`, `persist`, `pending`, `aiTick`, `reading` from ai-core.js, Effect from fx.js, Remeda, its data from ai-text.config.js and
  * `CONTENT_LANG` from translate.js. localize.js imports the polish triple and `aiTick` to run
  * the natural-prose pass over translated UI. In the farm 5 apps import it directly — tarot and iching
  * (summary), imagine and mirage (suggest, in view.js and imagine/edit.js), horoscope — and every localized
@@ -89,7 +89,10 @@
  * @module
  */
 import { askAI, cacheFor, persist, pending, aiTick, reading } from "./ai-core.js";
-import { pool } from "./feed.js";
+import { Effect } from "./fx.js";
+import { entries, filter, find, map, pipe, unique } from "./remeda.js";
+import { AI_TEXT } from "./ai-text.config.js";
+const P = AI_TEXT.polish;
 import { CONTENT_LANG, rememberEnglish, warm, tr } from "./translate.js";
 
 /**
@@ -112,21 +115,29 @@ export async function suggest(mode, spark, locale) {
  * @returns `{ en, local }` — `local` to show, `en` remembered so `toEnglish(local)` answers it; null on any failure
  */
 export async function suggestPrompt(mode, spark, locale) {
-  const raw = await suggest(mode, spark, locale);
-  let j = null;
-  try { const m = raw.match(/\{[\s\S]*\}/); j = m ? JSON.parse(m[0]) : null; } catch { }
-  const en = typeof j?.en === "string" ? j.en.trim() : "";
-  if (!en) return null;
-  const loc = String(locale || CONTENT_LANG).slice(0, 2);
-  let local = [j.local, j[loc], ...Object.entries(j).filter(([k]) => k !== "en").map(([, v]) => v)].find((v) => typeof v === "string" && v.trim())?.trim() || "";
-  if (loc !== CONTENT_LANG && (!local || !cleanScript(local))) {
-    await warm([en], loc).catch(() => {});
-    local = tr(en, loc);
-  }
-  if (!local || loc === CONTENT_LANG) local = en;
-  rememberEnglish(local, en);
-  return { en, local };
+  return await Effect.runPromise(tried(() => suggest(mode, spark, locale)).pipe(
+    Effect.map(parsed),
+    Effect.flatMap((j) => {
+      const en = typeof j?.en === "string" ? j.en.trim() : "";
+      if (!en) return Effect.succeed(null);
+      const loc = String(locale || CONTENT_LANG).slice(0, 2);
+      return localized(en, loc, localOf(j, loc)).pipe(Effect.map((local) => {
+        const shown = !local || loc === CONTENT_LANG ? en : local;
+        rememberEnglish(shown, en);
+        return { en, local: shown };
+      }));
+    }),
+  ));
 }
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const parsed = (raw) => { try { const m = raw.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; } catch { return null; } };
+const localOf = (j, loc) => pipe(
+  [j.local, j[loc], ...pipe(entries(j), filter(([k]) => k !== "en"), map(([, v]) => v))],
+  find((v) => typeof v === "string" && v.trim()),
+)?.trim() || "";
+const localized = (en, loc, local) => loc !== CONTENT_LANG && (!local || !cleanScript(local))
+  ? tried(() => warm([en], loc)).pipe(Effect.catch(() => Effect.void), Effect.map(() => tr(en, loc)))
+  : Effect.succeed(local);
 const cleanScript = (text) => !/\p{Script=Latin}[\p{L}\p{M}]*[^\p{Script=Latin}\P{L}]|[^\p{Script=Latin}\P{L}][\p{L}\p{M}]*\p{Script=Latin}/u.test(text);
 
 /**
@@ -159,18 +170,19 @@ export function isPolished(text, locale) {
 export async function warmPolish(texts, locale) {
   if (!locale || locale === CONTENT_LANG) return;
   const cache = cacheFor("", locale);
-  const todo = [...new Set(
-    (texts || []).filter((s) => typeof s === "string" && s.trim() && !(s in cache) && !pending.has(locale + " " + s)),
-  )];
+  const todo = pipe(
+    texts || [], filter((s) => typeof s === "string" && s.trim() && !(s in cache) && !pending.has(locale + " " + s)), unique(),
+  );
   if (!todo.length) return;
   todo.forEach((s) => pending.add(locale + " " + s));
-  let changed = false;
-  await pool(todo, 2, async (src) => {
-    try { const { text: out } = await askAI(src, locale, "polish"); cache[src] = out || src; changed = true; }
-    catch { }
-    finally { pending.delete(locale + " " + src); }
-  });
-  if (changed) { persist("", locale, cache); aiTick.set(aiTick.get() + 1); }
+  return await Effect.runPromise(Effect.forEach(todo, (src) => tried(() => askAI(src, locale, P.mode)).pipe(
+    Effect.tap(({ text: out }) => Effect.sync(() => { cache[src] = out || src; })),
+    Effect.as(true),
+    Effect.catchCause(() => Effect.succeed(false)),
+    Effect.ensuring(Effect.sync(() => { pending.delete(locale + " " + src); })),
+  ), { concurrency: P.concurrency }).pipe(
+    Effect.flatMap((got) => got.some(Boolean) ? Effect.sync(() => { persist("", locale, cache); aiTick.set(aiTick.get() + 1); }) : Effect.void),
+  ));
 }
 
 const SUM = reading("sum", "summarize");

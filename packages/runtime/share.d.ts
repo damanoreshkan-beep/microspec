@@ -39,13 +39,13 @@
  * @param n how many the worker parked
  * @returns File[] in share order; entries that are missing are skipped, the rest are deleted after reading
  */
-export function takeFiles(cacheStorage: any, scope: any, n: any): Promise<any[]>;
+export function takeFiles(cacheStorage: any, scope: any, n: any): Promise<any>;
 /**
  * The first http(s) link inside a share's fields.
  * @param s `{ title, text, url }`
  * @returns the address, trailing punctuation dropped, or `""`
  */
-export function firstLink(s: any): string;
+export function firstLink(s: any): any;
 /**
  * Registers the app's handler for shares — the one that opened the page and any the APK shell brings later.
  * @param fn called with `{ title, text, url }`

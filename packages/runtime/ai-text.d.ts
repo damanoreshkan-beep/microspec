@@ -62,9 +62,9 @@
  * ## How it fits
  * `summary` / `isSummarized` / `warmSummary` are exactly `reading("sum", "summarize")` from ai-core;
  * `polish` is the odd one out and stays hand-written — it is keyed by the source text itself (not a
- * signature), warms a batch with bounded concurrency through `pool` from feed.js, and on failure caches the
+ * signature), warms a batch with bounded concurrency through `Effect.forEach`, and on failure caches the
  * input so the app shows the literal translation rather than nothing. The module imports `askAI`,
- * `cacheFor`, `persist`, `pending`, `aiTick`, `reading` from ai-core.js, `pool` from feed.js and
+ * `cacheFor`, `persist`, `pending`, `aiTick`, `reading` from ai-core.js, Effect from fx.js, Remeda, its data from ai-text.config.js and
  * `CONTENT_LANG` from translate.js. localize.js imports the polish triple and `aiTick` to run
  * the natural-prose pass over translated UI. In the farm 5 apps import it directly — tarot and iching
  * (summary), imagine and mirage (suggest, in view.js and imagine/edit.js), horoscope — and every localized
@@ -103,10 +103,7 @@ export function suggest(mode: any, spark: any, locale: any): Promise<any>;
  * @param locale the reader's language for `local` (for "en" it is the English itself)
  * @returns `{ en, local }` — `local` to show, `en` remembered so `toEnglish(local)` answers it; null on any failure
  */
-export function suggestPrompt(mode: any, spark: any, locale: any): Promise<{
-    en: any;
-    local: any;
-}>;
+export function suggestPrompt(mode: any, spark: any, locale: any): Promise<any>;
 /**
  * The cached natural rewrite of a machine-translated string, synchronously.
  * @param text the literal translation to look up
@@ -126,7 +123,7 @@ export function isPolished(text: any, locale: any): boolean;
  * @param texts the literal translations to warm
  * @param locale the UI locale; a no-op for the content language
  */
-export function warmPolish(texts: any, locale: any): Promise<void>;
+export function warmPolish(texts: any, locale: any): Promise<any>;
 /** Sync: the cached reading for a facts signature `key` in `locale`, or "" on a miss. */
 export const summary: any;
 /** Sync: whether a reading for `key` in `locale` is cached (false while in flight). */

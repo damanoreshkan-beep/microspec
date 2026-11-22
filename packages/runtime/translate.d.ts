@@ -47,8 +47,8 @@
  * ```
  *
  * ## How it fits
- * Imports `atom` from `nanostores`, `viaProxy`, `isJsonArray`, `pool` from `feed.js` — the same proxy and
- * concurrency pool every CORS-blocked source uses — and `askAI` from `ai-core.js` for the edge's `english`
+ * Imports `atom` from `nanostores`, `viaProxy` and `isJsonArray` from `feed.js` — the same proxy every
+ * CORS-blocked source uses — Effect from `fx.js`, Remeda, its data from `translate.config.js`, and `askAI` from `ai-core.js` for the edge's `english`
  * mode behind gtx. Three runtime modules build on it: `render.js` (the spec's `translate: [...]` fields),
  * `localize.js` (translate → polish under one `pending` flag) and `ai-text.js` (`CONTENT_LANG`,
  * `rememberEnglish`). 4 farm apps import it directly — tarot (`tr`/`warm`/`trTick` for card meanings), imagine,
@@ -63,7 +63,7 @@
  *   original text; a failed string is left uncached so a later `warm()` retries it. Fail-CLOSED for SENDING
  *   (`toEnglish`): a prompt that could not be made English throws rather than reaching a Space (2026-09-03).
  * - `warm()` de-duplicates in-flight strings across concurrent calls (`pending`) and runs 6 at a time through
- *   `pool`; it bumps `trTick` once per call, only when something new landed.
+ *   `Effect.forEach`; it bumps `trTick` once per call, only when something new landed.
  * - The cache lives in `localStorage` under `ms:tr:<target>` (mirrored in memory); private mode or quota
  *   failures degrade to the in-memory map for the session.
  * - `toEnglish` skips the wire for Latin-script text, auto-detects the source (`sl=auto`) otherwise, falls back
@@ -110,7 +110,7 @@ export function rememberEnglish(local: any, en: any): void;
  * @param texts the original strings to translate
  * @param target the active locale code
  */
-export function warm(texts: any, target: any): Promise<void>;
+export function warm(texts: any, target: any): Promise<any>;
 /** The language the source APIs speak ("en"); a target equal to this is a passthrough. */
 export const CONTENT_LANG: "en";
 /** Counter atom bumped whenever new translations land, so components subscribed to it re-render. */

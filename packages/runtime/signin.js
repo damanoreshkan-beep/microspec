@@ -73,9 +73,12 @@ import { googleClientId, loginGoogle, login, SCOPE, pairNew, pairPoll, adoptSess
 import { inMiniApp } from "./tma.js";
 import { shell } from "./shell.js";
 import * as backend from "./backend.js";
+import { Effect, Cause } from "./fx.js";
+import { SIGNIN_FLOW } from "./signin.config.js";
 
 const SIGNIN = backend.SIGNIN ?? ["google", "github", "telegram"];
 const offers = (p) => SIGNIN.includes(p);
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
 
 const Icon = (icon, cls) => html`<iconify-icon icon=${icon} class=${cls || ""}></iconify-icon>`;
 /** Google's "G", for a button or a row that names the provider (account.js's Sign-ins card marks a Google sign-in with it). */
@@ -139,10 +142,8 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   useEffect(() => {
     if (gate || !wantGoogle || !clientId) return;
     let live = true, mo = null;
-    (async () => {
-      let gis;
-      try { gis = await loadGis(); } catch (e) { if (live) { setClientId(""); onError?.(e); } return; }
-      if (!live) return;
+    const refused = (e) => Effect.sync(() => { if (live) { setClientId(""); onError?.(e); } });
+    const mounted = (gis) => Effect.sync(() => {
       gis.initialize({
         client_id: clientId,
         callback: async (resp) => {
@@ -150,11 +151,7 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
           setBusy(true);
           try { finish(await loginGoogle(resp.credential, { adopt })); } catch (e) { fail(e); } finally { setBusy(false); }
         },
-        use_fedcm_for_button: true,
-        ux_mode: "popup",
-        context: "signin",
-        itp_support: true,
-        cancel_on_tap_outside: true,
+        ...SIGNIN_FLOW.gis,
       });
       const render = () => {
         const el = slot.current; if (!el) return;
@@ -166,7 +163,8 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
       mo = new MutationObserver(render);
       mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
       if (adopt && !prompted) { prompted = true; try { gis.prompt(); } catch { } }
-    })();
+    });
+    Effect.runPromise(tried(() => loadGis()).pipe(Effect.matchEffect({ onFailure: refused, onSuccess: (gis) => live ? mounted(gis) : Effect.void })));
     return () => { live = false; mo?.disconnect(); };
   }, [clientId, wantGoogle]);
 
@@ -189,15 +187,14 @@ export function SignIn({ github = "quiet", scope = SCOPE, locale, onDone, onErro
   useEffect(() => {
     if (!pairing) return;
     let live = true; const t0 = Date.now();
-    (async () => {
-      while (live && Date.now() - t0 < 10 * 60_000) {
-        await new Promise((ok) => setTimeout(ok, 3000));
-        if (!live) return;
-        try { const j = await pairPoll(pairing); if (j?.sid) { const sess = adopt ? adoptSession(j) : { sid: j.sid, provider: j.provider || "github", user: j.user || null }; if (live) { setPairing(null); finish(sess); } return; } }
-        catch (e) { if (e?.status === 404) { if (live) { setPairing(null); fail(new Error("pair-gone")); } return; } }
-      }
-      if (live) { setPairing(null); fail(new Error("timeout")); }
-    })();
+    const settled = (end) => Effect.sync(() => { if (live) { setPairing(null); end(); } });
+    const signedIn = (j) => Effect.sync(() => adopt ? adoptSession(j) : { sid: j.sid, provider: j.provider || "github", user: j.user || null }).pipe(Effect.flatMap((sess) => settled(() => finish(sess))), Effect.as(true));
+    const gone = (cause) => Cause.squash(cause)?.status === 404 ? settled(() => fail(new Error("pair-gone"))).pipe(Effect.as(true)) : Effect.succeed(false);
+    const round = tried(() => pairPoll(pairing)).pipe(Effect.flatMap((j) => j?.sid ? signedIn(j) : Effect.succeed(false)), Effect.catchCause(gone));
+    const polled = () => live && Date.now() - t0 < SIGNIN_FLOW.pair.forMs
+      ? Effect.sleep(SIGNIN_FLOW.pair.everyMs).pipe(Effect.andThen(Effect.suspend(() => live ? round : Effect.succeed(true))), Effect.flatMap((over) => over ? Effect.void : polled()))
+      : settled(() => fail(new Error("timeout")));
+    Effect.runPromise(polled());
     return () => { live = false; };
   }, [pairing]);
   const viaBrowser = async () => {

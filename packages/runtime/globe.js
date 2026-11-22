@@ -65,13 +65,20 @@ import { useRef, useEffect, useState } from "preact/hooks";
 import { geoOrthographic, geoPath, geoGraticule10, geoContains, geoDistance, geoCircle } from "d3-geo";
 import { feature } from "topojson-client";
 import { Pixels } from "./skeleton.js";
+import { Effect } from "./fx.js";
+import { GLOBE } from "./globe.config.js";
 
 let LAND = null, LOADING = null;
 async function loadWorld() {
   if (LAND) return;
-  if (!LOADING) LOADING = fetch(new URL("../_rt/world-110m.json", document.baseURI)).then((r) => { if (!r.ok) throw new Error(`world-110m.json ${r.status}`); return r.json(); }).then((topo) => { LAND = feature(topo, topo.objects.countries).features; });
+  if (!LOADING) LOADING = Effect.runPromise(world(new URL(GLOBE.world, document.baseURI)));
   await LOADING;
 }
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const world = (url) => tried(() => fetch(url)).pipe(
+  Effect.flatMap((r) => r.ok ? tried(() => r.json()) : Effect.fail(new Error(GLOBE.refused.replace("{status}", () => r.status)))),
+  Effect.flatMap((topo) => Effect.sync(() => { LAND = feature(topo, topo.objects.countries).features; })),
+);
 /**
  * Look up which country a lat/lon falls in, using the already-loaded world topology.
  * @param lat latitude in degrees

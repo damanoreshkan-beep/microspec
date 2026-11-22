@@ -87,6 +87,8 @@
  * @module
  */
 import { shell, ERR } from "./shell.js";
+import { Effect, Cause } from "./fx.js";
+import { PERMS } from "./permissions.config.js";
 
 let HELD = null;
 /**
@@ -100,10 +102,15 @@ export async function refreshHeld() {
 }
 
 const q = (name) => async () => { try { return (await navigator.permissions.query({ name })).state; } catch { return "unknown"; } };
-async function gum(c) {
-  try { const s = await navigator.mediaDevices.getUserMedia(c); s.getTracks().forEach((t) => t.stop()); return "granted"; }
-  catch (e) { return e && e.name === "NotAllowedError" ? "denied" : "prompt"; }
-}
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const gum = (c) => Effect.runPromise(Effect.acquireUseRelease(
+  tried(() => navigator.mediaDevices.getUserMedia(c)),
+  () => Effect.succeed("granted"),
+  (s) => Effect.sync(() => s.getTracks().forEach((t) => t.stop())),
+).pipe(Effect.catchCause((cause) => {
+  const e = Cause.squash(cause);
+  return Effect.succeed(e && e.name === "NotAllowedError" ? "denied" : "prompt");
+})));
 const iosMotion = () => typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function";
 
 /** The groups the permission registry renders in, in display order. */
@@ -239,13 +246,11 @@ export async function permState(name) {
 /** Trigger the native prompt where one exists. Shell-only permissions have nothing to ask for. */
 export async function permRequest(name) {
   const def = PERMISSIONS[name];
-  if (def?.capability && shell.present && shell.has("system.grant")) {
-    let last = "granted";
-    for (const p of shell.androidFor(def.capability)) {
-      try { last = (await shell.call("system.grant", { permission: p })).state; }
-      catch { last = "denied"; }
-    }
-    return last;
+  if (def?.capability && shell.present && shell.has(PERMS.grant)) {
+    const granted = (p) => tried(async () => (await shell.call(PERMS.grant, { permission: p })).state).pipe(
+      Effect.catch(() => Effect.succeed("denied")),
+    );
+    return await Effect.runPromise(Effect.reduce(shell.androidFor(def.capability), () => "granted", (_, p) => granted(p)));
   }
   if (!def?.request) return (await permState(name)).state;
   return await def.request();

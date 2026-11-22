@@ -50,8 +50,8 @@
  * - Running out of polls CANCELS the job on the edge, or it spends the day's quota on pictures nobody reads.
  * @module
  */
-import { Effect } from "./effect.vendor.js";
-import { range } from "./remeda.vendor.js";
+import { Effect } from "./fx.js";
+import { range } from "./remeda.js";
 
 const STALE = { stale: true };
 const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });

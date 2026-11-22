@@ -54,29 +54,31 @@
  * - Both functions are async on purpose: a future IndexedDB backing must not change callers.
  * @module
  */
-const KEY = "ms:lastgen";
-const STORE_SIDE = 768;
+import { Effect } from "./fx.js";
+import { LASTGEN as L } from "./lastgen.config.js";
 
-function downscale(src) {
-  return new Promise((resolve) => {
-    const url = typeof src === "string" ? src : URL.createObjectURL(src);
-    const done = (v) => { if (typeof src !== "string") { try { URL.revokeObjectURL(url); } catch { } } resolve(v); };
-    const img = new Image();
-    img.onload = () => {
-      try {
-        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-        if (!w || !h) return done(null);
-        const s = Math.min(1, STORE_SIDE / Math.max(w, h));
-        w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
-        const c = document.createElement("canvas"); c.width = w; c.height = h;
-        c.getContext("2d").drawImage(img, 0, 0, w, h);
-        done(c.toDataURL("image/jpeg", 0.85));
-      } catch { done(null); }
-    };
-    img.onerror = () => done(null);
-    img.src = url;
-  });
-}
+const objectUrl = (src) => Effect.acquireRelease(
+  Effect.sync(() => typeof src === "string" ? src : URL.createObjectURL(src)),
+  (url) => typeof src === "string" ? Effect.void : Effect.sync(() => { try { URL.revokeObjectURL(url); } catch { } }),
+);
+const decoded = (url) => Effect.callback((resume) => {
+  const img = new Image();
+  img.onload = () => resume(Effect.succeed(img));
+  img.onerror = () => resume(Effect.succeed(null));
+  img.src = url;
+});
+const shrunk = (img) => Effect.sync(() => {
+  try {
+    let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (!w || !h) return null;
+    const s = Math.min(1, L.side / Math.max(w, h));
+    w = Math.max(1, Math.round(w * s)); h = Math.max(1, Math.round(h * s));
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    return c.toDataURL(L.type, L.quality);
+  } catch { return null; }
+});
+const downscale = (src) => Effect.scoped(objectUrl(src).pipe(Effect.flatMap(decoded), Effect.flatMap((img) => img ? shrunk(img) : Effect.succeed(null))));
 
 /**
  * Persist the newest generated image and its prompt for another app to pick up; swallows every failure.
@@ -85,11 +87,10 @@ function downscale(src) {
  * @returns resolves once stored or skipped
  */
 export async function writeLastGen(src, prompt) {
-  try {
-    const url = await downscale(src);
-    if (!url) return;
-    localStorage.setItem(KEY, JSON.stringify({ url, prompt: String(prompt || "").slice(0, 400), ts: Date.now() }));
-  } catch { }
+  return await Effect.runPromise(downscale(src).pipe(
+    Effect.flatMap((url) => url ? Effect.sync(() => { localStorage.setItem(L.key, JSON.stringify({ url, prompt: String(prompt || "").slice(0, L.prompt), ts: Date.now() })); }) : Effect.void),
+    Effect.catchCause(() => Effect.void),
+  ));
 }
 
 /**
@@ -98,7 +99,7 @@ export async function writeLastGen(src, prompt) {
  */
 export async function readLastGen() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(L.key);
     if (!raw) return null;
     const v = JSON.parse(raw);
     return v && typeof v.url === "string" && v.url ? v : null;

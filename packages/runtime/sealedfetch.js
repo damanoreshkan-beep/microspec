@@ -49,7 +49,8 @@
  *
  * ## How it fits
  * Imports `VPS_PROXY` and `SEALED_KEY` from feed.js, `seal` / `openResponse` / `b64u` / `unb64u` from
- * sealed.js and `authWall` from authwall.js. index.js imports `installSealedFetch` and calls it once at
+ * sealed.js, `authWall` from authwall.js, Effect from fx.js, Remeda, and its data from sealedfetch.config.js and
+ * auth.config.js. index.js imports `installSealedFetch` and calls it once at
  * bootstrap, so every farm app reaches the tunnel without importing this file; one app imports it by name —
  * reel, for `sealedFrameUrl` and `sealedClipUrl`. Every generated sw.js precaches it.
  *
@@ -83,8 +84,12 @@
 import { VPS_PROXY, SEALED_KEY } from "./feed.js";
 import { seal, openResponse, b64u, unb64u } from "./sealed.js";
 import { authWall } from "./authwall.js";
+import { Effect } from "./fx.js";
+import { pipe, map } from "./remeda.js";
+import { KEYS } from "./auth.config.js";
+import { SEALED } from "./sealedfetch.config.js";
 
-const sidNow = () => { try { return localStorage.getItem("ms:gh:sid") || ""; } catch { return ""; } };
+const sidNow = () => { try { return localStorage.getItem(KEYS.sid) || ""; } catch { return ""; } };
 
 /**
  * Build the /feed/frame GET URL an element can load, with the destination sealed into `?s=`.
@@ -126,15 +131,12 @@ export async function sealedUrl(route, fields = {}, key = SEALED_KEY) {
   return `${VPS_PROXY}${route}?s=${b64u(wire)}`;
 }
 
-const PLAIN = [
-  `${VPS_PROXY}/frame`,
-  `${VPS_PROXY}/clip`,
-  `${VPS_PROXY}/apk`,
-  `${VPS_PROXY}/chat/stream`,
-  `${VPS_PROXY}/task/`,
-  `${VPS_PROXY}/library/get`,
-];
-const TUNNEL = `${VPS_PROXY}/f`;
+const PLAIN = pipe(
+  SEALED.plain,
+  map((p) => `${VPS_PROXY}${p}`),
+);
+const TUNNEL = `${VPS_PROXY}${SEALED.tunnel}`;
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
 
 const urlOf = (input) => (typeof input === "string" ? input : input instanceof URL ? input.href : input?.url ?? "");
 
@@ -163,23 +165,27 @@ export function installSealedFetch(realFetch = globalThis.fetch.bind(globalThis)
     }
 
     const sid = sidNow();
-    const { wire, resKey } = await seal(key, { p: innerPath(url), m: method, b: body, ...(sid ? { s: sid } : {}) });
-    const r = await realFetch(TUNNEL, {
+    const sealed = tried(() => seal(key, { p: innerPath(url), m: method, b: body, ...(sid ? { s: sid } : {}) }));
+    const sent = ({ wire, resKey }) => tried(() => realFetch(TUNNEL, {
       method: "POST",
-      headers: { "content-type": "text/plain" },
+      headers: { "content-type": SEALED.wireType },
       body: wire,
       signal: init.signal,
-      keepalive: !!init.keepalive && wire.length < 60000,
+      keepalive: !!init.keepalive && wire.length < SEALED.keepaliveMax,
+    })).pipe(
+      Effect.flatMap((r) => r.ok ? Effect.succeed(r) : Effect.fail(new Error(`sealed transport ${r.status}`))),
+      Effect.map((r) => ({ r, resKey })),
+    );
+    const opened = ({ r, resKey }) => tried(async () => openResponse(resKey, new Uint8Array(await r.arrayBuffer())));
+    const handedBack = (out) => Effect.sync(() => {
+      const payload = out.enc === "b64" ? unb64u(out.body) : out.body;
+      if (out.s === 401 && typeof payload === "string" && payload.includes('"sign in"')) authWall.set(authWall.get() + 1);
+      return new Response(out.s === 204 || out.s === 304 ? null : payload, {
+        status: out.s,
+        headers: out.ct ? { "content-type": out.ct } : {},
+      });
     });
-    if (!r.ok) throw new Error(`sealed transport ${r.status}`);
-
-    const out = await openResponse(resKey, new Uint8Array(await r.arrayBuffer()));
-    const payload = out.enc === "b64" ? unb64u(out.body) : out.body;
-    if (out.s === 401 && typeof payload === "string" && payload.includes('"sign in"')) authWall.set(authWall.get() + 1);
-    return new Response(out.s === 204 || out.s === 304 ? null : payload, {
-      status: out.s,
-      headers: out.ct ? { "content-type": out.ct } : {},
-    });
+    return await Effect.runPromise(sealed.pipe(Effect.flatMap(sent), Effect.flatMap(opened), Effect.flatMap(handedBack)));
   };
   globalThis.fetch = patched;
   return () => { globalThis.fetch = realFetch; };

@@ -55,6 +55,10 @@ export function inTelegramHost(win = typeof window !== "undefined" ? window : un
 /** The live SDK object, or null. */
 export function tg() { try { return (typeof window !== "undefined" && window.Telegram && window.Telegram.WebApp) || null; } catch { return null; } }
 
+export function inMiniApp(win) {
+  try { return inTelegramHost(win) && !!((tg() && tg().initData) || launchInitData()); } catch { return false; }
+}
+
 let sdk = null;
 function loadSdk() {
   if (sdk) return sdk;

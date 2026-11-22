@@ -31,3 +31,4 @@ export function celebrate(): void;
 
 /** The `t.me/<bot>?startapp=<param>` value (slug-shaped only), from initDataUnsafe.start_param or the URL. */
 export function startParam(w?: any): string;
+export function inMiniApp(win?: any): boolean;

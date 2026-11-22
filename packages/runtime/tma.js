@@ -20,7 +20,14 @@
 import { VPS_PROXY } from "./feed.js";
 import { shell } from "./shell.js";
 
-const LAUNCH = (() => { try { return typeof location !== "undefined" ? (location.hash || "").replace(/^#/, "") + "&" + (location.search || "").replace(/^\?/, "") : ""; } catch { return ""; } })();
+const LAUNCH_KEY = "ms:tg-launch";
+const URL_LAUNCH = (() => { try { return typeof location !== "undefined" ? (location.hash || "").replace(/^#/, "") + "&" + (location.search || "").replace(/^\?/, "") : ""; } catch { return ""; } })();
+const LAUNCH = (() => {
+  try {
+    if (/tgWebAppData=/.test(URL_LAUNCH)) { sessionStorage.setItem(LAUNCH_KEY, URL_LAUNCH); return URL_LAUNCH; }
+    return sessionStorage.getItem(LAUNCH_KEY) || URL_LAUNCH;
+  } catch { return URL_LAUNCH; }
+})();
 
 /**
  * The launch's signed initData, read from the launch URL itself (`tgWebAppData`), or "" outside Telegram. It is the
@@ -33,8 +40,10 @@ export function launchInitData(launch = LAUNCH) {
 
 /** True when this page was opened as a Telegram Mini App (the launch marker is in the URL, available at once). */
 export function inTelegram() {
-  try { return typeof location !== "undefined" && /tgWebApp/.test((location.hash || "") + (location.search || "")); }
-  catch { return false; }
+  try {
+    if (typeof location === "undefined") return false;
+    return /tgWebApp/.test((location.hash || "") + (location.search || "")) || (LAUNCH !== URL_LAUNCH && !!launchInitData() && inTelegramHost());
+  } catch { return false; }
 }
 
 /**

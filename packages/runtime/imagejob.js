@@ -50,7 +50,15 @@
  * - Running out of polls CANCELS the job on the edge, or it spends the day's quota on pictures nobody reads.
  * @module
  */
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+import { Effect } from "./effect.vendor.js";
+import { range } from "./remeda.vendor.js";
+
+const STALE = { stale: true };
+const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
+const pollUntil = (step, polls) => Effect.sleep(EVERY).pipe(
+  Effect.andThen(Effect.suspend(step)),
+  Effect.flatMap((r) => r !== undefined || polls <= 1 ? Effect.succeed(r) : pollUntil(step, polls - 1)),
+);
 /** Poll count — 135 × {@link EVERY} ≈ 200 s, past the edge's own race budget. */
 export const POLLS = 135;
 /** Poll period in milliseconds. */
@@ -81,29 +89,33 @@ export async function startJob(base, body) {
  */
 export async function follow({ base, job, alive = () => true, onLive, onSlide }) {
   let got = 0;
-  try {
-    for (let i = 0; i < POLLS; i++) {
-      await sleep(EVERY);
-      if (!alive()) return "stale";
-      let j; try { j = await (await fetch(`${base}/get?job=${job}`)).json(); } catch { continue; }
-      if (!alive() || !j) return "stale";
+  const slide = (j, n) => tried(() => fetch(`${base}/get?job=${job}&n=${n}`)).pipe(
+    Effect.flatMap((pr) => !alive() ? Effect.fail(STALE) : (pr.headers.get("content-type") || "").startsWith("image/")
+      ? tried(() => pr.blob()).pipe(Effect.map((blob) => {
+        const meta = (j.slides || [])[n] || {};
+        onSlide?.({ url: URL.createObjectURL(blob), blob, w: meta.w, h: meta.h, by: meta.by, n });
+      }))
+      : Effect.void),
+    Effect.catchIf((e) => e !== STALE, () => Effect.void),
+    Effect.tap(() => Effect.sync(() => { got = n + 1; })),
+  );
+  const step = () => !alive() ? Effect.succeed("stale") : tried(async () => (await fetch(`${base}/get?job=${job}`)).json()).pipe(
+    Effect.map((j) => ({ j })),
+    Effect.catch(() => Effect.succeed({ again: true })),
+    Effect.flatMap(({ j, again }) => {
+      if (again) return Effect.succeed(undefined);
+      if (!alive() || !j) return Effect.succeed("stale");
       onLive?.({ stage: j.stage, phase: j.phase, step: j.step, steps: j.steps, eta: j.eta, pct: j.pct, got: j.got || 0 });
-      for (let n = got; n < (j.got || 0); n++) {
-        try {
-          const pr = await fetch(`${base}/get?job=${job}&n=${n}`);
-          if (!alive()) return "stale";
-          if ((pr.headers.get("content-type") || "").startsWith("image/")) {
-            const blob = await pr.blob(), meta = (j.slides || [])[n] || {};
-            onSlide?.({ url: URL.createObjectURL(blob), blob, w: meta.w, h: meta.h, by: meta.by, n });
-          }
-        } catch { }
-        got = n + 1;
-      }
-      if (j.status === "done" || j.status === "error") return j.status === "error" && j.error === "busy" ? "busy" : j.status;
-    }
-    cancelJob(base, job);
-    return "timeout";
-  } catch { return "error"; }
+      return Effect.forEach(range(got, Math.max(got, j.got || 0)), (n) => slide(j, n), { discard: true }).pipe(
+        Effect.map(() => j.status === "done" || j.status === "error" ? (j.status === "error" && j.error === "busy" ? "busy" : j.status) : undefined),
+        Effect.catchIf((e) => e === STALE, () => Effect.succeed("stale")),
+      );
+    }),
+  );
+  return await Effect.runPromise(pollUntil(step, POLLS).pipe(
+    Effect.map((r) => r === undefined ? (cancelJob(base, job), "timeout") : r),
+    Effect.catchCause(() => Effect.succeed("error")),
+  ));
 }
 
 /**
@@ -112,26 +124,27 @@ export async function follow({ base, job, alive = () => true, onLive, onSlide })
  * @returns `{ status, blob?, url?, by? }` — `status` is `"done" | "error" | "busy" | "timeout" | "stale"`; `blob`/`url`/`by` only on `"done"`
  */
 export async function followOne({ base, job, alive = () => true, onLive }) {
-  try {
-    for (let i = 0; i < POLLS; i++) {
-      await sleep(EVERY);
-      if (!alive()) return { status: "stale" };
-      let r; try { r = await fetch(`${base}/get?job=${job}`); } catch { continue; }
-      if (!alive()) return { status: "stale" };
-      const ct = r.headers.get("content-type") || "";
-      if (!/json/.test(ct)) {
-        const blob = await r.blob();
-        if (!alive()) return { status: "stale" };
-        return { status: "done", blob, url: URL.createObjectURL(blob), by: r.headers.get("x-audio-by") || r.headers.get("x-image-by") || r.headers.get("x-video-by") || "" };
-      }
-      const j = await r.json().catch(() => null);
-      if (!j) continue;
-      onLive?.({ stage: j.stage, phase: j.phase, eta: j.eta, pct: j.pct, elapsed: j.elapsed });
-      if (j.status === "error") return { status: j.error === "busy" ? "busy" : "error" };
-    }
-    cancelJob(base, job);
-    return { status: "timeout" };
-  } catch { return { status: "error" }; }
+  const bytes = (r) => tried(() => r.blob()).pipe(Effect.map((blob) => !alive() ? { status: "stale" } : {
+    status: "done", blob, url: URL.createObjectURL(blob),
+    by: r.headers.get("x-audio-by") || r.headers.get("x-image-by") || r.headers.get("x-video-by") || "",
+  }));
+  const progress = (r) => Effect.promise(() => r.json().catch(() => null)).pipe(Effect.map((j) => {
+    if (!j) return undefined;
+    onLive?.({ stage: j.stage, phase: j.phase, eta: j.eta, pct: j.pct, elapsed: j.elapsed });
+    return j.status === "error" ? { status: j.error === "busy" ? "busy" : "error" } : undefined;
+  }));
+  const step = () => !alive() ? Effect.succeed({ status: "stale" }) : tried(() => fetch(`${base}/get?job=${job}`)).pipe(
+    Effect.map((r) => ({ r })),
+    Effect.catch(() => Effect.succeed({ again: true })),
+    Effect.flatMap(({ r, again }) => again ? Effect.succeed(undefined)
+      : !alive() ? Effect.succeed({ status: "stale" })
+      : !/json/.test(r.headers.get("content-type") || "") ? bytes(r)
+      : progress(r)),
+  );
+  return await Effect.runPromise(pollUntil(step, POLLS).pipe(
+    Effect.map((r) => r === undefined ? (cancelJob(base, job), { status: "timeout" }) : r),
+    Effect.catchCause(() => Effect.succeed({ status: "error" })),
+  ));
 }
 
 /**

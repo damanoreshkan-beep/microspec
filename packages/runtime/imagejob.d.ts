@@ -80,17 +80,7 @@ export function followOne({ base, job, alive, onLive }: {
     job: any;
     alive?: () => boolean;
     onLive: any;
-}): Promise<{
-    status: string;
-    blob?: undefined;
-    url?: undefined;
-    by?: undefined;
-} | {
-    status: string;
-    blob: any;
-    url: any;
-    by: any;
-}>;
+}): Promise<any>;
 /**
  * Cancel a job on the edge (idempotent, fire-and-forget).
  * @param base the route

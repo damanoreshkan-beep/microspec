@@ -35,19 +35,23 @@
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
  *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
  *   from the skeleton as their atlases bind.
- *   `onBloom(item, { x, y, pitch })` fires when the resting cell has grown past half its large state — `x, y` the
- *   lens in CSS px, `pitch` the lattice pitch — and `onBloom(null)` when it shrinks back or a finger lands; the host
- *   lays its caption there.
+ *   `onBloom(item, { x, y, pitch, r })` fires when the resting cell has grown past half its large state — `x, y` the
+ *   lens in CSS px, `pitch` the lattice pitch, `r` the open form's radius in CSS px ({@link OPEN_R} × pitch × zoom) — and
+ *   `onBloom(null)` when it shrinks back or a finger lands; the host lays its controls on the open form's rim.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
  *   app drives every frame without a render: fonoteka sets `PARAM.pulse` (0..1, the bass envelope at the audio clock —
- *   the lit cell breathes) and `PARAM.band + b` (twelve bands of the song's spectrum, core breath.js `spectrumOf`).
- *   THE BLOOM — a cell's two states: once the field rests on a cell (no finger, 450 ms) it OPENS — grows 1.45×, every
- *   other cell is pushed away along its line from the focus (a translation, never a squeeze), and the cell that plays
- *   wears its spectrum as a corona of light around its form; any touch closes it (110 ms).
+ *   the lit cell breathes) and `PARAM.band + b` (twelve bands of the song's spectrum, core breath.js `listen`).
+ *   THE BLOOM — a cell's two states: once the field rests on a cell (no finger, 450 ms) it OPENS — grows 3.4×, its
+ *   name and line move INSIDE the form over a darkened lower half, every other cell is pushed away along its line
+ *   from the focus (a translation, never a squeeze), and the cell that plays wears its spectrum as a corona of light
+ *   around its form; any touch closes it (110 ms).
+ *   THE FEEL — while a finger or its fling moves the field, every cell that passes under the lens is a detent on the
+ *   vibration motor ({@link FEEL}: 8 ms, at most one per 45 ms), and the settle on a cell is a landing (6 · 34 · 14 ms).
  * - {@link spiral} — `(n) → [[q, r], …]`, the one-group lattice, the machine's own walk (the JS twin the tests hold it to).
  * - {@link atlasPlan} — `(n, size, aspect, want) → { cols, rows, tileW, tileH, size }` the tile grid for `n` tiles.
+ * - {@link OPEN_R} (the open form's radius over the pitch), {@link FEEL} (the detent and the landing, ms).
  * - {@link MARK}, {@link COMB_MAX} (217 — eight rings), {@link LEVELS} (one level, 1.35 — the cards;
  *   2026-11-08: the field is always at its largest, there is no smaller zoom), {@link PARAM} (the `set` indices).
  *
@@ -224,4 +228,12 @@ export const MARK: Readonly<{
     new: 1;
     updated: 2;
     lit: 4;
+}>;
+/** The open cell's form radius over the zoomed pitch: comb.frag's FORM × (1 + LENS) × (1 + BLOOM). */
+export const OPEN_R: number;
+/** The touch of the field: a detent as the lens passes each cell under a finger or a fling, and a landing when it settles. */
+export const FEEL: Readonly<{
+    detent: 8;
+    gap: 45;
+    land: number[];
 }>;

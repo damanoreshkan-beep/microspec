@@ -16,6 +16,8 @@ const float NAME_H = 0.314;
 const float LINE_TOP = 0.33, LINE_H = 0.42;
 const float LENS = 0.15;
 const float LENS_R = 2.2;
+const float BLOOM = 2.4;
+const float IN_TOP = 0.2, IN_W = 1.25;
 
 float back(float t) { float c1 = 1.70158, c3 = c1 + 1.0; float u = t - 1.0; return 1.0 + c3 * u * u * u + c1 * u * u; }
 
@@ -74,8 +76,8 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
   float dLens = length(cw - camW) * Z;
   float sc = 1.0 + LENS * (1.0 - smoothstep(0.0, LENS_R * P, dLens));
   float open = idx == focus ? clamp(points[5].w, 0.0, 1.0) : 0.0;
-  sc *= 1.0 + 1.6 * open;
-  float scText = sc / (1.0 + 1.6 * open) * (1.0 + 0.06 * open);
+  sc *= 1.0 + BLOOM * open;
+  float scText = sc / (1.0 + BLOOM * open);
   float ring = max(abs(float(ax.x)), max(abs(float(ax.y)), abs(float(ax.x + ax.y))));
   float arrive = points[2].w > 0.5 ? 1.0 : clamp((appear - 55.0 * ring - 60.0) / 380.0, 0.0, 1.0);
   if (arrive <= 0.0) return vec4(0.0);
@@ -112,6 +114,7 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
       float seam = exp(-pow((rr - reach) / 0.05, 2.0)) * (1.0 - win) * 4.0 * win;
       art.rgb = mix(art.rgb, cap, iris) + tint * seam * 0.6;
     }
+    if (open > 0.0) art.rgb *= 1.0 - 0.66 * open * smoothstep(0.3, 0.75, fu.y);
     float e = fwidth(a);
     float rim = clamp(smoothstep(0.02, 0.3, e) * (1.0 - smoothstep(0.0, 1.0, abs(a - 0.5) * 2.2)) * 1.4, 0.0, 1.0);
     bool lit = (idx == focus) || (idx == pressIdx) || ((mark & 4) != 0);
@@ -131,20 +134,25 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
     }
   }
   if (textOn > 0.5) {
-    float Ws = 0.9 * P * Z * scText;
-    float nameA = smoothstep(0.84, 0.94, Z);
-    float lineA = smoothstep(1.12, 1.3, Z);
-    vec2 su = vec2((d.x + Ws * 0.5) / Ws, (d.y - R - GAP * P * Z * sc) / (NAME_H * Ws));
+    float Rc = R / (1.0 + BLOOM * open);
+    float Ws = 0.9 * P * Z * mix(scText, IN_W, open);
+    float top = mix(Rc + GAP * P * Z * sc / (1.0 + BLOOM * open), IN_TOP * R, open);
+    float nameA = max(smoothstep(0.84, 0.94, Z), open);
+    float lineA = max(smoothstep(1.12, 1.3, Z), open);
+    vec3 ink = mix(pal(30), vec3(0.97), open);
+    vec2 su = vec2((d.x + Ws * 0.5) / Ws, (d.y - top) / (NAME_H * Ws));
     if (nameA > 0.0 && su.x >= 0.0 && su.x <= 1.0 && su.y >= 0.0 && su.y <= 1.0) {
       float g = glyphs(idx, su, 0.0, NAME_H);
-      float a = g * nameA * (idx == focus ? 1.0 - open * tex3Aspect.y : 0.86) * arrive * textFade;
-      acc.rgb += pal(30) * a * (1.0 - acc.a); acc.a += a * (1.0 - acc.a);
+      float a = g * nameA * (idx == focus ? 1.0 : 0.86) * arrive * textFade;
+      acc.rgb = mix(acc.rgb + ink * a * (1.0 - acc.a), acc.rgb * (1.0 - a) + ink * a, open);
+      acc.a += a * (1.0 - acc.a);
     }
-    vec2 lu = vec2(su.x, (d.y - R - GAP * P * Z * sc - LINE_TOP * Ws) / (LINE_H * Ws));
+    vec2 lu = vec2(su.x, (d.y - top - LINE_TOP * Ws) / (LINE_H * Ws));
     if (lineA > 0.0 && lu.x >= 0.0 && lu.x <= 1.0 && lu.y >= 0.0 && lu.y <= 1.0) {
       float g = glyphs(idx, lu, LINE_TOP, LINE_H);
-      float a = g * lineA * 0.78 * arrive * textFade * (idx == focus ? 1.0 - open * tex3Aspect.y : 1.0);
-      acc.rgb += pal(30) * a * (1.0 - acc.a); acc.a += a * (1.0 - acc.a);
+      float a = g * lineA * mix(0.78, 0.86, open) * arrive * textFade;
+      acc.rgb = mix(acc.rgb + ink * a * (1.0 - acc.a), acc.rgb * (1.0 - a) + ink * a, open);
+      acc.a += a * (1.0 - acc.a);
     }
   }
   return clamp(acc, 0.0, 1.0);
@@ -155,7 +163,7 @@ vec4 haloAt(int idx, vec2 cw, vec2 p, float P, float Z, vec2 camW, vec2 lens, fl
   float sc = 1.0 + LENS * (1.0 - smoothstep(0.0, LENS_R * P, length(cw - camW) * Z));
   if ((int(c.a) & 4) != 0) sc *= 1.0 + 0.06 * clamp(points[4].z, 0.0, 1.0);
   float bloomHere = clamp(points[5].w, 0.0, 1.0);
-  if (idx == int(vary.y)) sc *= 1.0 + 1.6 * bloomHere;
+  if (idx == int(vary.y)) sc *= 1.0 + BLOOM * bloomHere;
   float R = FORM * P * Z * sc;
   float dd = length(p - ((cw - camW) * Z + lens));
   float h = (1.0 - smoothstep(R * 0.95, R * 1.9, dd)) * smoothstep(R * 0.55, R * 1.0, dd);
@@ -237,7 +245,7 @@ void main() {
     uvec4 lc = texelFetch(buf, ivec2(li & 31, 17 + (li >> 5)), 0);
     vec3 ltint = vec3(lc.rgb) / 255.0;
     vec2 cs = (pushed(points[7].zw, li, P) - camW) * Z + lens;
-    float R = FORM * P * Z * (1.0 + LENS) * (1.0 + 1.6 * bloom);
+    float R = FORM * P * Z * (1.0 + LENS) * (1.0 + BLOOM * bloom);
     vec2 d = p0 - cs;
     float r = length(d), ang = fract(atan(d.y, d.x) / 6.2831853 + 0.5 + time * 0.012);
     float fb = ang * 48.0, ft = fract(fb);
@@ -245,7 +253,7 @@ void main() {
     int band = q < 12 ? q : 23 - q;
     float e = float(texelFetch(buf, ivec2(band, 33), 0).r) / 255.0;
     e = clamp((e - 0.3) / 0.7, 0.0, 1.0);
-    float reach = R * (1.1 + 0.85 * e * e);
+    float reach = R * (1.08 + 0.5 * e * e);
     float ray = 1.0 - smoothstep(0.06, 0.26, abs(ft - 0.5));
     float along = smoothstep(R * 0.98, R * 1.06, r) * (1.0 - smoothstep(reach * 0.9, reach, r));
     float tip = exp(-pow((r - reach) / (0.045 * R + 1.0), 2.0)) * step(0.02, e);
@@ -285,7 +293,7 @@ void main() {
   }
   if (bloom > 0.001 && vary.y >= 0.0) {
     vec2 fc = (points[3].zw - camW) * Z + lens;
-    float Ro = FORM * P * Z * (1.0 + LENS) * (1.0 + 1.6 * bloom);
+    float Ro = FORM * P * Z * (1.0 + LENS) * (1.0 + BLOOM * bloom);
     float dusk = bloom * smoothstep(fc.y + Ro * 0.85, fc.y + Ro + 48.0, p0.y);
     acc *= 1.0 - 0.92 * dusk;
     col = mix(col, ground, 0.75 * dusk);

@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertNotEquals, assertThrows } from "jsr:@std/assert@1";
 import { pkgRoot } from "../pkgroot.js";
-import { NAMES, ORGANIC, shapeOf, pathOf, scalePath, morpher, morphTo, shaper, EASE_IN_OUT } from "../shape.js";
+import { NAMES, ORGANIC, shapeOf, pathOf, scalePath, rimAt, morpher, morphTo, shaper, EASE_IN_OUT } from "../shape.js";
 
 const nums = (d) => d.match(/-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi).map(Number);
 
@@ -76,4 +76,22 @@ Deno.test("shape — shaper draws at once and follows its latest target", () => 
   s.to("Puffy");
   assertEquals(seen.length, 3, "a target it already rests on draws nothing");
   s.stop();
+});
+
+Deno.test("rimAt — a point ON the outline near the bearing, the lobe's tip on a lobed form", () => {
+  for (const name of ORGANIC) {
+    for (const deg of [0, 50, 130, 230, 310]) {
+      const p = rimAt(name, deg);
+      const r = Math.hypot(p.x - 0.5, p.y - 0.5);
+      assert(r > 0.38 && r <= Math.SQRT1_2, `${name} @${deg}: the point lies on the rim, inside the unit box (r ${r.toFixed(3)})`);
+      const off = Math.abs(((p.deg - deg) % 360 + 540) % 360 - 180);
+      assert(off <= 24, `${name} @${deg}: within the spread (${off.toFixed(1)}°)`);
+    }
+  }
+  const valley = rimAt("Clover4Leaf", 0, 1);
+  for (const d of [10, 80, 190, 260]) {
+    const t = rimAt("Clover4Leaf", d, 40);
+    assert(Math.abs(((t.deg - 45) % 90 + 90) % 90) < 4 || Math.abs(((t.deg - 45) % 90 + 90) % 90 - 90) < 4, `a bearing of ${d}° finds the clover's diagonal tip, not ${t.deg.toFixed(1)}°`);
+    assert(Math.hypot(t.x - 0.5, t.y - 0.5) > Math.hypot(valley.x - 0.5, valley.y - 0.5) + 0.1, "the tip stands out past the valley");
+  }
 });

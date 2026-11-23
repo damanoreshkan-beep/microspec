@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { envelopeOf, breathe, BREATH_HZ, spectrumOf, SPECTRUM_HZ, SPECTRUM_BANDS } from "../breath.js";
+import { envelopeOf, breathe, BREATH_HZ, spectrumOf, SPECTRUM_HZ, SPECTRUM_BANDS, tapLevels, listen } from "../breath.js";
 
 const RATE = 8000;
 const kick = (seconds, freq = 60) => Float32Array.from({ length: RATE * seconds }, (_, i) => ((i / RATE) % 1 < 0.5 ? Math.sin(2 * Math.PI * freq * i / RATE) : 0));
@@ -80,4 +80,21 @@ Deno.test("breath — the keyframe track follows the audio element's clock", () 
   stop();
   assertEquals(calls.at(-1), "cancel");
   assertEquals(Object.keys(ls).length, 0, "every listener removed");
+});
+
+Deno.test("tapLevels — each band over its own running peak: a quiet band fills its range, silence stays dark, a peak falls slowly", () => {
+  const peaks = new Float32Array(3);
+  const a = tapLevels([0.8, 0.2, 0], peaks);
+  assertEquals(Array.from(a).map((v) => +v.toFixed(3)), [1, 1, 0], "the first frame sets the peaks");
+  assert(Math.abs(peaks[2] - 0.08) < 1e-6, "silence never lowers a peak under the floor");
+  const b = tapLevels([0.4, 0.2, 0.04], peaks);
+  assert(Math.abs(b[0] - 0.4 / (0.8 * 0.996)) < 1e-5, "half the peak reads about half");
+  assertEquals(+b[1].toFixed(3), 1, "a steady quiet band stays full");
+  assert(b[2] <= 0.5 + 1e-6, "a whisper under the floor stays dim");
+  for (let i = 0; i < 600; i++) tapLevels([0.1, 0.2, 0], peaks);
+  assert(peaks[0] < 0.8 * 0.2 && peaks[0] >= 0.1, `the loud peak has fallen to the band's level: ${peaks[0]}`);
+});
+
+Deno.test("listen — null without captureStream: the element is never connected to a context", () => {
+  assertEquals(listen(/** @type {any} */ ({ addEventListener() {}, paused: true })), null);
 });

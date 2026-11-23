@@ -36,19 +36,23 @@
  *   not. `focus` is the app's CURRENT item id: when it changes, the lens eases to that cell (the host → the field);
  *   `loading` (boolean) draws the skeleton lattice while the host has no items yet; the icons and names fade in
  *   from the skeleton as their atlases bind.
- *   `onBloom(item, { x, y, pitch })` fires when the resting cell has grown past half its large state — `x, y` the
- *   lens in CSS px, `pitch` the lattice pitch — and `onBloom(null)` when it shrinks back or a finger lands; the host
- *   lays its caption there.
+ *   `onBloom(item, { x, y, pitch, r })` fires when the resting cell has grown past half its large state — `x, y` the
+ *   lens in CSS px, `pitch` the lattice pitch, `r` the open form's radius in CSS px ({@link OPEN_R} × pitch × zoom) — and
+ *   `onBloom(null)` when it shrinks back or a finger lands; the host lays its controls on the open form's rim.
  *   `onSettle(item, i)` fires when the lens comes to rest on a cell after a finger has moved the field (the field →
  *   the host: fonoteka plays that song); `onFocus(item, i)` follows the lens live; `onOpen(item, i)` is a tap inside
  *   a form. `zoom` asks a level (there is one — the cards). `onReady(api)` hands the machine's api up for values the
  *   app drives every frame without a render: fonoteka sets `PARAM.pulse` (0..1, the bass envelope at the audio clock —
- *   the lit cell breathes) and `PARAM.band + b` (twelve bands of the song's spectrum, core breath.js `spectrumOf`).
- *   THE BLOOM — a cell's two states: once the field rests on a cell (no finger, 450 ms) it OPENS — grows 1.45×, every
- *   other cell is pushed away along its line from the focus (a translation, never a squeeze), and the cell that plays
- *   wears its spectrum as a corona of light around its form; any touch closes it (110 ms).
+ *   the lit cell breathes) and `PARAM.band + b` (twelve bands of the song's spectrum, core breath.js `listen`).
+ *   THE BLOOM — a cell's two states: once the field rests on a cell (no finger, 450 ms) it OPENS — grows 3.4×, its
+ *   name and line move INSIDE the form over a darkened lower half, every other cell is pushed away along its line
+ *   from the focus (a translation, never a squeeze), and the cell that plays wears its spectrum as a corona of light
+ *   around its form; any touch closes it (110 ms).
+ *   THE FEEL — while a finger or its fling moves the field, every cell that passes under the lens is a detent on the
+ *   vibration motor ({@link FEEL}: 8 ms, at most one per 45 ms), and the settle on a cell is a landing (6 · 34 · 14 ms).
  * - {@link spiral} — `(n) → [[q, r], …]`, the one-group lattice, the machine's own walk (the JS twin the tests hold it to).
  * - {@link atlasPlan} — `(n, size, aspect, want) → { cols, rows, tileW, tileH, size }` the tile grid for `n` tiles.
+ * - {@link OPEN_R} (the open form's radius over the pitch), {@link FEEL} (the detent and the landing, ms).
  * - {@link MARK}, {@link COMB_MAX} (217 — eight rings), {@link LEVELS} (one level, 1.35 — the cards;
  *   2026-11-08: the field is always at its largest, there is no smaller zoom), {@link PARAM} (the `set` indices).
  *
@@ -88,6 +92,7 @@ import { MachineStage } from "./machine.js";
 import { hasWebGL2 } from "./glstage.js";
 import { pathOf, shapeOf } from "./shape.js";
 import { gate } from "./gate.js";
+import { haptic } from "./sensors.js";
 
 /** Eight rings — 1 + 6 + 12 + … + 48 cells; the machine's site map is 17 × 17. */
 export const COMB_MAX = 217;
@@ -186,6 +191,10 @@ function maxTex() {
   return maxTexCache || 2048;
 }
 const pitchOf = (w, h) => Math.max(84, Math.min(120, Math.min(w, h) / 4.2));
+/** The open cell's form radius over the zoomed pitch: comb.frag's FORM × (1 + LENS) × (1 + BLOOM). */
+export const OPEN_R = 0.31 * 1.15 * 3.4;
+/** The touch of the field: a detent as the lens passes each cell under a finger or a fling, and a landing when it settles. */
+export const FEEL = Object.freeze({ detent: 8, gap: 45, land: [6, 34, 14] });
 
 function wrap(ctx, text, width, maxLines) {
   const words = String(text || "").trim().split(/\s+/).filter(Boolean), lines = [];
@@ -446,14 +455,17 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
   const onState = (s) => { if (s === "failed" || s === "none") setMode("dom"); };
   const onHud = (hud) => {
     m.down = hud[9] === 1;
+    if (m.down) m.moved = true;
     {
       const o = m.api?.refresh?.().out; const b = o ? o[31] : 0;
       const q = Math.round(b * 20) / 20; if (q !== m.bloomQ) { m.bloomQ = q; const el = m.root; if (el) el.dataset.combBloom = String(q); }
-      if (!m.bloomed && b > 0.5 && hud[0] >= 0) { const it = m.items[hud[0]]; if (it) { m.bloomed = true; setOpened(true); m.onBloom?.(it, { x: o[2], y: o[3], pitch: hud[6] }); } }
+      if (!m.bloomed && b > 0.5 && hud[0] >= 0) { const it = m.items[hud[0]]; if (it) { m.bloomed = true; m.moved = false; setOpened(true); m.onBloom?.(it, { x: o[2], y: o[3], pitch: hud[6], r: OPEN_R * hud[6] * (o[27] || LEVELS[0]) }); } }
       if (m.bloomed && (m.down || b < 0.5)) { m.bloomed = false; setOpened(false); m.onBloom?.(null); }
     }
-    if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
+    if (hud[3] !== m.tapSeq) { m.tapSeq = hud[3]; m.moved = false; const it = m.items[hud[2]]; if (it) m.onOpen?.(it, hud[2]); }
     if (hud[1] !== m.focusSeq) {
+      const now = performance.now();
+      if (m.moved && m.focusSeq && now - (m.tickAt || 0) >= FEEL.gap) { m.tickAt = now; haptic.buzz(FEEL.detent); }
       m.focusSeq = hud[1]; m.lastFocus = hud[0];
       setWin("");
       const tell = () => {
@@ -462,12 +474,12 @@ export function Comb({ items = [], groups = [], cell, focus, zoom, loading = fal
         const g = hud[12] >= 0 ? m.groups[hud[12]] : null; setGroupId(g ? String(g.id) : "");
         if (it) m.onFocus?.(it, m.lastFocus);
       };
-      const now = performance.now();
       if (!m.down && now - (m.toldAt || 0) > 120) { m.toldAt = now; if (m.tellTimer) { clearTimeout(m.tellTimer); m.tellTimer = 0; } tell(); }
       else if (!m.tellTimer) m.tellTimer = setTimeout(() => { m.tellTimer = 0; m.toldAt = performance.now(); tell(); }, 130);
     }
     if (hud[8] !== m.settleSeq) {
       m.settleSeq = hud[8]; const it = m.items[hud[7]];
+      if (m.moved) { m.moved = false; haptic.buzz(FEEL.land); }
       if (it) { setWin(windowOf(it)); m.onSettle?.(it, hud[7]); }
     }
     const lv = LEVELS.length - 1; if (lv !== level) setLevel(lv);

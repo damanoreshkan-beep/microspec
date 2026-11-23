@@ -25,6 +25,8 @@
  * - {@link shapeOf} — `shapeOf(seed, set = ORGANIC)`: the same form for the same seed on every device (FNV-1a).
  * - {@link pathOf} — `pathOf(name)`: the unit-box SVG path of a named shape; cached; throws on an unknown name.
  * - {@link scalePath} — `scalePath(d, w, h = w)`: a unit-box path laid onto a `w × h` pixel box (for `clip-path: path()`).
+ * - {@link rimAt} — `rimAt(name, deg, spread = 24)`: the outline's outermost point within `spread`° of a bearing
+ *   (0 = up, clockwise) — a lobe's tip on a cookie or a flower, the edge itself on a round form; unit box.
  * - {@link morpher} — `morpher(from, to)`: a `(t) => d` sampler between two named shapes, `t` in 0..1.
  * - {@link EASE_IN_OUT} — the `--ease-in-out` curve of runtime.css as a function: on-screen movement and morphs.
  * - {@link morphTo} — `morphTo(from, to, { ms, onFrame, onDone })`: runs the morph on rAF and returns a cancel; instant when still.
@@ -115,6 +117,49 @@ export function pathOf(name) {
 export function scalePath(d, w, h = w) {
   let i = 0;
   return d.replace(/-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi, (n) => String(Math.round(Number(n) * (i++ % 2 ? h : w) * 100) / 100));
+}
+
+const rims = new Map();
+const outline = (name) => {
+  let pts = rims.get(name);
+  if (pts) return pts;
+  pts = [];
+  const n = (pathOf(name).match(/-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?|[MLCZ]/gi) || []);
+  let i = 0, x = 0, y = 0;
+  const num = () => Number(n[i++]);
+  while (i < n.length) {
+    const op = n[i++].toUpperCase();
+    if (op === "M" || op === "L") { x = num(); y = num(); pts.push([x, y]); }
+    else if (op === "C") {
+      const c = [x, y, num(), num(), num(), num(), num(), num()];
+      for (let k = 1; k <= 12; k++) {
+        const t = k / 12, u = 1 - t;
+        pts.push([u * u * u * c[0] + 3 * u * u * t * c[2] + 3 * u * t * t * c[4] + t * t * t * c[6], u * u * u * c[1] + 3 * u * u * t * c[3] + 3 * u * t * t * c[5] + t * t * t * c[7]]);
+      }
+      x = c[6]; y = c[7];
+    }
+  }
+  rims.set(name, pts);
+  return pts;
+};
+/**
+ * The outline's outermost point within `spread` degrees of a bearing, measured from the unit box's centre: on a
+ * lobed form the tip of the lobe nearest the bearing, on a round one the edge at the bearing itself. A host lays
+ * a control there so it sits ON the form, in a place the form itself offers.
+ * @param {string} name one of {@link NAMES}
+ * @param {number} deg the bearing, degrees, 0 = up, clockwise
+ * @param {number} [spread] how far either side of the bearing to look, degrees
+ * @returns {{ x: number, y: number, deg: number }} the point in the unit box and its own bearing
+ */
+export function rimAt(name, deg, spread = 24) {
+  let best = null, far = -1;
+  for (const [px, py] of outline(name)) {
+    const dx = px - 0.5, dy = py - 0.5, b = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+    const off = Math.abs(((b - deg) % 360 + 540) % 360 - 180);
+    const r = Math.hypot(dx, dy) - off * 1e-5;
+    if (off <= spread && r > far) { far = r; best = { x: px, y: py, deg: b }; }
+  }
+  return best || { x: 0.5 + 0.5 * Math.sin(deg * Math.PI / 180), y: 0.5 - 0.5 * Math.cos(deg * Math.PI / 180), deg };
 }
 
 /**

@@ -24,6 +24,8 @@
  * - {@link shapeOf} — `shapeOf(seed, set = ORGANIC)`: the same form for the same seed on every device (FNV-1a).
  * - {@link pathOf} — `pathOf(name)`: the unit-box SVG path of a named shape; cached; throws on an unknown name.
  * - {@link scalePath} — `scalePath(d, w, h = w)`: a unit-box path laid onto a `w × h` pixel box (for `clip-path: path()`).
+ * - {@link rimAt} — `rimAt(name, deg, spread = 24)`: the outline's outermost point within `spread`° of a bearing
+ *   (0 = up, clockwise) — a lobe's tip on a cookie or a flower, the edge itself on a round form; unit box.
  * - {@link morpher} — `morpher(from, to)`: a `(t) => d` sampler between two named shapes, `t` in 0..1.
  * - {@link EASE_IN_OUT} — the `--ease-in-out` curve of runtime.css as a function: on-screen movement and morphs.
  * - {@link morphTo} — `morphTo(from, to, { ms, onFrame, onDone })`: runs the morph on rAF and returns a cancel; instant when still.
@@ -82,6 +84,20 @@ export function pathOf(name: string): string;
  * @returns {string} the path in pixels, two decimals
  */
 export function scalePath(d: string, w: number, h?: number): string;
+/**
+ * The outline's outermost point within `spread` degrees of a bearing, measured from the unit box's centre: on a
+ * lobed form the tip of the lobe nearest the bearing, on a round one the edge at the bearing itself. A host lays
+ * a control there so it sits ON the form, in a place the form itself offers.
+ * @param {string} name one of {@link NAMES}
+ * @param {number} deg the bearing, degrees, 0 = up, clockwise
+ * @param {number} [spread] how far either side of the bearing to look, degrees
+ * @returns {{ x: number, y: number, deg: number }} the point in the unit box and its own bearing
+ */
+export function rimAt(name: string, deg: number, spread?: number): {
+    x: number;
+    y: number;
+    deg: number;
+};
 /**
  * A sampler between two named shapes: `(t) => d`, `t` in 0..1 (0 = `from`, 1 = `to`).
  * @param {string} from shape name

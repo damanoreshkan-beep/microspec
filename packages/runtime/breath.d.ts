@@ -1,18 +1,19 @@
 /**
  * # runtime/breath.js — a form that breathes with the song, at almost no cost
  *
- * The obvious way to make something pulse with music is an AnalyserNode read on every frame. On a phone it is
- * the wrong way twice over. It routes the playing `<audio>` through Web Audio, and iOS suspends an
- * AudioContext in the background — the song stops when the screen locks, which is the one thing a music
- * app must never do. And it is a main-thread FFT plus a style write 60–120 times a second for as long as
- * the song plays.
+ * The obvious way to make something pulse with music is to route the playing `<audio>` through an AnalyserNode.
+ * On a phone that is the wrong way: the element's sound then exists only inside the AudioContext, and a context
+ * that is suspended (no gesture yet, iOS in the background) is a song that stops. So the playing element is never
+ * connected to a context here.
  *
- * So the song is read ONCE instead. The copy kept on the phone is decoded at 8 kHz mono (the bass is all a
- * breath needs), low-passed, cut into 10 frames a second and smoothed with a fast rise and a slow fall
- * (`envelopeOf` — pure, unit-tested). The envelope becomes a `scale` keyframe track the length of the song,
- * handed to the COMPOSITOR as one Web Animation (`breathe`), whose clock is pinned to the audio element's:
- * play, pause, seek, rate. There is no requestAnimationFrame, no per-frame JavaScript and no Web Audio graph
- * in the playback path, so background play is untouched.
+ * Two readings instead. OFFLINE: the copy kept on the phone is decoded once at 8 kHz mono, low-passed, cut into
+ * 10 frames a second and smoothed with a fast rise and a slow fall (`envelopeOf` — pure, unit-tested); the
+ * envelope becomes a `scale` keyframe track handed to the COMPOSITOR as one Web Animation pinned to the audio
+ * clock (`breathe`). LIVE: `listen` takes a COPY of the element's sound with `captureStream()` — the element keeps
+ * playing through its own output, untouched — and reads that copy with an AnalyserNode, so any song gives its
+ * spectrum whatever its source: a file on the phone, a stream, another service. A context that is not running
+ * costs the picture, never the sound. The live bands are normalised to their own running peak (`tapLevels` —
+ * pure, unit-tested), so a quiet band moves as much as a loud one, as the offline spectrum is to its 95th percentile.
  *
  * ## Import
  * ```js
@@ -25,6 +26,10 @@
  * - {@link envelopeOf} — `envelopeOf(pcm, rate, hz)`: mono PCM → `Uint8Array` envelope 0..255 (bass RMS, smoothed, normalised to its 95th percentile).
  * - {@link envelopeOfBlob} — `envelopeOfBlob(blob, hz)`: decode an audio file at 8 kHz mono and return its envelope (browser only).
  * - {@link breathe} — `breathe(el, env, audio, { hz, depth })`: the envelope as a compositor `scale` animation pinned to `audio`; returns a stop.
+ * - {@link listen} — `listen(audio, { bands })`: the live reading of a playing element — `{ frame(), stop() }`;
+ *   `frame()` → `{ pulse, bands }` (pulse 0..1, `bands` a `Uint8Array` 0..255) or `null` while there is no sound
+ *   to read; `listen` itself is `null` where `captureStream` or Web Audio is missing, and under the gate.
+ * - {@link tapLevels} — `tapLevels(levels, peaks, { fall, floor })`: levels 0..1 → each over its own running peak (pure).
  *
  * ## In practice
  * ```js
@@ -38,12 +43,15 @@
  * ```
  *
  * ## How it fits
- * Imports `./gate.js` only. The first consumer is the product's fonoteka (the playing song's form). A
- * streamed song with no copy on the phone has no blob and so no breath — the form simply holds still.
+ * Imports `./gate.js` and `./spectrum.js` (the FFT bands). The first consumer is the product's fonoteka: the
+ * playing song's cell breathes and wears its spectrum from `listen`, for a song on the phone and a streamed one alike.
  * Unit tests: `packages/runtime/tests/breath_test.js`.
  *
  * ## Invariants and pitfalls
- * - Never connect the playing element to an AudioContext for this (see above — the background-play trap).
+ * - Never connect the playing element to an AudioContext (see above — the background-play trap); `listen` reads
+ *   a `captureStream()` copy. The copy is same-origin only: a cross-origin source without CORS reads nothing.
+ * - `listen` makes its AudioContext on the element's first `playing` and resumes it on every `playing`, so the
+ *   tap on play is the gesture that lets it run.
  * - `breathe` is a no-op under `prefers-reduced-motion`, in the gate, and on an empty envelope: still is a
  *   valid state of the form, so a caller never needs a fallback.
  * - The depth is SUBTLE on purpose (4%): the form is a reading surface for the title under it, not a speaker
@@ -119,6 +127,42 @@ export function breathe(el: {
     hz?: number;
     depth?: number;
 }): () => void;
+/**
+ * Each level over its own running peak: a peak rises at once to a louder level and keeps `fall` of itself a
+ * frame, never under `floor`, so silence stays dark and a quiet band still fills its range.
+ * @param {ArrayLike<number>} levels this frame's levels, 0..1
+ * @param {Float32Array} peaks one running peak per level — the caller's state, mutated
+ * @param {{ fall?: number, floor?: number }} [opts] `fall` 0.996 ≈ a 3 s half-life at 60 fps
+ * @returns {Float32Array} the normalised levels, 0..1
+ */
+export function tapLevels(levels: ArrayLike<number>, peaks: Float32Array, { fall, floor }?: {
+    fall?: number;
+    floor?: number;
+}): Float32Array;
+/**
+ * The live reading of a playing element: a `captureStream()` copy of its sound into an AnalyserNode — the
+ * element's own output is never touched. Twelve log bands 55 Hz … 7 kHz and the bass, each over its running
+ * peak ({@link tapLevels}), followed on a fast-rise / slow-fall path like the offline spectrum.
+ * @param {{ paused: boolean, captureStream?: Function, mozCaptureStream?: Function, addEventListener: Function, removeEventListener: Function }} audio
+ *   the playing element (an HTMLMediaElement), with a same-origin source
+ * @param {{ bands?: number }} [opts]
+ * @returns {{ frame: () => ({ pulse: number, bands: Uint8Array } | null), stop: () => void } | null}
+ */
+export function listen(audio: {
+    paused: boolean;
+    captureStream?: Function;
+    mozCaptureStream?: Function;
+    addEventListener: Function;
+    removeEventListener: Function;
+}, { bands }?: {
+    bands?: number;
+}): {
+    frame: () => ({
+        pulse: number;
+        bands: Uint8Array;
+    } | null);
+    stop: () => void;
+} | null;
 /** Envelope frames per second. */
 export const BREATH_HZ: 10;
 /** The spectrum's frame rate, frames a second. */

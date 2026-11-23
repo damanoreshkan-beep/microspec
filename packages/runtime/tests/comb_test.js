@@ -102,6 +102,8 @@ Deno.test("the bloom: at rest the lens opens on the focused cell and a finger on
   for (let k = 0; k < 90; k++) { t += 16; x.step(16, t); }
   assert(out(31) > 0.97, `bloom opened at rest: ${out(31)}`);
   const P = out(7), Z = out(27) || 1.35, lens = [out(2), out(3)], cam = [out(0), out(1)], bloom = out(31);
+  assert(Math.abs(hud(6) - P) <= 1, `the HUD pitch is the lattice pitch P, before the zoom: ${hud(6)} vs ${P}`);
+  assert(Math.abs(out(27) - Z) < 1e-6 && Z > 1, `out[27] carries the zoom the open radius is scaled by: ${out(27)}`);
   const world = [-P / 2, -P * ROWH * 1], f = [out(22), out(23)];
   const d = [world[0] - f[0], world[1] - f[1]], r = Math.hypot(...d), tt = Math.min(1, r / (4.6 * P));
   const push = 0.95 * P * bloom * (1 - tt * tt * (3 - 2 * tt));

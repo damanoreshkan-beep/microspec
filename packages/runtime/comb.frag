@@ -17,7 +17,7 @@ const float LINE_TOP = 0.33, LINE_H = 0.42;
 const float LENS = 0.15;
 const float LENS_R = 2.2;
 const float BLOOM = 2.4;
-const float IN_TOP = 0.2, IN_W = 1.25;
+const float IN_TOP = 0.0, IN_W = 1.12;
 
 float back(float t) { float c1 = 1.70158, c3 = c1 + 1.0; float u = t - 1.0; return 1.0 + c3 * u * u * u + c1 * u * u; }
 
@@ -114,7 +114,7 @@ vec4 cell(ivec2 ax, vec2 p, float P, float Z, float rowh, vec2 camW, vec2 lens, 
       float seam = exp(-pow((rr - reach) / 0.05, 2.0)) * (1.0 - win) * 4.0 * win;
       art.rgb = mix(art.rgb, cap, iris) + tint * seam * 0.6;
     }
-    if (open > 0.0) art.rgb *= 1.0 - 0.66 * open * smoothstep(0.3, 0.75, fu.y);
+    if (open > 0.0) art.rgb *= 1.0 - 0.66 * open * smoothstep(0.22, 0.68, fu.y);
     float e = fwidth(a);
     float rim = clamp(smoothstep(0.02, 0.3, e) * (1.0 - smoothstep(0.0, 1.0, abs(a - 0.5) * 2.2)) * 1.4, 0.0, 1.0);
     bool lit = (idx == focus) || (idx == pressIdx) || ((mark & 4) != 0);

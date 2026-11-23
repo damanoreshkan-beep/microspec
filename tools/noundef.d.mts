@@ -30,7 +30,8 @@
  * - Keeps every diagnostic of the form "name is not defined" whose name is not in the allowlist:
  *   document, requestAnimationFrame, cancelAnimationFrame, getComputedStyle, devicePixelRatio, matchMedia,
  *   Image, DOMParser, IntersectionObserver, ResizeObserver, MutationObserver, DeviceOrientationEvent,
- *   AudioContext, webkitAudioContext, AudioWorkletNode, OfflineAudioContext, OffscreenCanvas.
+ *   AudioContext, webkitAudioContext, AudioWorkletNode, OfflineAudioContext, OffscreenCanvas, innerWidth,
+ *   innerHeight, screen, Audio, Path2D.
  * - Each offender is printed as `path:line — message`, then the count, with the reason: a name that is
  *   not a browser global and not declared is a crash waiting for the screen that renders it.
  * - Green: "no undefined identifiers in N app entry points". Writes nothing.

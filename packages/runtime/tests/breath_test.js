@@ -27,7 +27,7 @@ Deno.test("breath — one frame per 1/BREATH_HZ s, bytes 0..255", () => {
 
 Deno.test("breath — the form swells on the bass and falls back in the silence", () => {
   const env = envelopeOf(kick(4), RATE);
-  const loud = env[3], quiet = env[9];   
+  const loud = env[3], quiet = env[9];
   assert(loud > 180, `a bass hit should be near full breath, got ${loud}`);
   assert(quiet < loud / 3, `the gap should fall well back, got ${quiet} after ${loud}`);
 });
@@ -95,137 +95,89 @@ Deno.test("tapLevels — each band over its own running peak: a quiet band fills
   assert(peaks[0] < 0.8 * 0.2 && peaks[0] >= 0.1, `the loud peak has fallen to the band's level: ${peaks[0]}`);
 });
 
-Deno.test("listen — null without captureStream: the element is never connected to a context", () => {
-  assertEquals(listen(/** @type {any} */ ({ addEventListener() {}, paused: true })), null);
+const fakeWeb = (initial) => {
+  const was = { AudioContext: globalThis.AudioContext, document: globalThis.document };
+  const w = { ctxs: [], routes: [], resumed: 0, level: 0, dl: {} };
+  globalThis.AudioContext = /** @type {any} */ (class {
+    sampleRate = 44100; destination = { name: "speakers" }; ls = {}; state = initial;
+    constructor() { w.ctxs.push(this); }
+    resume() { w.resumed++; return Promise.resolve(); }
+    close() { return Promise.resolve(); }
+    addEventListener(k, f) { this.ls[k] = f; }
+    createAnalyser() { return { name: "analyser", fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 1024, getByteFrequencyData(b) { b.fill(w.level); } }; }
+    createMediaElementSource(el) { const n = { el, to: [], connect(x) { n.to.push(x.name); } }; w.routes.push(n); return n; }
+  });
+  globalThis.document = /** @type {any} */ ({ addEventListener: (k, f) => (w.dl[k] = f), removeEventListener: (k) => delete w.dl[k] });
+  w.restore = () => { globalThis.AudioContext = was.AudioContext; globalThis.document = was.document; };
+  return w;
+};
+const element = () => {
+  const ls = {};
+  return { ls, paused: false, addEventListener: (k, f) => (ls[k] = f), removeEventListener: (k) => delete ls[k] };
+};
+
+Deno.test("listen — null where Web Audio is missing", () => {
+  assertEquals(listen(/** @type {any} */ (element())), null);
 });
 
-Deno.test("listen — the next song: the ended copy is replaced by a fresh capture, a late track attaches on addtrack", () => {
-  const sources = [], was = { AudioContext: globalThis.AudioContext, MediaStream: globalThis.MediaStream };
-  globalThis.AudioContext = /** @type {any} */ (class {
-    state = "running"; sampleRate = 44100;
-    resume() { return Promise.resolve(); }
-    close() { return Promise.resolve(); }
-    createAnalyser() { return { fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 1024, getByteFrequencyData() {} }; }
-    createMediaStreamSource(ms) { const n = { track: ms.tracks[0], connect() {}, disconnect() { n.off = true; } }; sources.push(n); return n; }
-  });
-  globalThis.MediaStream = /** @type {any} */ (class { constructor(tracks) { this.tracks = tracks; } });
-  const track = (id) => ({ id, readyState: "live", stop() { this.readyState = "ended"; } });
-  const stream = (tracks) => {
-    const ls = {};
-    return { tracks, ls, getAudioTracks: () => tracks, getTracks: () => tracks, addEventListener: (k, f) => (ls[k] = f) };
-  };
-  const ls = {};
-  const caps = [stream([track("song-1")]), stream([track("song-2")]), stream([])];
-  let n = 0;
-  const audio = { paused: false, captureStream: () => caps[n++], addEventListener: (k, f) => (ls[k] = f), removeEventListener: (k) => delete ls[k] };
+Deno.test("listen — connect() in the tap makes the context and routes the element once, to the speakers and the analyser", () => {
+  const w = fakeWeb("running");
   try {
+    const audio = element();
     const tap = listen(/** @type {any} */ (audio));
-    assert(tap, "a tap where captureStream and Web Audio exist");
-    assertEquals(sources.map((s) => s.track.id), ["song-1"], "the playing song is read");
-    caps[0].tracks[0].readyState = "ended";
-    ls.playing();
-    assertEquals(sources.map((s) => s.track.id), ["song-1", "song-2"], "the next song's playing takes a fresh capture");
-    assert(sources[0].off, "the ended copy is disconnected");
-    caps[1].tracks[0].readyState = "ended";
-    ls.playing();
-    assertEquals(sources.length, 2, "a capture with no track yet attaches nothing");
-    caps[2].tracks.push(track("song-3"));
-    caps[2].ls.addtrack();
-    assertEquals(sources.map((s) => s.track.id), ["song-1", "song-2", "song-3"], "a track that lands later is attached on addtrack");
+    assertEquals(w.ctxs.length, 0, "nothing is made before the tap");
+    assertEquals(tap.frame(), null);
+    tap.connect();
+    tap.connect();
+    audio.ls.play();
+    assertEquals(w.ctxs.length, 1, "one context");
+    assertEquals(w.routes.length, 1, "the element is routed once");
+    assertEquals(w.routes[0].el, audio);
+    assertEquals(w.routes[0].to, ["speakers", "analyser"], "the song still reaches the speakers, and the analyser hears it");
+    assertEquals(tap.state(), { ctx: "running", routed: true, fault: "", heard: false });
+    w.level = 200;
+    let f = null;
+    for (let i = 0; i < TAP.heard; i++) f = tap.frame();
+    assert(f && f.bands.length === SPECTRUM_BANDS && f.bands.some((v) => v > 200), "a loud song lights the bands");
+    assertEquals(tap.state().heard, true);
+    audio.paused = true;
+    audio.src = "next-song.mp3";
+    audio.paused = false;
+    audio.ls.play();
+    assert(tap.frame(), "the next song reads at once: the routing belongs to the element, not to a song");
+    assertEquals(w.routes.length, 1, "switching songs never routes again");
+    audio.paused = true;
+    assertEquals(tap.frame(), null, "a paused song reads nothing");
     tap.stop();
+    assertEquals(w.routes.length, 1, "stop never undoes the routing: the song keeps its speakers");
   } finally {
-    globalThis.AudioContext = was.AudioContext;
-    globalThis.MediaStream = was.MediaStream;
+    w.restore();
   }
 });
 
-Deno.test("listen — state names where the reading stands: a refused capture, a silent copy, a heard one, a context woken by a touch", () => {
-  const was = { AudioContext: globalThis.AudioContext, MediaStream: globalThis.MediaStream, document: globalThis.document };
-  let level = 0, resumed = 0;
-  const ctxs = [];
-  globalThis.AudioContext = /** @type {any} */ (class {
-    state = "suspended"; sampleRate = 44100;
-    constructor() { ctxs.push(this); }
-    resume() { resumed++; return Promise.resolve(); }
-    close() { return Promise.resolve(); }
-    createAnalyser() { return { fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 1024, getByteFrequencyData(a) { a.fill(level); } }; }
-    createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
-  });
-  globalThis.MediaStream = /** @type {any} */ (class { constructor(tracks) { this.tracks = tracks; } });
-  const dl = {};
-  globalThis.document = /** @type {any} */ ({ addEventListener: (k, f) => (dl[k] = f), removeEventListener: (k) => delete dl[k] });
-  const ls = {};
-  const tracks = [{ readyState: "live", stop() {} }];
-  let refuse = true;
-  const audio = {
-    paused: false, addEventListener: (k, f) => (ls[k] = f), removeEventListener: (k) => delete ls[k],
-    captureStream: () => { if (refuse) throw Object.assign(new Error("cross-origin"), { name: "SecurityError" }); return { getAudioTracks: () => tracks, getTracks: () => tracks, addEventListener() {} }; },
-  };
+Deno.test("listen — a context born held back routes nothing until it runs, and is resumed by play, a touch and its own statechange", async () => {
+  const w = fakeWeb("suspended");
   try {
+    const audio = element();
     const tap = listen(/** @type {any} */ (audio));
-    assertEquals(tap.state(), { ctx: "suspended", track: "none", fault: "capture SecurityError", heard: false, mode: "capture" });
-    assertEquals(tap.frame(), null, "nothing to read without a copy");
-    refuse = false;
-    ls.playing();
-    assertEquals(tap.state(), { ctx: "suspended", track: "live", fault: "", heard: false, mode: "capture" });
-    assertEquals(tap.frame(), null, "a context that is not running reads nothing");
-    const before = resumed;
-    dl.pointerdown();
-    assert(resumed > before, "a touch on the page resumes the held context");
-    ctxs[0].state = "running";
-    dl.pointerdown();
-    assertEquals(resumed, before + 1, "a running context is left alone");
-    assert(tap.frame(), "a running context with a live copy gives a frame");
-    assertEquals(tap.state().heard, false, "a copy that carries only silence is not heard");
-    level = 200;
-    tap.frame();
-    assertEquals(tap.state().heard, false, "one loud frame is not yet heard");
-    for (let i = 1; i < TAP.heard; i++) tap.frame();
-    assertEquals(tap.state().heard, true, "sound held on the copy is heard");
-    tap.stop();
-    assertEquals(Object.keys(dl).length, 0, "the page listeners are removed");
+    tap.connect();
+    assertEquals(w.routes.length, 0, "a held-back context never takes the song: it would silence it");
+    assert(w.resumed >= 1, "the tap asks it to run");
+    assertEquals(tap.state().routed, false);
+    const before = w.resumed;
+    w.dl.pointerdown();
+    audio.ls.play();
+    assert(w.resumed >= before + 2, "a touch and a play resume it again");
+    w.ctxs[0].state = "running";
+    w.ctxs[0].ls.statechange();
+    assertEquals(w.routes.length, 1, "once running, the element is routed");
+    await Promise.resolve();
+    assertEquals(w.routes.length, 1, "and only once");
+    w.ctxs[0].state = "suspended";
+    const held = w.resumed;
+    w.ctxs[0].ls.statechange();
+    assert(w.resumed > held, "a context that stops while routed is resumed at once");
   } finally {
-    globalThis.AudioContext = was.AudioContext;
-    globalThis.MediaStream = was.MediaStream;
-    globalThis.document = was.document;
-  }
-});
-
-Deno.test("listen — a capture copy silent while the song plays routes the element once through the analyser; a loud copy never does", () => {
-  const was = { AudioContext: globalThis.AudioContext, MediaStream: globalThis.MediaStream, document: globalThis.document };
-  const run = (level) => {
-    const made = [];
-    globalThis.AudioContext = /** @type {any} */ (class {
-      state = "running"; sampleRate = 44100; destination = { name: "speakers" }; ls = {};
-      resume() { return Promise.resolve(); }
-      close() { return Promise.resolve(); }
-      addEventListener(k, f) { this.ls[k] = f; }
-      createAnalyser() { return { fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 1024, getByteFrequencyData(b) { b.fill(level); } }; }
-      createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
-      createMediaElementSource(el) { const n = { el, to: [], connect(x) { n.to.push(x); } }; made.push(n); return n; }
-    });
-    globalThis.MediaStream = /** @type {any} */ (class { constructor(t) { this.tracks = t; } });
-    globalThis.document = /** @type {any} */ ({ addEventListener() {}, removeEventListener() {} });
-    const track = { readyState: "live", stop() {} };
-    const audio = { paused: false, captureStream: () => ({ getAudioTracks: () => [track], getTracks: () => [track], addEventListener() {} }), addEventListener() {}, removeEventListener() {} };
-    const tap = listen(/** @type {any} */ (audio));
-    for (let i = 0; i < TAP.window * 2 + 1; i++) tap.frame();
-    return { made, state: tap.state(), tap };
-  };
-  try {
-    const quiet = run(0);
-    assertEquals(quiet.made.length, 1, "a silent copy routes the element once, not on every window");
-    assertEquals(quiet.state.mode, "element");
-    assertEquals(quiet.made[0].to.map((x) => x.name || "analyser"), ["speakers", "analyser"], "the element still reaches the speakers, and the analyser hears it");
-    assertEquals(quiet.state.heard, false, "silence is not heard");
-    quiet.tap.stop();
-    const loud = run(200);
-    assertEquals(loud.made.length, 0, "a loud copy is proven and the element stays untouched");
-    assertEquals(loud.state.mode, "capture");
-    assertEquals(loud.state.heard, true);
-  } finally {
-    globalThis.AudioContext = was.AudioContext;
-    globalThis.MediaStream = was.MediaStream;
-    globalThis.document = was.document;
+    w.restore();
   }
 });

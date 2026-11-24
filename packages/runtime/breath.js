@@ -2,19 +2,13 @@
 /**
  * # runtime/breath.js — a form that breathes with the song, at almost no cost
  *
- * The obvious way to make something pulse with music is to route the playing `<audio>` through an AnalyserNode.
- * On a phone that is the wrong way: the element's sound then exists only inside the AudioContext, and a context
- * that is suspended (no gesture yet, iOS in the background) is a song that stops. So the playing element is never
- * connected to a context here.
- *
- * Two readings instead. OFFLINE: the copy kept on the phone is decoded once at 8 kHz mono, low-passed, cut into
- * 10 frames a second and smoothed with a fast rise and a slow fall (`envelopeOf` — pure, unit-tested); the
- * envelope becomes a `scale` keyframe track handed to the COMPOSITOR as one Web Animation pinned to the audio
- * clock (`breathe`). LIVE: `listen` takes a COPY of the element's sound with `captureStream()` — the element keeps
- * playing through its own output, untouched — and reads that copy with an AnalyserNode, so any song gives its
- * spectrum whatever its source: a file on the phone, a stream, another service. A context that is not running
- * costs the picture, never the sound. The live bands are normalised to their own running peak (`tapLevels` —
- * pure, unit-tested), so a quiet band moves as much as a loud one, as the offline spectrum is to its 95th percentile.
+ * Two readings. OFFLINE: the copy kept on the phone is decoded once at 8 kHz mono, low-passed, cut into 10 frames a
+ * second and smoothed with a fast rise and a slow fall (`envelopeOf` — pure, unit-tested); the envelope becomes a
+ * `scale` keyframe track handed to the COMPOSITOR as one Web Animation pinned to the audio clock (`breathe`).
+ * LIVE: `listen` reads the song as it plays, the standard way of every Web Audio visualiser — the element routed
+ * through `createMediaElementSource` → an AnalyserNode and the speakers — so any song gives its spectrum whatever
+ * its source. The live bands are normalised to their own running peak (`tapLevels` — pure, unit-tested), so a
+ * quiet band moves as much as a loud one, as the offline spectrum is to its 95th percentile.
  *
  * ## Import
  * ```js
@@ -27,10 +21,11 @@
  * - {@link envelopeOf} — `envelopeOf(pcm, rate, hz)`: mono PCM → `Uint8Array` envelope 0..255 (bass RMS, smoothed, normalised to its 95th percentile).
  * - {@link envelopeOfBlob} — `envelopeOfBlob(blob, hz)`: decode an audio file at 8 kHz mono and return its envelope (browser only).
  * - {@link breathe} — `breathe(el, env, audio, { hz, depth })`: the envelope as a compositor `scale` animation pinned to `audio`; returns a stop.
- * - {@link listen} — `listen(audio, { bands })`: the live reading of a playing element — `{ frame(), state(), stop() }`;
- *   `frame()` → `{ pulse, bands }` (pulse 0..1, `bands` a `Uint8Array` 0..255) or `null` while there is no sound
- *   to read; `state()` → `{ ctx, track, fault, heard }`, where the reading stands; `listen` itself is `null`
- *   where `captureStream` or Web Audio is missing, and under the gate.
+ * - {@link listen} — `listen(audio, { bands })`: the live reading of a playing element — `{ connect(), frame(),
+ *   state(), stop() }`; `connect()` inside the tap that starts the song; `frame()` → `{ pulse, bands }` (pulse
+ *   0..1, `bands` a `Uint8Array` 0..255) or `null` while there is nothing to read; `state()` → `{ ctx, routed,
+ *   fault, heard }`; `listen` itself is `null` where Web Audio is missing, and under the gate.
+ * - {@link TAP} — the live reading's judgement of a loud frame and of a heard song.
  * - {@link tapLevels} — `tapLevels(levels, peaks, { fall, floor })`: levels 0..1 → each over its own running peak (pure).
  *
  * ## In practice
@@ -50,19 +45,13 @@
  * Unit tests: `packages/runtime/tests/breath_test.js`.
  *
  * ## Invariants and pitfalls
- * - `listen` first reads a `captureStream()` copy and leaves the element's output alone. The copy is same-origin
- *   only. On Android Chromium the copy is silent while the song plays (measured on a Galaxy S25 Ultra in Samsung
- *   Internet: a mean band byte of 5–6 of 255 over 8 s, one song all zeros), so when a {@link TAP} window of frames
- *   is almost all quiet and the context is running, `listen` routes the element itself once through
- *   `createMediaElementSource` → analyser and destination. That routing cannot be undone: from then on the
- *   context is resumed on its every `statechange`, touch, key and page show, and `stop()` leaves it connected.
- * - `listen` makes its AudioContext on the element's first `playing` and resumes it on every `playing`, on every
- *   touch or key on the page and when the page is shown again, so a context the browser held back or
- *   interrupted runs from the next gesture.
- * - `state()` names the path (`mode`: `capture`, `element`, or `stuck` when routing was refused) and `heard`:
- *   true only after {@link TAP} `heard` loud frames, never from one stray non-zero level.
- * - A new `src` ends the copy's audio track. Every `playing` checks for a live track and, when there is none,
- *   takes a fresh `captureStream()`; a track that arrives later (`addtrack`) is attached as it lands.
+ * - Routed, the element sounds only through the context, so a context that stops is a song that stops. Hence:
+ *   the caller runs `connect()` inside the tap that starts the song (a context made in a gesture is born
+ *   running); the element is routed only when the context runs; the context is resumed on every `play`, touch,
+ *   key, page show and `statechange`; and `stop()` never undoes the routing.
+ * - No `captureStream()`: measured on a Galaxy S25 Ultra in Samsung Internet, its copy of a playing song is
+ *   silent (a mean band byte of 0–6 of 255 over 8 s), and it is not a standard path across browsers.
+ * - The source must be same-origin (or CORS): a cross-origin element routes silence.
  * - `breathe` is a no-op under `prefers-reduced-motion`, in the gate, and on an empty envelope: still is a
  *   valid state of the form, so a caller never needs a fallback.
  * - The depth is SUBTLE on purpose (4%): the form is a reading surface for the title under it, not a speaker
@@ -123,8 +112,8 @@ export async function envelopeOfBlob(blob, hz = BREATH_HZ) {
 export const SPECTRUM_HZ = 20;
 /** The spectrum's band count — twelve, log-spaced 55 Hz … 7 kHz. */
 export const SPECTRUM_BANDS = 12;
-/** The live reading's judgement: a frame is loud when its mean band level is at least `loud`; a `window` of frames with fewer than `share` of them loud means the capture copy is silent, and the element is routed through the analyser; `heard` loud frames in all mean the song is heard. */
-export const TAP = Object.freeze({ loud: 0.03, window: 180, share: 0.1, heard: 10 });
+/** The live reading's judgement: a frame is loud when its mean band level is at least `loud`; `heard` loud frames mean the song is heard. */
+export const TAP = Object.freeze({ loud: 0.03, heard: 10 });
 
 /**
  * Mono PCM → the song's SPECTRUM: `bands` energies a frame, SPECTRUM_HZ frames a second, one byte each. Band
@@ -223,89 +212,62 @@ export function tapLevels(levels, peaks, { fall = 0.996, floor = 0.08 } = {}) {
 }
 
 /**
- * The live reading of a playing element: a `captureStream()` copy of its sound into an AnalyserNode, and where
- * that copy is silent while the song plays, the element itself routed once through the analyser to the speakers. Twelve log bands 55 Hz … 7 kHz and the bass, each over its running
- * peak ({@link tapLevels}), followed on a fast-rise / slow-fall path like the offline spectrum. `state()` names
- * where the reading stands — the context's state, the copy's track, the last fault and whether any sound was
- * heard on this track — so a caller can fall back to the offline spectrum and report why.
- * @param {{ paused: boolean, captureStream?: Function, mozCaptureStream?: Function, addEventListener: Function, removeEventListener: Function }} audio
+ * The live reading of a playing element, the way every Web Audio visualiser does it: the element itself routed
+ * once through `createMediaElementSource` → an AnalyserNode and the speakers. The AudioContext is made by
+ * `connect()`, which the caller runs inside the tap that starts the song, so the context is born running; the
+ * element is routed only once the context runs, and the context is resumed on every `play`, touch, key, page show
+ * and `statechange`. Twelve log bands 55 Hz … 7 kHz and the bass, each over its running peak ({@link tapLevels}),
+ * followed on a fast-rise / slow-fall path like the offline spectrum. `state()`: the context's state, whether the
+ * element is routed, the last fault, and whether sound was heard ({@link TAP}).
+ * @param {{ paused: boolean, addEventListener: Function, removeEventListener: Function }} audio
  *   the playing element (an HTMLMediaElement), with a same-origin source
  * @param {{ bands?: number }} [opts]
- * @returns {{ frame: () => ({ pulse: number, bands: Uint8Array } | null), state: () => { ctx: string, track: string, fault: string, heard: boolean, mode: string }, stop: () => void } | null}
+ * @returns {{ connect: () => void, frame: () => ({ pulse: number, bands: Uint8Array } | null), state: () => { ctx: string, routed: boolean, fault: string, heard: boolean }, stop: () => void } | null}
  */
 export function listen(audio, { bands = SPECTRUM_BANDS } = {}) {
   const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
-  const cap = audio?.captureStream || audio?.mozCaptureStream;
-  if (gate || !Ctx || typeof cap !== "function") return null;
-  const st = { ctx: null, an: null, bins: null, edges: null, stream: null, track: null, node: null, fault: "", heard: false, mode: "capture", win: 0, loud: 0, loudAll: 0, proven: false };
+  if (gate || !Ctx) return null;
+  const st = { ctx: null, an: null, bins: null, edges: null, node: null, fault: "", heard: 0 };
   const peaks = new Float32Array(bands + 1), env = Envelope(0.6, 0.2, bands + 1), out = new Uint8Array(bands);
-  const live = (s) => s?.getAudioTracks().find((t) => t.readyState === "live");
-  const wake = () => { if (st.ctx && st.ctx.state !== "running" && st.ctx.state !== "closed") st.ctx.resume?.().catch(() => {}); };
-  const stopCapture = () => {
-    try { st.node?.disconnect(); } catch { }
-    for (const t of st.stream?.getTracks?.() || []) { try { t.stop(); } catch { } }
-    st.stream = null; st.track = null; st.node = null;
-  };
   const route = () => {
-    if (st.mode !== "capture" || st.ctx?.state !== "running" || audio.paused) return;
-    let el;
-    try { el = st.ctx.createMediaElementSource(audio); } catch (e) { st.fault = `element ${e?.name || e}`; st.mode = "stuck"; return; }
-    el.connect(st.ctx.destination);
-    el.connect(st.an);
-    stopCapture();
-    st.node = el; st.mode = "element"; st.win = 0; st.loud = 0;
-    st.ctx.addEventListener?.("statechange", wake);
+    if (st.node || st.ctx?.state !== "running") return;
+    try {
+      st.node = st.ctx.createMediaElementSource(audio);
+      st.node.connect(st.ctx.destination);
+      st.node.connect(st.an);
+    } catch (e) { st.fault = `element ${e?.name || e}`; st.node = null; }
   };
-  const attach = () => {
+  const connect = () => {
     if (!st.ctx) {
       try { st.ctx = new Ctx(); } catch (e) { st.fault = `context ${e?.name || e}`; return; }
       st.an = st.ctx.createAnalyser(); st.an.fftSize = 2048; st.an.smoothingTimeConstant = 0.5;
       st.bins = new Uint8Array(st.an.frequencyBinCount);
       st.edges = logBandEdges(bands, 55, Math.min(7000, st.ctx.sampleRate * 0.45), st.ctx.sampleRate, st.an.fftSize);
+      st.ctx.addEventListener?.("statechange", connect);
     }
-    wake();
-    if (st.mode !== "capture") return;
-    let track = live(st.stream);
-    if (!track) {
-      for (const t of st.stream?.getTracks?.() || []) { try { t.stop(); } catch { } }
-      try { st.stream = cap.call(audio); } catch (e) { st.fault = `capture ${e?.name || e}`; return; }
-      st.stream.addEventListener?.("addtrack", attach);
-      track = live(st.stream);
-    }
-    if (!track || track === st.track) return;
-    try { st.node?.disconnect(); } catch { }
-    try { st.node = st.ctx.createMediaStreamSource(new MediaStream([track])); st.node.connect(st.an); st.track = track; st.fault = ""; st.heard = false; }
-    catch (e) { st.node = null; st.track = null; st.fault = `source ${e?.name || e}`; }
+    if (st.ctx.state !== "running" && st.ctx.state !== "closed") st.ctx.resume?.().then(route, () => {});
+    route();
   };
   const doc = globalThis.document, WAKE = ["pointerdown", "keydown", "visibilitychange"];
-  audio.addEventListener("playing", attach);
-  for (const k of WAKE) doc?.addEventListener?.(k, wake, { capture: true, passive: true });
-  if (!audio.paused) attach();
+  audio.addEventListener("play", connect);
+  for (const k of WAKE) doc?.addEventListener?.(k, connect, { capture: true, passive: true });
   return {
+    connect,
     frame() {
       if (!st.node || st.ctx?.state !== "running" || audio.paused) return null;
       st.an.getByteFrequencyData(st.bins);
       const lv = bandLevels(st.bins, st.edges);
       lv.push(splitBands(st.bins, st.ctx.sampleRate, st.an.fftSize).bass);
-      const loud = lv.reduce((a, x) => a + x, 0) / lv.length >= TAP.loud;
-      st.win++; if (loud) { st.loud++; st.loudAll++; }
-      st.heard = st.loudAll >= TAP.heard;
-      if (st.win >= TAP.window) {
-        if (st.mode === "capture" && !st.proven && st.loud < TAP.window * TAP.share) route();
-        else if (st.loud >= TAP.window * TAP.share) st.proven = true;
-        st.win = 0; st.loud = 0;
-      }
+      if (lv.reduce((a, x) => a + x, 0) / lv.length >= TAP.loud) st.heard++;
       const v = env.update(tapLevels(lv, peaks));
       for (let b = 0; b < bands; b++) out[b] = Math.round(255 * v[b]);
       return { pulse: v[bands], bands: out };
     },
-    state: () => ({ ctx: st.ctx?.state || "none", track: st.mode === "element" ? "element" : st.track?.readyState || "none", fault: st.fault, heard: st.heard, mode: st.mode }),
+    state: () => ({ ctx: st.ctx?.state || "none", routed: !!st.node, fault: st.fault, heard: st.heard >= TAP.heard }),
     stop() {
-      audio.removeEventListener("playing", attach);
-      if (st.mode === "element") return;
-      for (const k of WAKE) doc?.removeEventListener?.(k, wake, { capture: true });
-      try { st.node?.disconnect(); } catch { }
-      for (const t of st.stream?.getTracks?.() || []) { try { t.stop(); } catch { } }
+      audio.removeEventListener("play", connect);
+      if (st.node) return;
+      for (const k of WAKE) doc?.removeEventListener?.(k, connect, { capture: true });
       st.ctx?.close?.().catch(() => {});
     },
   };

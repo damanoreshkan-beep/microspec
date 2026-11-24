@@ -98,3 +98,43 @@ Deno.test("tapLevels — each band over its own running peak: a quiet band fills
 Deno.test("listen — null without captureStream: the element is never connected to a context", () => {
   assertEquals(listen(/** @type {any} */ ({ addEventListener() {}, paused: true })), null);
 });
+
+Deno.test("listen — the next song: the ended copy is replaced by a fresh capture, a late track attaches on addtrack", () => {
+  const sources = [], was = { AudioContext: globalThis.AudioContext, MediaStream: globalThis.MediaStream };
+  globalThis.AudioContext = /** @type {any} */ (class {
+    state = "running"; sampleRate = 44100;
+    resume() { return Promise.resolve(); }
+    close() { return Promise.resolve(); }
+    createAnalyser() { return { fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 1024, getByteFrequencyData() {} }; }
+    createMediaStreamSource(ms) { const n = { track: ms.tracks[0], connect() {}, disconnect() { n.off = true; } }; sources.push(n); return n; }
+  });
+  globalThis.MediaStream = /** @type {any} */ (class { constructor(tracks) { this.tracks = tracks; } });
+  const track = (id) => ({ id, readyState: "live", stop() { this.readyState = "ended"; } });
+  const stream = (tracks) => {
+    const ls = {};
+    return { tracks, ls, getAudioTracks: () => tracks, getTracks: () => tracks, addEventListener: (k, f) => (ls[k] = f) };
+  };
+  const ls = {};
+  const caps = [stream([track("song-1")]), stream([track("song-2")]), stream([])];
+  let n = 0;
+  const audio = { paused: false, captureStream: () => caps[n++], addEventListener: (k, f) => (ls[k] = f), removeEventListener: (k) => delete ls[k] };
+  try {
+    const tap = listen(/** @type {any} */ (audio));
+    assert(tap, "a tap where captureStream and Web Audio exist");
+    assertEquals(sources.map((s) => s.track.id), ["song-1"], "the playing song is read");
+    caps[0].tracks[0].readyState = "ended";
+    ls.playing();
+    assertEquals(sources.map((s) => s.track.id), ["song-1", "song-2"], "the next song's playing takes a fresh capture");
+    assert(sources[0].off, "the ended copy is disconnected");
+    caps[1].tracks[0].readyState = "ended";
+    ls.playing();
+    assertEquals(sources.length, 2, "a capture with no track yet attaches nothing");
+    caps[2].tracks.push(track("song-3"));
+    caps[2].ls.addtrack();
+    assertEquals(sources.map((s) => s.track.id), ["song-1", "song-2", "song-3"], "a track that lands later is attached on addtrack");
+    tap.stop();
+  } finally {
+    globalThis.AudioContext = was.AudioContext;
+    globalThis.MediaStream = was.MediaStream;
+  }
+});

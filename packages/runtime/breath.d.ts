@@ -52,6 +52,8 @@
  *   a `captureStream()` copy. The copy is same-origin only: a cross-origin source without CORS reads nothing.
  * - `listen` makes its AudioContext on the element's first `playing` and resumes it on every `playing`, so the
  *   tap on play is the gesture that lets it run.
+ * - A new `src` ends the copy's audio track. Every `playing` checks for a live track and, when there is none,
+ *   takes a fresh `captureStream()`; a track that arrives later (`addtrack`) is attached as it lands.
  * - `breathe` is a no-op under `prefers-reduced-motion`, in the gate, and on an empty envelope: still is a
  *   valid state of the form, so a caller never needs a fallback.
  * - The depth is SUBTLE on purpose (4%): the form is a reading surface for the title under it, not a speaker

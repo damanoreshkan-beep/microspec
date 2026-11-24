@@ -53,6 +53,8 @@
  *   a `captureStream()` copy. The copy is same-origin only: a cross-origin source without CORS reads nothing.
  * - `listen` makes its AudioContext on the element's first `playing` and resumes it on every `playing`, so the
  *   tap on play is the gesture that lets it run.
+ * - A new `src` ends the copy's audio track. Every `playing` checks for a live track and, when there is none,
+ *   takes a fresh `captureStream()`; a track that arrives later (`addtrack`) is attached as it lands.
  * - `breathe` is a no-op under `prefers-reduced-motion`, in the gate, and on an empty envelope: still is a
  *   valid state of the form, so a caller never needs a fallback.
  * - The depth is SUBTLE on purpose (4%): the form is a reading surface for the title under it, not a speaker
@@ -225,6 +227,7 @@ export function listen(audio, { bands = SPECTRUM_BANDS } = {}) {
   if (gate || !Ctx || typeof cap !== "function") return null;
   const st = { ctx: null, an: null, bins: null, edges: null, stream: null, track: null, node: null };
   const peaks = new Float32Array(bands + 1), env = Envelope(0.6, 0.2, bands + 1), out = new Uint8Array(bands);
+  const live = (s) => s?.getAudioTracks().find((t) => t.readyState === "live");
   const attach = () => {
     if (!st.ctx) {
       try { st.ctx = new Ctx(); } catch { return; }
@@ -233,8 +236,13 @@ export function listen(audio, { bands = SPECTRUM_BANDS } = {}) {
       st.edges = logBandEdges(bands, 55, Math.min(7000, st.ctx.sampleRate * 0.45), st.ctx.sampleRate, st.an.fftSize);
     }
     st.ctx.resume?.().catch(() => {});
-    try { st.stream = st.stream || cap.call(audio); } catch { return; }
-    const track = st.stream.getAudioTracks().find((t) => t.readyState === "live");
+    let track = live(st.stream);
+    if (!track) {
+      for (const t of st.stream?.getTracks?.() || []) { try { t.stop(); } catch { } }
+      try { st.stream = cap.call(audio); } catch { return; }
+      st.stream.addEventListener?.("addtrack", attach);
+      track = live(st.stream);
+    }
     if (!track || track === st.track) return;
     try { st.node?.disconnect(); } catch { }
     try { st.node = st.ctx.createMediaStreamSource(new MediaStream([track])); st.node.connect(st.an); st.track = track; } catch { st.node = null; st.track = null; }

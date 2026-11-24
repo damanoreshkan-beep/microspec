@@ -26,9 +26,10 @@
  * - {@link envelopeOf} — `envelopeOf(pcm, rate, hz)`: mono PCM → `Uint8Array` envelope 0..255 (bass RMS, smoothed, normalised to its 95th percentile).
  * - {@link envelopeOfBlob} — `envelopeOfBlob(blob, hz)`: decode an audio file at 8 kHz mono and return its envelope (browser only).
  * - {@link breathe} — `breathe(el, env, audio, { hz, depth })`: the envelope as a compositor `scale` animation pinned to `audio`; returns a stop.
- * - {@link listen} — `listen(audio, { bands })`: the live reading of a playing element — `{ frame(), stop() }`;
+ * - {@link listen} — `listen(audio, { bands })`: the live reading of a playing element — `{ frame(), state(), stop() }`;
  *   `frame()` → `{ pulse, bands }` (pulse 0..1, `bands` a `Uint8Array` 0..255) or `null` while there is no sound
- *   to read; `listen` itself is `null` where `captureStream` or Web Audio is missing, and under the gate.
+ *   to read; `state()` → `{ ctx, track, fault, heard }`, where the reading stands; `listen` itself is `null`
+ *   where `captureStream` or Web Audio is missing, and under the gate.
  * - {@link tapLevels} — `tapLevels(levels, peaks, { fall, floor })`: levels 0..1 → each over its own running peak (pure).
  *
  * ## In practice
@@ -50,8 +51,11 @@
  * ## Invariants and pitfalls
  * - Never connect the playing element to an AudioContext (see above — the background-play trap); `listen` reads
  *   a `captureStream()` copy. The copy is same-origin only: a cross-origin source without CORS reads nothing.
- * - `listen` makes its AudioContext on the element's first `playing` and resumes it on every `playing`, so the
- *   tap on play is the gesture that lets it run.
+ * - `listen` makes its AudioContext on the element's first `playing` and resumes it on every `playing`, on every
+ *   touch or key on the page and when the page is shown again, so a context the browser held back or
+ *   interrupted runs from the next gesture.
+ * - The live copy is proven on desktop Chromium only. A caller reads `state()`: `heard` false after seconds of
+ *   play means this browser gives the copy no sound, and the offline spectrum of a kept file is the fallback.
  * - A new `src` ends the copy's audio track. Every `playing` checks for a live track and, when there is none,
  *   takes a fresh `captureStream()`; a track that arrives later (`addtrack`) is attached as it lands.
  * - `breathe` is a no-op under `prefers-reduced-motion`, in the gate, and on an empty envelope: still is a
@@ -144,11 +148,13 @@ export function tapLevels(levels: ArrayLike<number>, peaks: Float32Array, { fall
 /**
  * The live reading of a playing element: a `captureStream()` copy of its sound into an AnalyserNode — the
  * element's own output is never touched. Twelve log bands 55 Hz … 7 kHz and the bass, each over its running
- * peak ({@link tapLevels}), followed on a fast-rise / slow-fall path like the offline spectrum.
+ * peak ({@link tapLevels}), followed on a fast-rise / slow-fall path like the offline spectrum. `state()` names
+ * where the reading stands — the context's state, the copy's track, the last fault and whether any sound was
+ * heard on this track — so a caller can fall back to the offline spectrum and report why.
  * @param {{ paused: boolean, captureStream?: Function, mozCaptureStream?: Function, addEventListener: Function, removeEventListener: Function }} audio
  *   the playing element (an HTMLMediaElement), with a same-origin source
  * @param {{ bands?: number }} [opts]
- * @returns {{ frame: () => ({ pulse: number, bands: Uint8Array } | null), stop: () => void } | null}
+ * @returns {{ frame: () => ({ pulse: number, bands: Uint8Array } | null), state: () => { ctx: string, track: string, fault: string, heard: boolean }, stop: () => void } | null}
  */
 export function listen(audio: {
     paused: boolean;
@@ -163,6 +169,12 @@ export function listen(audio: {
         pulse: number;
         bands: Uint8Array;
     } | null);
+    state: () => {
+        ctx: string;
+        track: string;
+        fault: string;
+        heard: boolean;
+    };
     stop: () => void;
 } | null;
 /** Envelope frames per second. */

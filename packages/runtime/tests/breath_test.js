@@ -138,3 +138,53 @@ Deno.test("listen — the next song: the ended copy is replaced by a fresh captu
     globalThis.MediaStream = was.MediaStream;
   }
 });
+
+Deno.test("listen — state names where the reading stands: a refused capture, a silent copy, a heard one, a context woken by a touch", () => {
+  const was = { AudioContext: globalThis.AudioContext, MediaStream: globalThis.MediaStream, document: globalThis.document };
+  let level = 0, resumed = 0;
+  const ctxs = [];
+  globalThis.AudioContext = /** @type {any} */ (class {
+    state = "suspended"; sampleRate = 44100;
+    constructor() { ctxs.push(this); }
+    resume() { resumed++; return Promise.resolve(); }
+    close() { return Promise.resolve(); }
+    createAnalyser() { return { fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 1024, getByteFrequencyData(a) { a.fill(level); } }; }
+    createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
+  });
+  globalThis.MediaStream = /** @type {any} */ (class { constructor(tracks) { this.tracks = tracks; } });
+  const dl = {};
+  globalThis.document = /** @type {any} */ ({ addEventListener: (k, f) => (dl[k] = f), removeEventListener: (k) => delete dl[k] });
+  const ls = {};
+  const tracks = [{ readyState: "live", stop() {} }];
+  let refuse = true;
+  const audio = {
+    paused: false, addEventListener: (k, f) => (ls[k] = f), removeEventListener: (k) => delete ls[k],
+    captureStream: () => { if (refuse) throw Object.assign(new Error("cross-origin"), { name: "SecurityError" }); return { getAudioTracks: () => tracks, getTracks: () => tracks, addEventListener() {} }; },
+  };
+  try {
+    const tap = listen(/** @type {any} */ (audio));
+    assertEquals(tap.state(), { ctx: "suspended", track: "none", fault: "capture SecurityError", heard: false });
+    assertEquals(tap.frame(), null, "nothing to read without a copy");
+    refuse = false;
+    ls.playing();
+    assertEquals(tap.state(), { ctx: "suspended", track: "live", fault: "", heard: false });
+    assertEquals(tap.frame(), null, "a context that is not running reads nothing");
+    const before = resumed;
+    dl.pointerdown();
+    assert(resumed > before, "a touch on the page resumes the held context");
+    ctxs[0].state = "running";
+    dl.pointerdown();
+    assertEquals(resumed, before + 1, "a running context is left alone");
+    assert(tap.frame(), "a running context with a live copy gives a frame");
+    assertEquals(tap.state().heard, false, "a copy that carries only silence is not heard");
+    level = 200;
+    tap.frame();
+    assertEquals(tap.state().heard, true, "sound on the copy is heard");
+    tap.stop();
+    assertEquals(Object.keys(dl).length, 0, "the page listeners are removed");
+  } finally {
+    globalThis.AudioContext = was.AudioContext;
+    globalThis.MediaStream = was.MediaStream;
+    globalThis.document = was.document;
+  }
+});

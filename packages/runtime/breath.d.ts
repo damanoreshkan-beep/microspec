@@ -49,13 +49,17 @@
  * Unit tests: `packages/runtime/tests/breath_test.js`.
  *
  * ## Invariants and pitfalls
- * - Never connect the playing element to an AudioContext (see above — the background-play trap); `listen` reads
- *   a `captureStream()` copy. The copy is same-origin only: a cross-origin source without CORS reads nothing.
+ * - `listen` first reads a `captureStream()` copy and leaves the element's output alone. The copy is same-origin
+ *   only. On Android Chromium the copy is silent while the song plays (measured on a Galaxy S25 Ultra in Samsung
+ *   Internet: a mean band byte of 5–6 of 255 over 8 s, one song all zeros), so when a {@link TAP} window of frames
+ *   is almost all quiet and the context is running, `listen` routes the element itself once through
+ *   `createMediaElementSource` → analyser and destination. That routing cannot be undone: from then on the
+ *   context is resumed on its every `statechange`, touch, key and page show, and `stop()` leaves it connected.
  * - `listen` makes its AudioContext on the element's first `playing` and resumes it on every `playing`, on every
  *   touch or key on the page and when the page is shown again, so a context the browser held back or
  *   interrupted runs from the next gesture.
- * - The live copy is proven on desktop Chromium only. A caller reads `state()`: `heard` false after seconds of
- *   play means this browser gives the copy no sound, and the offline spectrum of a kept file is the fallback.
+ * - `state()` names the path (`mode`: `capture`, `element`, or `stuck` when routing was refused) and `heard`:
+ *   true only after {@link TAP} `heard` loud frames, never from one stray non-zero level.
  * - A new `src` ends the copy's audio track. Every `playing` checks for a live track and, when there is none,
  *   takes a fresh `captureStream()`; a track that arrives later (`addtrack`) is attached as it lands.
  * - `breathe` is a no-op under `prefers-reduced-motion`, in the gate, and on an empty envelope: still is a
@@ -146,15 +150,15 @@ export function tapLevels(levels: ArrayLike<number>, peaks: Float32Array, { fall
     floor?: number;
 }): Float32Array;
 /**
- * The live reading of a playing element: a `captureStream()` copy of its sound into an AnalyserNode — the
- * element's own output is never touched. Twelve log bands 55 Hz … 7 kHz and the bass, each over its running
+ * The live reading of a playing element: a `captureStream()` copy of its sound into an AnalyserNode, and where
+ * that copy is silent while the song plays, the element itself routed once through the analyser to the speakers. Twelve log bands 55 Hz … 7 kHz and the bass, each over its running
  * peak ({@link tapLevels}), followed on a fast-rise / slow-fall path like the offline spectrum. `state()` names
  * where the reading stands — the context's state, the copy's track, the last fault and whether any sound was
  * heard on this track — so a caller can fall back to the offline spectrum and report why.
  * @param {{ paused: boolean, captureStream?: Function, mozCaptureStream?: Function, addEventListener: Function, removeEventListener: Function }} audio
  *   the playing element (an HTMLMediaElement), with a same-origin source
  * @param {{ bands?: number }} [opts]
- * @returns {{ frame: () => ({ pulse: number, bands: Uint8Array } | null), state: () => { ctx: string, track: string, fault: string, heard: boolean }, stop: () => void } | null}
+ * @returns {{ frame: () => ({ pulse: number, bands: Uint8Array } | null), state: () => { ctx: string, track: string, fault: string, heard: boolean, mode: string }, stop: () => void } | null}
  */
 export function listen(audio: {
     paused: boolean;
@@ -174,6 +178,7 @@ export function listen(audio: {
         track: string;
         fault: string;
         heard: boolean;
+        mode: string;
     };
     stop: () => void;
 } | null;
@@ -183,3 +188,10 @@ export const BREATH_HZ: 10;
 export const SPECTRUM_HZ: 20;
 /** The spectrum's band count — twelve, log-spaced 55 Hz … 7 kHz. */
 export const SPECTRUM_BANDS: 12;
+/** The live reading's judgement: a frame is loud when its mean band level is at least `loud`; a `window` of frames with fewer than `share` of them loud means the capture copy is silent, and the element is routed through the analyser; `heard` loud frames in all mean the song is heard. */
+export const TAP: Readonly<{
+    loud: 0.03;
+    window: 180;
+    share: 0.1;
+    heard: 10;
+}>;

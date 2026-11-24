@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { envelopeOf, breathe, BREATH_HZ, spectrumOf, SPECTRUM_HZ, SPECTRUM_BANDS, tapLevels, listen } from "../breath.js";
+import { envelopeOf, breathe, BREATH_HZ, spectrumOf, SPECTRUM_HZ, SPECTRUM_BANDS, tapLevels, listen, TAP } from "../breath.js";
 
 const RATE = 8000;
 const kick = (seconds, freq = 60) => Float32Array.from({ length: RATE * seconds }, (_, i) => ((i / RATE) % 1 < 0.5 ? Math.sin(2 * Math.PI * freq * i / RATE) : 0));
@@ -163,11 +163,11 @@ Deno.test("listen — state names where the reading stands: a refused capture, a
   };
   try {
     const tap = listen(/** @type {any} */ (audio));
-    assertEquals(tap.state(), { ctx: "suspended", track: "none", fault: "capture SecurityError", heard: false });
+    assertEquals(tap.state(), { ctx: "suspended", track: "none", fault: "capture SecurityError", heard: false, mode: "capture" });
     assertEquals(tap.frame(), null, "nothing to read without a copy");
     refuse = false;
     ls.playing();
-    assertEquals(tap.state(), { ctx: "suspended", track: "live", fault: "", heard: false });
+    assertEquals(tap.state(), { ctx: "suspended", track: "live", fault: "", heard: false, mode: "capture" });
     assertEquals(tap.frame(), null, "a context that is not running reads nothing");
     const before = resumed;
     dl.pointerdown();
@@ -179,9 +179,50 @@ Deno.test("listen — state names where the reading stands: a refused capture, a
     assertEquals(tap.state().heard, false, "a copy that carries only silence is not heard");
     level = 200;
     tap.frame();
-    assertEquals(tap.state().heard, true, "sound on the copy is heard");
+    assertEquals(tap.state().heard, false, "one loud frame is not yet heard");
+    for (let i = 1; i < TAP.heard; i++) tap.frame();
+    assertEquals(tap.state().heard, true, "sound held on the copy is heard");
     tap.stop();
     assertEquals(Object.keys(dl).length, 0, "the page listeners are removed");
+  } finally {
+    globalThis.AudioContext = was.AudioContext;
+    globalThis.MediaStream = was.MediaStream;
+    globalThis.document = was.document;
+  }
+});
+
+Deno.test("listen — a capture copy silent while the song plays routes the element once through the analyser; a loud copy never does", () => {
+  const was = { AudioContext: globalThis.AudioContext, MediaStream: globalThis.MediaStream, document: globalThis.document };
+  const run = (level) => {
+    const made = [];
+    globalThis.AudioContext = /** @type {any} */ (class {
+      state = "running"; sampleRate = 44100; destination = { name: "speakers" }; ls = {};
+      resume() { return Promise.resolve(); }
+      close() { return Promise.resolve(); }
+      addEventListener(k, f) { this.ls[k] = f; }
+      createAnalyser() { return { fftSize: 0, smoothingTimeConstant: 0, frequencyBinCount: 1024, getByteFrequencyData(b) { b.fill(level); } }; }
+      createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
+      createMediaElementSource(el) { const n = { el, to: [], connect(x) { n.to.push(x); } }; made.push(n); return n; }
+    });
+    globalThis.MediaStream = /** @type {any} */ (class { constructor(t) { this.tracks = t; } });
+    globalThis.document = /** @type {any} */ ({ addEventListener() {}, removeEventListener() {} });
+    const track = { readyState: "live", stop() {} };
+    const audio = { paused: false, captureStream: () => ({ getAudioTracks: () => [track], getTracks: () => [track], addEventListener() {} }), addEventListener() {}, removeEventListener() {} };
+    const tap = listen(/** @type {any} */ (audio));
+    for (let i = 0; i < TAP.window * 2 + 1; i++) tap.frame();
+    return { made, state: tap.state(), tap };
+  };
+  try {
+    const quiet = run(0);
+    assertEquals(quiet.made.length, 1, "a silent copy routes the element once, not on every window");
+    assertEquals(quiet.state.mode, "element");
+    assertEquals(quiet.made[0].to.map((x) => x.name || "analyser"), ["speakers", "analyser"], "the element still reaches the speakers, and the analyser hears it");
+    assertEquals(quiet.state.heard, false, "silence is not heard");
+    quiet.tap.stop();
+    const loud = run(200);
+    assertEquals(loud.made.length, 0, "a loud copy is proven and the element stays untouched");
+    assertEquals(loud.state.mode, "capture");
+    assertEquals(loud.state.heard, true);
   } finally {
     globalThis.AudioContext = was.AudioContext;
     globalThis.MediaStream = was.MediaStream;

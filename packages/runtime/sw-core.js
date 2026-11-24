@@ -98,6 +98,7 @@ const CDN = [
   "https://api.unisvg.com",
   "https://fonts.googleapis.com",
   "https://fonts.gstatic.com",
+  "https://storage.googleapis.com",
 ];
 
 const COLD_TIMEOUT = 12000;

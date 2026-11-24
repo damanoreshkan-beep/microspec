@@ -28,6 +28,7 @@ import "./tests/candidates_test.js";
 import "./tests/colour_test.js";
 import "./tests/console_test.js";
 import "./tests/deck_test.js";
+import "./tests/face_test.js";
 import "./tests/fittext_test.js";
 import "./tests/geofix_test.js";
 import "./tests/globe_test.js";

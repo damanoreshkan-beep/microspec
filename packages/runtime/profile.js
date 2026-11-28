@@ -12,7 +12,7 @@ import * as backend from "./backend.js";
 
 const BOT = backend.BOT;
 const APK_ROW = backend.APK ?? true, STARS_CARD = backend.STARS ?? true;
-import { A, Icon, isStandalone } from "./render-ctx.js";
+import { A, Icon } from "./render-ctx.js";
 import { Effect } from "./fx.js";
 import { PROFILE } from "./profile.config.js";
 const tried = (fx) => Effect.tryPromise({ try: async () => fx(), catch: (e) => e });
@@ -146,7 +146,7 @@ export function Profile({ tab }) {
     return () => { live = false; };
   }, [account]);
   const savedTab = A.spec.tabs.find((x) => x.source === "fav");
-  const install = !!p.install && !isStandalone();
+  const install = !!p.install;
   const shareApp = async () => {
     const url = location.href.split("#")[0];
     const title = T(t, "title");
